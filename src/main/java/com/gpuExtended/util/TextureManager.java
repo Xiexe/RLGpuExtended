@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.gpuExtended;
+package com.gpuExtended.util;
 
 import java.nio.ByteBuffer;
 import javax.inject.Singleton;
@@ -35,11 +35,11 @@ import org.lwjgl.opengl.GL43C;
 
 @Singleton
 @Slf4j
-class TextureManager
+public class TextureManager
 {
 	private static final int TEXTURE_SIZE = 128;
 
-	int initTextureArray(TextureProvider textureProvider)
+	public int initTextureArray(TextureProvider textureProvider)
 	{
 		if (!allTexturesLoaded(textureProvider))
 		{
@@ -85,7 +85,7 @@ class TextureManager
 		return textureArrayId;
 	}
 
-	void setAnisotropicFilteringLevel(int textureArrayId, int level)
+	public void setAnisotropicFilteringLevel(int textureArrayId, int level)
 	{
 		GL43C.glBindTexture(GL43C.GL_TEXTURE_2D_ARRAY, textureArrayId);
 
@@ -113,7 +113,7 @@ class TextureManager
 		}
 	}
 
-	void freeTextureArray(int textureArrayId)
+	public void freeTextureArray(int textureArrayId)
 	{
 		GL43C.glDeleteTextures(textureArrayId);
 	}
@@ -220,7 +220,7 @@ class TextureManager
 		return pixels;
 	}
 
-	float[] computeTextureAnimations(TextureProvider textureProvider)
+	public float[] computeTextureAnimations(TextureProvider textureProvider)
 	{
 		Texture[] textures = textureProvider.getTextures();
 		float[] anims = new float[TEXTURE_SIZE * 2];

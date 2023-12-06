@@ -22,13 +22,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.gpuExtended;
+package com.gpuExtended.util;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
-class GpuIntBuffer
+public class GpuIntBuffer
 {
 	private IntBuffer buffer = allocateDirect(65536);
 
@@ -42,17 +42,17 @@ class GpuIntBuffer
 		buffer.put(x).put(y).put(z).put(c);
 	}
 
-	void flip()
+	public void flip()
 	{
 		buffer.flip();
 	}
 
-	void clear()
+	public void clear()
 	{
 		buffer.clear();
 	}
 
-	void ensureCapacity(int size)
+	public void ensureCapacity(int size)
 	{
 		int capacity = buffer.capacity();
 		final int position = buffer.position();
@@ -71,12 +71,12 @@ class GpuIntBuffer
 		}
 	}
 
-	IntBuffer getBuffer()
+	public IntBuffer getBuffer()
 	{
 		return buffer;
 	}
 
-	static IntBuffer allocateDirect(int size)
+	public static IntBuffer allocateDirect(int size)
 	{
 		return ByteBuffer.allocateDirect(size * Integer.BYTES)
 			.order(ByteOrder.nativeOrder())

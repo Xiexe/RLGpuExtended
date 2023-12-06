@@ -22,59 +22,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.gpuExtended;
+package com.gpuExtended.shader;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-
-class GpuFloatBuffer
+public class ShaderException extends Exception
 {
-	private FloatBuffer buffer = allocateDirect(65536);
-
-	void put(float s, float t, float p, float q)
+	ShaderException(String message)
 	{
-		buffer.put(s).put(t).put(p).put(q);
-	}
-
-	void flip()
-	{
-		buffer.flip();
-	}
-
-	void clear()
-	{
-		buffer.clear();
-	}
-
-	void ensureCapacity(int size)
-	{
-		int capacity = buffer.capacity();
-		final int position = buffer.position();
-		if ((capacity - position) < size)
-		{
-			do
-			{
-				capacity *= 2;
-			}
-			while ((capacity - position) < size);
-
-			FloatBuffer newB = allocateDirect(capacity);
-			buffer.flip();
-			newB.put(buffer);
-			buffer = newB;
-		}
-	}
-
-	FloatBuffer getBuffer()
-	{
-		return buffer;
-	}
-
-	static FloatBuffer allocateDirect(int size)
-	{
-		return ByteBuffer.allocateDirect(size * Float.BYTES)
-			.order(ByteOrder.nativeOrder())
-			.asFloatBuffer();
+		super(message);
 	}
 }

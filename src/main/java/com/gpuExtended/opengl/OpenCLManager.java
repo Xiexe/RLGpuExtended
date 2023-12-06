@@ -22,17 +22,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.gpuExtended;
+package com.gpuExtended.opengl;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import javax.inject.Singleton;
+
+import com.gpuExtended.GpuExtendedPlugin;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Constants;
 import net.runelite.api.Scene;
-import com.gpuExtended.template.Template;
+import com.gpuExtended.shader.template.Template;
 import net.runelite.client.util.OSType;
 import net.runelite.rlawt.AWTContext;
 import org.lwjgl.PointerBuffer;
@@ -87,7 +89,7 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 
 @Singleton
 @Slf4j
-class OpenCLManager
+public class OpenCLManager
 {
 	private static final String KERNEL_NAME_UNORDERED = "computeUnordered";
 	private static final String KERNEL_NAME_LARGE = "computeLarge";
@@ -111,7 +113,7 @@ class OpenCLManager
 	private int smallFaceCount;
 
 	private long device;
-	long context;
+	public long context;
 	private long commandQueue;
 
 	private long programUnordered;
@@ -129,7 +131,7 @@ class OpenCLManager
 		Configuration.OPENCL_EXPLICIT_INIT.set(true);
 	}
 
-	void init(AWTContext awtContext)
+	public void init(AWTContext awtContext)
 	{
 		device = context = commandQueue = 0L;
 		programUnordered = programSmall = programLarge = 0L;
@@ -156,7 +158,7 @@ class OpenCLManager
 		}
 	}
 
-	void cleanup()
+	public void cleanup()
 	{
 		if (!initialized)
 		{
@@ -413,7 +415,7 @@ class OpenCLManager
 		kernelLarge = getKernel(stack, programLarge, KERNEL_NAME_LARGE);
 	}
 
-	void uploadTileHeights(Scene scene)
+	public void uploadTileHeights(Scene scene)
 	{
 		if (tileHeightImage != 0L)
 		{
@@ -457,17 +459,17 @@ class OpenCLManager
 		MemoryUtil.memFree(tileBuffer);
 	}
 
-	void compute(int unorderedModels, int smallModels, int largeModels,
-		GLBuffer sceneVertexBuffer,
-		GLBuffer sceneUvBuffer,
-		GLBuffer vertexBuffer,
-		GLBuffer uvBuffer,
-		GLBuffer unorderedBuffer,
-		GLBuffer smallBuffer,
-		GLBuffer largeBuffer,
-		GLBuffer outVertexBuffer,
-		GLBuffer outUvBuffer,
-		GLBuffer uniformBuffer
+	public void compute(int unorderedModels, int smallModels, int largeModels,
+						GLBuffer sceneVertexBuffer,
+						GLBuffer sceneUvBuffer,
+						GLBuffer vertexBuffer,
+						GLBuffer uvBuffer,
+						GLBuffer unorderedBuffer,
+						GLBuffer smallBuffer,
+						GLBuffer largeBuffer,
+						GLBuffer outVertexBuffer,
+						GLBuffer outUvBuffer,
+						GLBuffer uniformBuffer
 	)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -556,7 +558,7 @@ class OpenCLManager
 		}
 	}
 
-	void finish()
+	public void finish()
 	{
 		CL12.clFinish(commandQueue);
 	}

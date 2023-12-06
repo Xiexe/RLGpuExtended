@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Adam <Adam@sigterm.info>
+ * Copyright (c) 2021, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.gpuExtended;
+package com.gpuExtended.opengl;
 
-class ShaderException extends Exception
+public class GLBuffer
 {
-	ShaderException(String message)
+	public String name;
+	public int glBufferId = -1;
+	public int size = -1;
+	public long clBuffer = -1;
+
+	public GLBuffer(String name)
 	{
-		super(message);
+		this.name = name;
 	}
 }

@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.gpuExtended;
+package com.gpuExtended.util;
 
 import com.google.common.base.Stopwatch;
 import java.io.IOException;
@@ -30,7 +30,8 @@ import java.util.Arrays;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import lombok.extern.java.Log;
+import com.gpuExtended.GpuExtendedConfig;
+import com.gpuExtended.GpuExtendedPlugin;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -50,14 +51,14 @@ import com.gpuExtended.regions.Regions;
 
 @Singleton
 @Slf4j
-class SceneUploader
+public class SceneUploader
 {
 	private final Client client;
 	private final GpuExtendedConfig gpuConfig;
 
 	private Regions regions;
 
-	int sceneId = (int) System.nanoTime();
+	public int sceneId = (int) System.nanoTime();
 	private int offset;
 	private int uvoffset;
 	private int uniqueModels;
@@ -81,7 +82,7 @@ class SceneUploader
 		}
 	}
 
-	void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
 	{
 		++sceneId;
 		offset = 0;
@@ -231,8 +232,8 @@ class SceneUploader
 		}
 	}
 
-	int upload(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer,
-		int offsetX, int offsetY, boolean padUvs)
+	public int upload(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer,
+					  int offsetX, int offsetY, boolean padUvs)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
@@ -306,8 +307,8 @@ class SceneUploader
 		return 6;
 	}
 
-	int upload(SceneTileModel sceneTileModel, int tileX, int tileY, int offsetX, int offsetZ,
-			GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, boolean padUvs)
+	public int upload(SceneTileModel sceneTileModel, int tileX, int tileY, int offsetX, int offsetZ,
+					  GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, boolean padUvs)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -559,7 +560,7 @@ class SceneUploader
 	private static int[] lt10;
 	private static int[][] orderedFaces;
 
-	void initSortingBuffers()
+	public void initSortingBuffers()
 	{
 		int MAX_VERTEX_COUNT = 6500;
 		int MAX_DIAMETER = 6000;
@@ -582,7 +583,7 @@ class SceneUploader
 		orderedFaces = new int[12][2000];
 	}
 
-	void releaseSortingBuffers()
+	public void releaseSortingBuffers()
 	{
 		distances = null;
 		distanceFaceCount = null;
@@ -602,7 +603,7 @@ class SceneUploader
 		orderedFaces = null;
 	}
 
-	int pushSortedModel(Model model, int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public int pushSortedModel(Model model, int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
 	{
 		final int vertexCount = model.getVerticesCount();
 		final int[] verticesX = model.getVerticesX();

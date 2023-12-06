@@ -41,6 +41,12 @@ import java.nio.ShortBuffer;
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
+
+import com.gpuExtended.opengl.GLBuffer;
+import com.gpuExtended.opengl.OpenCLManager;
+import com.gpuExtended.shader.Shader;
+import com.gpuExtended.shader.ShaderException;
+import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.BufferProvider;
 import net.runelite.api.Client;
@@ -66,7 +72,7 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import com.gpuExtended.config.AntiAliasingMode;
 import com.gpuExtended.config.UIScalingMode;
-import com.gpuExtended.template.Template;
+import com.gpuExtended.shader.template.Template;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.OSType;
@@ -80,7 +86,7 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
-import static org.lwjgl.opencl.CL10.*;
+
 import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
@@ -90,13 +96,13 @@ import static org.lwjgl.opengl.GL43C.*;
 public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 {
 	// This is the maximum number of triangles the compute shaders support
-	static final int MAX_TRIANGLE = 6144;
-	static final int SMALL_TRIANGLE_COUNT = 512;
+	public static final int MAX_TRIANGLE = 6144;
+	public static final int SMALL_TRIANGLE_COUNT = 512;
 	private static final int FLAG_SCENE_BUFFER = Integer.MIN_VALUE;
 	private static final int DEFAULT_DISTANCE = 25;
 	static final int MAX_DISTANCE = 184;
 	static final int MAX_FOG_DEPTH = 100;
-	static final int SCENE_OFFSET = (Constants.EXTENDED_SCENE_SIZE - Constants.SCENE_SIZE) / 2; // offset for sxy -> msxy
+	public static final int SCENE_OFFSET = (Constants.EXTENDED_SCENE_SIZE - Constants.SCENE_SIZE) / 2; // offset for sxy -> msxy
 	private static final int GROUND_MIN_Y = 350; // how far below the ground models extend
 
 	@Inject
