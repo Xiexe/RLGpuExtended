@@ -95,6 +95,7 @@ import static org.lwjgl.opengl.GL43C.*;
 )
 public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 {
+	public static GpuExtendedPlugin Instance;
 	// This is the maximum number of triangles the compute shaders support
 	public static final int MAX_TRIANGLE = 6144;
 	public static final int SMALL_TRIANGLE_COUNT = 512;
@@ -155,22 +156,22 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	static final String WINDOWS_VERSION_HEADER = "#version 430\n";
 
 	static final Shader PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "/vert.glsl")
-		.add(GL_GEOMETRY_SHADER, "/geom.glsl")
-		.add(GL_FRAGMENT_SHADER, "/frag.glsl");
+		.add(GL_VERTEX_SHADER, "vert.glsl")
+		.add(GL_GEOMETRY_SHADER, "geom.glsl")
+		.add(GL_FRAGMENT_SHADER, "frag.glsl");
 
 	static final Shader COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "/comp.glsl");
+		.add(GL_COMPUTE_SHADER, "comp.glsl");
 
 	static final Shader SMALL_COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "/comp.glsl");
+		.add(GL_COMPUTE_SHADER, "comp.glsl");
 
 	static final Shader UNORDERED_COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "/comp_unordered.glsl");
+		.add(GL_COMPUTE_SHADER, "comp_unordered.glsl");
 
 	static final Shader UI_PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "/vertui.glsl")
-		.add(GL_FRAGMENT_SHADER, "/fragui.glsl");
+		.add(GL_VERTEX_SHADER, "vertui.glsl")
+		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
 
 	private int glProgram;
 	private int glComputeProgram;
@@ -283,6 +284,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GpuIntBuffer nextSceneVertexBuffer;
 	private GpuFloatBuffer nextSceneTexBuffer;
 
+	public void Restart()
+	{
+		shutDown();
+		startUp();
+	}
+
 	@Override
 	protected void startUp()
 	{
@@ -290,6 +297,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			try
 			{
+				Instance = this;
+				Thread fileWatcherThread = new Thread(new FileWatcher("shaders/glsl/"));
+				fileWatcherThread.start();
+
 				fboSceneHandle = rboSceneHandle = -1; // AA FBO
 				targetBufferOffset = 0;
 				unorderedModels = smallModels = largeModels = 0;
@@ -379,14 +390,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				initBuffers();
 				initVao();
-				try
-				{
-					initProgram();
-				}
-				catch (ShaderException ex)
-				{
-					throw new RuntimeException(ex);
-				}
+				initShaders();
 				initInterfaceTexture();
 				initUniformBuffer();
 
@@ -588,6 +592,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		});
 		template.addInclude(GpuExtendedPlugin.class);
 		return template;
+	}
+
+	public void initShaders() {
+		try
+		{
+			initProgram();
+		}
+		catch (ShaderException ex)
+		{
+			throw new RuntimeException(ex);
+		}
 	}
 
 	private void initProgram() throws ShaderException

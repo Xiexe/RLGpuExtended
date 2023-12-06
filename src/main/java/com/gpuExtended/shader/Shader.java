@@ -51,7 +51,7 @@ public class Shader
 
 	public Shader add(int type, String name)
 	{
-		units.add(new Unit(type, name));
+		units.add(new Unit(type, "/shaders/glsl/" + name));
 		return this;
 	}
 

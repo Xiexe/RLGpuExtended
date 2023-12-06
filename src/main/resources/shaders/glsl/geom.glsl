@@ -44,7 +44,7 @@ layout(std140) uniform uniforms {
   ivec2 sinCosTable[2048];
 };
 
-#include "/uv.glsl"
+#include "/shaders/glsl/uv.glsl"
 
 uniform vec2 textureAnimations[128];
 uniform int tick;

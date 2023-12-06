@@ -60,7 +60,7 @@ out int gTextureId;
 out vec3 gTexPos;
 out float gFogAmount;
 
-#include "/hsl_to_rgb.glsl"
+#include "/shaders/glsl/hsl_to_rgb.glsl"
 
 float fogFactorLinear(const float dist, const float start, const float end) {
   return 1.0 - clamp((dist - start) / (end - start), 0.0, 1.0);
