@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+
+import lombok.extern.java.Log;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -69,13 +71,21 @@ class SceneUploader
 		this.client = client;
 		this.gpuConfig = config;
 
-		try (var in = SceneUploader.class.getResourceAsStream("regions/regions.txt"))
+		var regionLoader = SceneUploader.class.getResourceAsStream("/regions/regions.txt");
+		if(regionLoader == null)
 		{
-			regions = new Regions(in, "regions.txt");
+			throw new RuntimeException("Region Loader null!!");
 		}
-		catch (IOException ex)
+		else
 		{
-			throw new RuntimeException(ex);
+			try
+			{
+				regions = new Regions(regionLoader, "regions.txt");
+			}
+			catch (IOException ex)
+			{
+				throw new RuntimeException(ex);
+			}
 		}
 	}
 
