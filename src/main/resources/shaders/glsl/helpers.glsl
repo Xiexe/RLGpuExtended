@@ -27,3 +27,8 @@ void PostProcessImage(inout vec3 image, int colorBlindMode)
         image = colorblind(colorBlindMode, image);
     }
 }
+
+bool CheckIsUnlitTexture(int texId)
+{
+    return (texId == FIRE_CAPE) || (texId == INFERNAL_CAPE);
+}

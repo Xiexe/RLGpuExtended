@@ -1,0 +1,2 @@
+#define FIRE_CAPE 41
+#define INFERNAL_CAPE 60

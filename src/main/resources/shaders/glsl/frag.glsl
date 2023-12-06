@@ -30,17 +30,19 @@ uniform sampler2DArray textures;
 uniform float brightness;
 uniform float smoothBanding;
 uniform vec4 fogColor;
+uniform int fogDepth;
 uniform int colorBlindMode;
 uniform float textureLightMode;
-//uniform vec3 lightDirection;
-//uniform vec4 ambientColor;
 
 in vec4 fColor;
 smooth in vec3 fNormal;
 noperspective centroid in float fHsl;
 flat in int fTextureId; //41 = fire cape, 60 = infernal cape
 in vec2 fUv;
+in vec3 fPosition;
+in vec3 fCamPos;
 in float fFogAmount;
+flat in int fDrawDistance;
 
 out vec4 FragColor;
 
@@ -51,22 +53,22 @@ out vec4 FragColor;
 #include "/shaders/glsl/helpers.glsl"
 
 void main() {
-  Surface s;
-  PopulateSurfaceColor(s);
-  PopulateSurfaceNormal(s, fNormal);
+    Surface s;
+    PopulateSurfaceColor(s);
+    PopulateSurfaceNormal(s, fNormal);
 
-  vec3 lightDirection = vec3(0.5, 1.0, 0.5);
-  vec3 lightColor = vec3(1, 1, 1);
-  vec3 ambientColor = fogColor.rgb;
+    vec3 lightDirection = vec3(0.5, 1.0, 0.5);
+    vec3 lightColor = vec3(1, 1, 1);
+    vec3 ambientColor = fogColor.rgb;
 
-  float ndl = max(dot(s.normal, lightDirection), 0);
-  vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
+    float ndl = max(dot(s.normal, lightDirection), 0);
+    vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
 
-  vec3 finalColor = mix(litFragment, fogColor.rgb, fFogAmount);
+    float distFog = distance(fPosition, fCamPos) / fDrawDistance;
+    distFog = smoothstep(1 - (float(fogDepth) / 100), 1, distFog);
+    distFog = max(distFog, fFogAmount);
+    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
 
-  if(fTextureId == 60)
-    finalColor = vec3(1);
-
-  PostProcessImage(finalColor, colorBlindMode);
-  FragColor = vec4(finalColor, s.albedo.a);
+    PostProcessImage(finalColor, colorBlindMode);
+    FragColor = vec4(finalColor, s.albedo.a);
 }

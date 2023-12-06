@@ -1235,7 +1235,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		lastAntiAliasingMode = antiAliasingMode;
 
 		// Clear scene//also skybox?
-		if(gameState.getState() == GameState.LOGGED_IN.getState())
+		if(gameState.getState() == GameState.LOGIN_SCREEN.getState())
 		{
 			GL43C.glClearColor(0, 0, 0, 1f);
 		}
