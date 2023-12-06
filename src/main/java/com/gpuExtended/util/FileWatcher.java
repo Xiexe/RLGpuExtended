@@ -1,6 +1,7 @@
 package com.gpuExtended.util;
 
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.shader.ShaderException;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,8 +10,15 @@ import java.net.URL;
 import java.nio.file.*;
 import java.util.*;
 
+import static java.nio.file.StandardWatchEventKinds.*;
+
 public class FileWatcher implements Runnable
 {
+    public enum ReloadType {
+        Full,
+        HotReload
+    }
+
     private Path srcPath; // src / main / resources / shaders
     private Path buildPath; // build / resources / main / shaders
 
@@ -55,25 +63,28 @@ public class FileWatcher implements Runnable
 
                 for (WatchEvent<?> event : key.pollEvents()) {
                     WatchEvent.Kind<?> kind = event.kind();
+
                     if(event.context().toString().endsWith("~"))
                         continue;
 
+                    if (event.kind() == OVERFLOW)
+                        continue;
+
+                    Path sourceFile = Path.of(srcPath + "\\" + event.context());
+                    Path destFile = Path.of(buildPath + "\\" + event.context());
+
                     if (kind == StandardWatchEventKinds.ENTRY_MODIFY)
                     {
-                        Path source = Path.of(srcPath + "\\" + event.context());
-                        Path destination = Path.of(buildPath + "\\" + event.context());
-
                         long currentTime = System.currentTimeMillis();
-                        Long lastModifiedTime = lastModifiedTimes.get(source);
+                        Long lastModifiedTime = lastModifiedTimes.get(sourceFile);
 
                         if (lastModifiedTime == null || (currentTime - lastModifiedTime) > debounceMillis) {
-                            lastModifiedTimes.put(source, currentTime);
+                            lastModifiedTimes.put(sourceFile, currentTime);
                             System.out.println("File Changed: " + event.context());
 
-                            Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-                            GpuExtendedPlugin.Instance.Restart();
+                            Files.copy(sourceFile, destFile, StandardCopyOption.REPLACE_EXISTING);
+                            GpuExtendedPlugin.Instance.Reload(ReloadType.Full);
                             break;
-                            // Recompile shaders
                         }
                     }
                 }
@@ -86,6 +97,8 @@ public class FileWatcher implements Runnable
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ShaderException e) {
             throw new RuntimeException(e);
         }
     }

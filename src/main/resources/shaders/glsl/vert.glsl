@@ -77,7 +77,6 @@ void main() {
   gVertex = vertex;
   gColor = vec4(rgb, 1.f - a);
   gHsl = float(hsl);
-
   gTextureId = int(uv.x);  // the texture id + 1;
   gTexPos = uv.yzw;
 

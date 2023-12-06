@@ -32,10 +32,13 @@ uniform float smoothBanding;
 uniform vec4 fogColor;
 uniform int colorBlindMode;
 uniform float textureLightMode;
+//uniform vec3 lightDirection;
+//uniform vec4 ambientColor;
 
 in vec4 fColor;
+smooth in vec3 fNormal;
 noperspective centroid in float fHsl;
-flat in int fTextureId;
+flat in int fTextureId; //41 = fire cape, 60 = infernal cape
 in vec2 fUv;
 in float fFogAmount;
 
@@ -43,39 +46,26 @@ out vec4 FragColor;
 
 #include "/shaders/glsl/hsl_to_rgb.glsl"
 #include "/shaders/glsl/colorblind.glsl"
+#include "/shaders/glsl/structs.glsl"
+#include "/shaders/glsl/helpers.glsl"
 
 void main() {
-  vec4 c;
+  Surface s;
+  PopulateSurfaceColor(s);
+  PopulateSurfaceNormal(s, fNormal);
 
-  if (fTextureId > 0) {
-    int textureIdx = fTextureId - 1;
+  vec3 lightDirection = vec3(0.5, 1.0, 0.5);
+  vec3 lightColor = vec3(1, 1, 1);
+  vec3 ambientColor = fogColor.rgb;
 
-    vec4 textureColor = texture(textures, vec3(fUv, float(textureIdx)));
-    vec4 textureColorBrightness = pow(textureColor, vec4(brightness, brightness, brightness, 1.0f));
+  float ndl = max(dot(s.normal, lightDirection), 0);
+  vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
 
-    // textured triangles hsl is a 7 bit lightness 2-126
-    float light = fHsl / 127.f;
-    vec3 mul = (1.f - textureLightMode) * vec3(light) + textureLightMode * fColor.rgb;
-    c = textureColorBrightness * vec4(mul, 1.f);
-  } else {
-    // pick interpolated hsl or rgb depending on smooth banding setting
-    vec3 rgb = hslToRgb(int(fHsl)) * smoothBanding + fColor.rgb * (1.f - smoothBanding);
-    c = vec4(rgb, fColor.a);
-  }
+  vec3 finalColor = mix(litFragment, fogColor.rgb, fFogAmount);
 
-  if (colorBlindMode > 0) {
-    c.rgb = colorblind(colorBlindMode, c.rgb);
-  }
+  if(fTextureId == 60)
+    finalColor = vec3(1);
 
-  vec3 mixedColor = mix(c.rgb, fogColor.rgb, fFogAmount);
-  #ifdef FRAG_UVS
-    if (fTextureId > 0) {
-      FragColor = vec4(fUv.x, 0, fUv.y, 1);
-    } else {
-  #endif
-      FragColor = vec4(mixedColor, c.a);
-  #ifdef FRAG_UVS
-    }
-  #endif
-  FragColor *= vec4(1, 0, 1, 1);
+  PostProcessImage(finalColor, colorBlindMode);
+  FragColor = vec4(finalColor, s.albedo.a);
 }

@@ -284,10 +284,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GpuIntBuffer nextSceneVertexBuffer;
 	private GpuFloatBuffer nextSceneTexBuffer;
 
-	public void Restart()
-	{
-		shutDown();
-		startUp();
+	public void Reload(FileWatcher.ReloadType reloadType) throws ShaderException {
+		switch (reloadType) {
+			case Full:
+			{
+				shutDown();
+				startUp();
+				break;
+			}
+
+			case HotReload:
+			{
+				recompileShaders();
+				break;
+			}
+		}
 	}
 
 	@Override
@@ -603,6 +614,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			throw new RuntimeException(ex);
 		}
+	}
+
+	private void recompileShaders() throws ShaderException
+	{
+		initBuffers();
+		initVao();
+		initShaders();
+		initInterfaceTexture();
+		initUniformBuffer();
 	}
 
 	private void initProgram() throws ShaderException
@@ -1214,9 +1234,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		lastAntiAliasingMode = antiAliasingMode;
 
-		// Clear scene
-		int sky = client.getSkyboxColor();
-		GL43C.glClearColor((sky >> 16 & 0xFF) / 255f, (sky >> 8 & 0xFF) / 255f, (sky & 0xFF) / 255f, 1f);
+		// Clear scene//also skybox?
+		if(gameState.getState() == GameState.LOGGED_IN.getState())
+		{
+			GL43C.glClearColor(0, 0, 0, 1f);
+		}
+		else
+		{
+			GL43C.glClearColor(0.65f, 0.5f, 0.5f, 1f);
+		}
 		GL43C.glClear(GL43C.GL_COLOR_BUFFER_BIT);
 
 		// Draw 3d scene
@@ -1280,7 +1306,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			final int drawDistance = getDrawDistance();
 			final int fogDepth = config.fogDepth();
 			GL43C.glUniform1i(uniUseFog, fogDepth > 0 ? 1 : 0);
-			GL43C.glUniform4f(uniFogColor, (sky >> 16 & 0xFF) / 255f, (sky >> 8 & 0xFF) / 255f, (sky & 0xFF) / 255f, 1f);
+			GL43C.glUniform4f(uniFogColor, 0.65f, 0.5f, 0.5f, 1f);
 			GL43C.glUniform1i(uniFogDepth, fogDepth);
 			GL43C.glUniform1i(uniDrawDistance, drawDistance * Perspective.LOCAL_TILE_SIZE);
 			GL43C.glUniform1i(uniExpandedMapLoadingChunks, client.getExpandedMapLoading());

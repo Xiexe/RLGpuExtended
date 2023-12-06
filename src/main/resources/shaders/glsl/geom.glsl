@@ -51,6 +51,7 @@ uniform int tick;
 uniform mat4 projectionMatrix;
 
 in ivec3 gVertex[3];
+in vec3 gNormal[3];
 in vec4 gColor[3];
 in float gHsl[3];
 in int gTextureId[3];
@@ -58,6 +59,7 @@ in vec3 gTexPos[3];
 in float gFogAmount[3];
 
 out vec4 fColor;
+out vec3 fNormal;
 noperspective centroid out float fHsl;
 flat out int fTextureId;
 out vec2 fUv;
@@ -67,7 +69,8 @@ void main() {
   int textureId = gTextureId[0];
   vec2 uv[3];
 
-  if (textureId > 0) {
+  if (textureId > 0)
+  {
     vec3 cameraPos = vec3(cameraX, cameraY, cameraZ);
     compute_uv(cameraPos, gVertex[0], gVertex[1], gVertex[2], gTexPos[0], gTexPos[1], gTexPos[2], uv[0], uv[1], uv[2]);
 
@@ -75,19 +78,47 @@ void main() {
     for (int i = 0; i < 3; ++i) {
       uv[i] += tick * textureAnim * TEXTURE_ANIM_UNIT;
     }
-  } else {
+  }
+  else
+  {
     uv[0] = vec2(0);
     uv[1] = vec2(0);
     uv[2] = vec2(0);
   }
 
   for (int i = 0; i < 3; ++i) {
+    // Calc normals
+    vec3 v0 = gVertex[0];
+    vec3 v1 = gVertex[1];
+    vec3 v2 = gVertex[2];
+    vec3 triangleNormal = normalize(cross(v1 - v0, v2 - v0));
+
     fColor = gColor[i];
     fHsl = gHsl[i];
     fTextureId = gTextureId[i];
+    fNormal = triangleNormal;
     fUv = uv[i];
     fFogAmount = gFogAmount[i];
     gl_Position = projectionMatrix * vec4(gVertex[i], 1);
+    EmitVertex();
+  }
+
+  // Emit adjacency information (e.g., neighboring triangle vertices) with computed normal
+  for (int i = 0; i < 3; i++) {
+    int nextIdx = (i + 1) % 3;
+    int prevIdx = (i + 2) % 3;
+
+    vec3 v0 = gVertex[0];
+    vec3 v1 = gVertex[nextIdx];
+    vec3 v2 = gVertex[prevIdx];
+    vec3 adjacentNormal = normalize(cross(v1 - v0, v2 - v0));
+
+    gl_Position = projectionMatrix * vec4(gVertex[nextIdx], 1);
+    fNormal = adjacentNormal;
+    EmitVertex();
+
+    gl_Position = projectionMatrix * vec4(gVertex[prevIdx], 1);
+    fNormal = adjacentNormal;
     EmitVertex();
   }
 
