@@ -80,6 +80,8 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
+import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
 @PluginDescriptor(
@@ -147,22 +149,22 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	static final String WINDOWS_VERSION_HEADER = "#version 430\n";
 
 	static final Shader PROGRAM = new Shader()
-		.add(GL43C.GL_VERTEX_SHADER, "vert.glsl")
-		.add(GL43C.GL_GEOMETRY_SHADER, "geom.glsl")
-		.add(GL43C.GL_FRAGMENT_SHADER, "frag.glsl");
+		.add(GL_VERTEX_SHADER, "/vert.glsl")
+		.add(GL_GEOMETRY_SHADER, "/geom.glsl")
+		.add(GL_FRAGMENT_SHADER, "/frag.glsl");
 
 	static final Shader COMPUTE_PROGRAM = new Shader()
-		.add(GL43C.GL_COMPUTE_SHADER, "comp.glsl");
+		.add(GL_COMPUTE_SHADER, "/comp.glsl");
 
 	static final Shader SMALL_COMPUTE_PROGRAM = new Shader()
-		.add(GL43C.GL_COMPUTE_SHADER, "comp.glsl");
+		.add(GL_COMPUTE_SHADER, "/comp.glsl");
 
 	static final Shader UNORDERED_COMPUTE_PROGRAM = new Shader()
-		.add(GL43C.GL_COMPUTE_SHADER, "comp_unordered.glsl");
+		.add(GL_COMPUTE_SHADER, "/comp_unordered.glsl");
 
 	static final Shader UI_PROGRAM = new Shader()
-		.add(GL43C.GL_VERTEX_SHADER, "vertui.glsl")
-		.add(GL43C.GL_FRAGMENT_SHADER, "fragui.glsl");
+		.add(GL_VERTEX_SHADER, "/vertui.glsl")
+		.add(GL_FRAGMENT_SHADER, "/fragui.glsl");
 
 	private int glProgram;
 	private int glComputeProgram;

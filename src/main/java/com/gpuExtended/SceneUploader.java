@@ -71,21 +71,13 @@ class SceneUploader
 		this.client = client;
 		this.gpuConfig = config;
 
-		var regionLoader = SceneUploader.class.getResourceAsStream("/regions/regions.txt");
-		if(regionLoader == null)
+		try (var in = SceneUploader.class.getResourceAsStream("/regions/regions.txt"))
 		{
-			throw new RuntimeException("Region Loader null!!");
+			regions = new Regions(in, "regions.txt");
 		}
-		else
+		catch (IOException ex)
 		{
-			try
-			{
-				regions = new Regions(regionLoader, "regions.txt");
-			}
-			catch (IOException ex)
-			{
-				throw new RuntimeException(ex);
-			}
+			throw new RuntimeException(ex);
 		}
 	}
 

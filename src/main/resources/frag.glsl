@@ -41,8 +41,8 @@ in float fFogAmount;
 
 out vec4 FragColor;
 
-#include "hsl_to_rgb.glsl"
-#include "colorblind.glsl"
+#include "/hsl_to_rgb.glsl"
+#include "/colorblind.glsl"
 
 void main() {
   vec4 c;
@@ -68,13 +68,14 @@ void main() {
   }
 
   vec3 mixedColor = mix(c.rgb, fogColor.rgb, fFogAmount);
-#ifdef FRAG_UVS
-  if (fTextureId > 0) {
-    FragColor = vec4(fUv.x, 0, fUv.y, 1);
-  } else {
-#endif
-    FragColor = vec4(mixedColor, c.a);
-#ifdef FRAG_UVS
-  }
-#endif
+  FragColor = vec3(1.0);
+//#ifdef FRAG_UVS
+//  if (fTextureId > 0) {
+//    FragColor = vec4(fUv.x, 0, fUv.y, 1);
+//  } else {
+//#endif
+//    FragColor = vec4(mixedColor, c.a);
+//#ifdef FRAG_UVS
+//  }
+//#endif
 }
