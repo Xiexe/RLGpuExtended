@@ -402,9 +402,9 @@ public class OpenCLManager
 
 		String unordered = new Template()
 			.addInclude(OpenCLManager.class)
-			.load("comp_unordered.cl");
-		String small = templateSmall.load("comp.cl");
-		String large = templateLarge.load("comp.cl");
+			.load("/shaders/compute/comp_unordered.cl");
+		String small = templateSmall.load("/shaders/compute/comp.cl");
+		String large = templateLarge.load("/shaders/compute/comp.cl");
 
 		programUnordered = compileProgram(stack, unordered);
 		programSmall = compileProgram(stack, small);
