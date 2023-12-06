@@ -44,6 +44,7 @@ in float fFogAmount;
 
 out vec4 FragColor;
 
+#include "/shaders/glsl/constants.glsl"
 #include "/shaders/glsl/hsl_to_rgb.glsl"
 #include "/shaders/glsl/colorblind.glsl"
 #include "/shaders/glsl/structs.glsl"
