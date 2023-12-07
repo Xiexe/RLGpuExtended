@@ -81,7 +81,6 @@ public class FileWatcher implements Runnable
                         if (lastModifiedTime == null || (currentTime - lastModifiedTime) > debounceMillis) {
                             lastModifiedTimes.put(sourceFile, currentTime);
                             System.out.println("File Changed: " + event.context());
-
                             Files.copy(sourceFile, destFile, StandardCopyOption.REPLACE_EXISTING);
                             GpuExtendedPlugin.Instance.Reload(ReloadType.Full);
                             break;

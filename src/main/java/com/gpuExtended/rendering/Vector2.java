@@ -1,4 +1,4 @@
-package com.gpuExtended.util.rendering;
+package com.gpuExtended.rendering;
 
 public class Vector2
 {

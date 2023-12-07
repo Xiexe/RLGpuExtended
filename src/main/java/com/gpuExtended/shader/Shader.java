@@ -76,6 +76,10 @@ public class Shader
 				GL43C.glShaderSource(shader, source);
 				GL43C.glCompileShader(shader);
 
+				System.out.println("-------------------- COMPILED SHADER ----------------------");
+				System.out.println("-------------------- " + unit.filename + " ----------------------");
+				System.out.println(source);
+
 				if (GL43C.glGetShaderi(shader, GL43C.GL_COMPILE_STATUS) != GL43C.GL_TRUE)
 				{
 					String err = GL43C.glGetShaderInfoLog(shader);
@@ -118,7 +122,6 @@ public class Shader
 				GL43C.glDeleteProgram(program);
 			}
 		}
-
 		return program;
 	}
 }
