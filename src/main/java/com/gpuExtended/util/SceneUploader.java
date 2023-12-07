@@ -37,6 +37,7 @@ public class SceneUploader
 
 	public int sceneId = (int) System.nanoTime();
 	private int offset;
+	private int normalOffset;
 	private int uvoffset;
 	private int uniqueModels;
 
@@ -59,13 +60,14 @@ public class SceneUploader
 		}
 	}
 
-	public void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer)
 	{
 		++sceneId;
 		offset = 0;
 		uvoffset = 0;
 		uniqueModels = 0;
 		vertexBuffer.clear();
+		vertexNormalBuffer.clear();
 		uvBuffer.clear();
 
 		Stopwatch stopwatch = Stopwatch.createStarted();
@@ -83,7 +85,7 @@ public class SceneUploader
 					Tile tile = scene.getExtendedTiles()[z][x][y];
 					if (tile != null)
 					{
-						upload(scene, tile, vertexBuffer, uvBuffer);
+						upload(scene, tile, vertexBuffer, vertexNormalBuffer, uvBuffer);
 					}
 				}
 			}
@@ -93,12 +95,12 @@ public class SceneUploader
 		log.debug("Scene upload time: {} unique models: {} length: {}KB", stopwatch, uniqueModels, (offset * 16) / 1024);
 	}
 
-	private void upload(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	private void upload(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer)
 	{
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
 		{
-			upload(scene, bridge, vertexBuffer, uvBuffer);
+			upload(scene, bridge, vertexBuffer, vertexNormalBuffer, uvBuffer);
 		}
 
 		SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
@@ -116,7 +118,7 @@ public class SceneUploader
 			Point tilePoint = tile.getSceneLocation();
 			int len = upload(scene, sceneTilePaint,
 				tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(),
-				vertexBuffer, uvBuffer,
+				vertexBuffer, vertexNormalBuffer, uvBuffer,
 				0, 0, false);
 			sceneTilePaint.setBufferLen(len);
 			offset += len;
@@ -142,7 +144,7 @@ public class SceneUploader
 			int len = upload(sceneTileModel,
 				tilePoint.getX(), tilePoint.getY(),
 				0, 0,
-				vertexBuffer, uvBuffer, false);
+				vertexBuffer, vertexNormalBuffer, uvBuffer, false);
 			sceneTileModel.setBufferLen(len);
 			offset += len;
 			if (sceneTileModel.getTriangleTextureId() != null)
@@ -157,13 +159,13 @@ public class SceneUploader
 			Renderable renderable1 = wallObject.getRenderable1();
 			if (renderable1 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable1, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable1, vertexBuffer, vertexNormalBuffer, uvBuffer);
 			}
 
 			Renderable renderable2 = wallObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable2, vertexBuffer, vertexNormalBuffer, uvBuffer);
 			}
 		}
 
@@ -173,7 +175,7 @@ public class SceneUploader
 			Renderable renderable = groundObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable, vertexBuffer, vertexNormalBuffer, uvBuffer);
 			}
 		}
 
@@ -183,13 +185,13 @@ public class SceneUploader
 			Renderable renderable = decorativeObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable, vertexBuffer, vertexNormalBuffer, uvBuffer);
 			}
 
 			Renderable renderable2 = decorativeObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable2, vertexBuffer, vertexNormalBuffer, uvBuffer);
 			}
 		}
 
@@ -204,12 +206,14 @@ public class SceneUploader
 			Renderable renderable = gameObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) gameObject.getRenderable(), vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) gameObject.getRenderable(), vertexBuffer, vertexNormalBuffer, uvBuffer);
 			}
 		}
 	}
 
-	public int upload(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer,
+
+	// Tiles?
+	public int upload(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer,
 					  int offsetX, int offsetY, boolean padUvs)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
@@ -235,6 +239,7 @@ public class SceneUploader
 		}
 
 		vertexBuffer.ensureCapacity(24);
+		vertexNormalBuffer.ensureCapacity(24);
 		uvBuffer.ensureCapacity(24);
 
 		// 0,0
@@ -269,6 +274,14 @@ public class SceneUploader
 		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
 		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
 
+//		vertexNormalBuffer.put(vertexAx, vertexAz, vertexAy, c3);
+//		vertexNormalBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+//		vertexNormalBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+//
+//		vertexNormalBuffer.put(vertexDx, vertexDz, vertexDy, c1);
+//		vertexNormalBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+//		vertexNormalBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+
 		if (padUvs || tile.getTexture() != -1)
 		{
 			int tex = tile.getTexture() + 1;
@@ -285,7 +298,7 @@ public class SceneUploader
 	}
 
 	public int upload(SceneTileModel sceneTileModel, int tileX, int tileY, int offsetX, int offsetZ,
-					  GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, boolean padUvs)
+					  GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer, boolean padUvs)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -304,6 +317,7 @@ public class SceneUploader
 		final int faceCount = faceX.length;
 
 		vertexBuffer.ensureCapacity(faceCount * 12);
+		//vertexNormalBuffer.ensureCapacity(faceCount * 12);
 		uvBuffer.ensureCapacity(faceCount * 12);
 
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
@@ -365,7 +379,7 @@ public class SceneUploader
 		return cnt;
 	}
 
-	private void uploadSceneModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	private void uploadSceneModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer)
 	{
 		// deduplicate hillskewed models
 		if (model.getUnskewedModel() != null)
@@ -390,7 +404,7 @@ public class SceneUploader
 		model.setSceneId(sceneId);
 		++uniqueModels;
 
-		int len = pushModel(model, vertexBuffer, uvBuffer);
+		int len = pushModel(model, vertexBuffer, vertexNormalBuffer, uvBuffer);
 
 		offset += len;
 		if (model.getFaceTextures() != null)
@@ -399,7 +413,7 @@ public class SceneUploader
 		}
 	}
 
-	public int pushModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public int pushModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer)
 	{
 		final int triangleCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
 
@@ -580,7 +594,7 @@ public class SceneUploader
 		orderedFaces = null;
 	}
 
-	public int pushSortedModel(Model model, int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public int pushSortedModel(Model model, int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer)
 	{
 		final int vertexCount = model.getVerticesCount();
 		final int[] verticesX = model.getVerticesX();
@@ -713,7 +727,7 @@ public class SceneUploader
 					for (int faceIdx = 0; faceIdx < cnt; ++faceIdx)
 					{
 						final int face = faces[faceIdx];
-						len += pushFace(model, face, vertexBuffer, uvBuffer);
+						len += pushFace(model, face, vertexBuffer, vertexNormalBuffer, uvBuffer);
 					}
 				}
 			}
@@ -798,7 +812,7 @@ public class SceneUploader
 				while (pri == 0 && currFaceDistance > avg12)
 				{
 					final int face = dynFaces[drawnFaces++];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
+					len += pushFace(model, face, vertexBuffer, vertexNormalBuffer, uvBuffer);
 
 					if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
 					{
@@ -821,7 +835,7 @@ public class SceneUploader
 				while (pri == 3 && currFaceDistance > avg34)
 				{
 					final int face = dynFaces[drawnFaces++];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
+					len += pushFace(model, face, vertexBuffer, vertexNormalBuffer, uvBuffer);
 
 					if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
 					{
@@ -844,7 +858,7 @@ public class SceneUploader
 				while (pri == 5 && currFaceDistance > avg68)
 				{
 					final int face = dynFaces[drawnFaces++];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
+					len += pushFace(model, face, vertexBuffer, vertexNormalBuffer, uvBuffer);
 
 					if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
 					{
@@ -870,14 +884,14 @@ public class SceneUploader
 				for (int faceIdx = 0; faceIdx < priNum; ++faceIdx)
 				{
 					final int face = priFaces[faceIdx];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
+					len += pushFace(model, face, vertexBuffer, vertexNormalBuffer, uvBuffer);
 				}
 			}
 
 			while (currFaceDistance != -1000)
 			{
 				final int face = dynFaces[drawnFaces++];
-				len += pushFace(model, face, vertexBuffer, uvBuffer);
+				len += pushFace(model, face, vertexBuffer, vertexNormalBuffer, uvBuffer);
 
 				if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
 				{
@@ -901,7 +915,7 @@ public class SceneUploader
 		return len;
 	}
 
-	private int pushFace(Model model, int face, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	private int pushFace(Model model, int face, GpuIntBuffer vertexBuffer, GpuFloatBuffer vertexNormalBuffer, GpuFloatBuffer uvBuffer)
 	{
 		final int[] indices1 = model.getFaceIndices1();
 		final int[] indices2 = model.getFaceIndices2();

@@ -463,11 +463,13 @@ public class OpenCLManager
 						GLBuffer sceneVertexBuffer,
 						GLBuffer sceneUvBuffer,
 						GLBuffer vertexBuffer,
+						GLBuffer vertexNormalBuffer,
 						GLBuffer uvBuffer,
 						GLBuffer unorderedBuffer,
 						GLBuffer smallBuffer,
 						GLBuffer largeBuffer,
 						GLBuffer outVertexBuffer,
+						GLBuffer outVertexNormalBuffer,
 						GLBuffer outUvBuffer,
 						GLBuffer uniformBuffer
 	)
@@ -481,8 +483,10 @@ public class OpenCLManager
 			glBuffers.put(smallBuffer.clBuffer);
 			glBuffers.put(largeBuffer.clBuffer);
 			glBuffers.put(vertexBuffer.clBuffer);
+			glBuffers.put(vertexNormalBuffer.clBuffer);
 			glBuffers.put(uvBuffer.clBuffer);
 			glBuffers.put(outVertexBuffer.clBuffer);
+			glBuffers.put(outVertexNormalBuffer.clBuffer);
 			glBuffers.put(outUvBuffer.clBuffer);
 			glBuffers.put(uniformBuffer.clBuffer);
 			glBuffers.flip();
@@ -496,10 +500,12 @@ public class OpenCLManager
 				CL12.clSetKernelArg1p(kernelUnordered, 0, unorderedBuffer.clBuffer);
 				CL12.clSetKernelArg1p(kernelUnordered, 1, sceneVertexBuffer.clBuffer);
 				CL12.clSetKernelArg1p(kernelUnordered, 2, vertexBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelUnordered, 3, sceneUvBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelUnordered, 4, uvBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelUnordered, 5, outVertexBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelUnordered, 6, outUvBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelUnordered, 3, vertexNormalBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelUnordered, 4, sceneUvBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelUnordered, 5, uvBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelUnordered, 6, outVertexBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelUnordered, 7, outVertexNormalBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelUnordered, 8, outUvBuffer.clBuffer);
 
 				// queue compute call after acquireGLBuffers
 				CL12.clEnqueueNDRangeKernel(commandQueue, kernelUnordered, 1, null,
@@ -517,9 +523,10 @@ public class OpenCLManager
 				CL12.clSetKernelArg1p(kernelSmall, 4, sceneUvBuffer.clBuffer);
 				CL12.clSetKernelArg1p(kernelSmall, 5, uvBuffer.clBuffer);
 				CL12.clSetKernelArg1p(kernelSmall, 6, outVertexBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelSmall, 7, outUvBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelSmall, 8, uniformBuffer.clBuffer);
-				CL12.clSetKernelArg1l(kernelSmall, 9, tileHeightImage);
+				CL12.clSetKernelArg1p(kernelSmall, 7, outVertexNormalBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelSmall, 8, outUvBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelSmall, 9, uniformBuffer.clBuffer);
+				CL12.clSetKernelArg1l(kernelSmall, 10, tileHeightImage);
 
 				CL12.clEnqueueNDRangeKernel(commandQueue, kernelSmall, 1, null,
 					stack.pointers(smallModels * (SMALL_SIZE / smallFaceCount)), stack.pointers(SMALL_SIZE / smallFaceCount),
@@ -536,9 +543,10 @@ public class OpenCLManager
 				CL12.clSetKernelArg1p(kernelLarge, 4, sceneUvBuffer.clBuffer);
 				CL12.clSetKernelArg1p(kernelLarge, 5, uvBuffer.clBuffer);
 				CL12.clSetKernelArg1p(kernelLarge, 6, outVertexBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelLarge, 7, outUvBuffer.clBuffer);
-				CL12.clSetKernelArg1p(kernelLarge, 8, uniformBuffer.clBuffer);
-				CL12.clSetKernelArg1l(kernelLarge, 9, tileHeightImage);
+				CL12.clSetKernelArg1p(kernelLarge, 7, outVertexNormalBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelLarge, 8, outUvBuffer.clBuffer);
+				CL12.clSetKernelArg1p(kernelLarge, 9, uniformBuffer.clBuffer);
+				CL12.clSetKernelArg1l(kernelLarge, 10, tileHeightImage);
 
 				CL12.clEnqueueNDRangeKernel(commandQueue, kernelLarge, 1, null,
 					stack.pointers(largeModels * (LARGE_SIZE / largeFaceCount)), stack.pointers(LARGE_SIZE / largeFaceCount),

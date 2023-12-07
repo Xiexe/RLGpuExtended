@@ -13,7 +13,7 @@ uniform ivec2 targetDimensions;
 #include "/scale/xbr_lv2_vert.glsl"
 
 layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aTexCoord;
+layout(location = 2) in vec2 aTexCoord;
 
 out vec2 TexCoord;
 out XBRTable xbrTable;

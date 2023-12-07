@@ -64,11 +64,6 @@ void main() {
     uv[1] = vec2(0);
     uv[2] = vec2(0);
   }
-  // Calc normals
-  vec3 v0 = gVertex[0];
-  vec3 v1 = gVertex[1];
-  vec3 v2 = gVertex[2];
-  vec3 triangleNormal = normalize(cross(v1 - v0, v2 - v0));
 
   for (int i = 0; i < 3; ++i) {
     fCamPos = cameraPos;
@@ -76,7 +71,7 @@ void main() {
     fColor = gColor[i];
     fHsl = gHsl[i];
     fTextureId = gTextureId[i];
-    fNormal = triangleNormal;
+    fNormal = gNormal[i];
     fUv = uv[i];
     fFogAmount = gFogAmount[i];
     gl_Position = projectionMatrix * vec4(gVertex[i], 1);

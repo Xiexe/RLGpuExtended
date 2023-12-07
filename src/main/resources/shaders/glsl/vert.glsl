@@ -8,7 +8,8 @@
 #define FOG_CORNER_ROUNDING_SQUARED (FOG_CORNER_ROUNDING * FOG_CORNER_ROUNDING)
 
 layout(location = 0) in ivec4 vPos;
-layout(location = 1) in vec4 vUv;
+layout(location = 1) in vec4 vNormal;
+layout(location = 2) in vec4 vUv;
 
 layout(std140) uniform uniforms {
   float cameraYaw;
@@ -28,6 +29,7 @@ uniform int expandedMapLoadingChunks;
 
 out ivec3 gVertex;
 out vec3 gPosition;
+out vec3 gNormal;
 out vec4 gColor;
 out float gHsl;
 out int gTextureId;
@@ -50,6 +52,7 @@ void main() {
   vec3 rgb = hslToRgb(hsl);
 
   gVertex = vertex;
+  gNormal = vec3(vNormal.xyz);
   gPosition = position;
   gColor = vec4(rgb, 1.f - a);
   gHsl = float(hsl);
