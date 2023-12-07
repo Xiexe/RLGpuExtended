@@ -305,9 +305,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				canvas.setIgnoreRepaint(true);
 
-				computeMode = config.useComputeShaders()
-					? (OSType.getOSType() == OSType.MacOS ? ComputeMode.OPENCL : ComputeMode.OPENGL)
-					: ComputeMode.NONE;
+				computeMode = OSType.getOSType() == OSType.MacOS ? ComputeMode.OPENCL : ComputeMode.OPENGL;
 
 				// lwjgl defaults to lwjgl- + user.name, but this breaks if the username would cause an invalid path
 				// to be created.
@@ -327,11 +325,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				{
 					log.info("disabling compute shaders because OpenGL 4.3 is not available");
 					computeMode = ComputeMode.NONE;
-				}
-
-				if (computeMode == ComputeMode.NONE)
-				{
-					sceneUploader.initSortingBuffers();
 				}
 
 				lwjglInitted = true;
@@ -376,9 +369,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initUniformBuffer();
 
 				client.setDrawCallbacks(this);
-				client.setGpuFlags(DrawCallbacks.GPU
-					| (computeMode == ComputeMode.NONE ? 0 : DrawCallbacks.HILLSKEW)
-				);
+				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW);
 				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
 
 				// force rebuild of main buffer provider to enable alpha channel
@@ -883,22 +874,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void postDrawScene()
 	{
-		if (computeMode == ComputeMode.NONE)
-		{
-			// Upload buffers
-			vertexBuffer.flip();
-			uvBuffer.flip();
-
-			IntBuffer vertexBuffer = this.vertexBuffer.getBuffer();
-			FloatBuffer uvBuffer = this.uvBuffer.getBuffer();
-
-			updateBuffer(tmpVertexBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW, 0L);
-			updateBuffer(tmpUvBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW, 0L);
-
-			checkGLErrors();
-			return;
-		}
-
 		// Upload buffers
 		vertexBuffer.flip();
 		uvBuffer.flip();
@@ -1008,17 +983,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		SceneTilePaint paint, int tileZ, int tileX, int tileY,
 		int zoom, int centerX, int centerY)
 	{
-		if (computeMode == ComputeMode.NONE)
-		{
-			targetBufferOffset += sceneUploader.upload(client.getScene(), paint,
-				tileZ, tileX, tileY,
-				vertexBuffer, uvBuffer,
-				tileX << Perspective.LOCAL_COORD_BITS,
-				tileY << Perspective.LOCAL_COORD_BITS,
-				true
-			);
-		}
-		else if (paint.getBufferLen() > 0)
+		if (paint.getBufferLen() > 0)
 		{
 			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
 			final int localY = 0;
@@ -1045,15 +1010,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		SceneTileModel model, int tileZ, int tileX, int tileY,
 		int zoom, int centerX, int centerY)
 	{
-		if (computeMode == ComputeMode.NONE)
-		{
-			targetBufferOffset += sceneUploader.upload(model,
-				tileX, tileY,
-				tileX << Perspective.LOCAL_COORD_BITS, tileY << Perspective.LOCAL_COORD_BITS,
-				vertexBuffer, uvBuffer,
-				true);
-		}
-		else if (model.getBufferLen() > 0)
+		if (model.getBufferLen() > 0)
 		{
 			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
 			final int localY = 0;
@@ -1241,12 +1198,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			final int drawDistance = getDrawDistance();
 			final int fogDepth = config.fogDepth();
-			glUniform4f(uniforms.FogColor, environment.fogColor.r, environment.fogColor.g, environment.fogColor.b, 1f);
+			glUniform3f(uniforms.FogColor, environment.fogColor.r, environment.fogColor.g, environment.fogColor.b);
 			glUniform1i(uniforms.FogDepth, fogDepth);
 			glUniform1i(uniforms.DrawDistance, drawDistance * Perspective.LOCAL_TILE_SIZE);
 			glUniform1i(uniforms.ExpandedMapLoadingChunks, client.getExpandedMapLoading());
 
-			glUniform4f(uniforms.AmbientColor, environment.ambientColor.r, environment.ambientColor.g, environment.ambientColor.b, 1f);
+			glUniform3f(uniforms.AmbientColor, environment.ambientColor.r, environment.ambientColor.g, environment.ambientColor.b);
 
 			Light directionalLight = environment.directionalLights.get(0);
 			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
@@ -1283,28 +1240,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glEnable(GL_BLEND);
 			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
-			// Draw buffers
-			if (computeMode != ComputeMode.NONE)
+			if (computeMode == ComputeMode.OPENGL)
 			{
-				if (computeMode == ComputeMode.OPENGL)
-				{
-					// Before reading the SSBOs written to from postDrawScene() we must insert a barrier
-					glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-				}
-				else
-				{
-					// Wait for the command queue to finish, so that we know the compute is done
-					openCLManager.finish();
-				}
-
-				// Draw using the output buffer of the compute
-				glBindVertexArray(vaoCompute);
+				// Before reading the SSBOs written to from postDrawScene() we must insert a barrier
+				glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 			}
 			else
 			{
-				// Only use the temporary buffers, which will contain the full scene
-				glBindVertexArray(vaoTemp);
+				// Wait for the command queue to finish, so that we know the compute is done
+				openCLManager.finish();
 			}
+
+			// Draw using the output buffer of the compute
+			glBindVertexArray(vaoCompute);
 
 			glDrawArrays(GL_TRIANGLES, 0, targetBufferOffset);
 
@@ -1497,11 +1445,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void loadScene(Scene scene)
 	{
-		if (computeMode == ComputeMode.NONE)
-		{
-			return;
-		}
-
 		GpuIntBuffer vertexBuffer = new GpuIntBuffer();
 		GpuFloatBuffer uvBuffer = new GpuFloatBuffer();
 
@@ -1565,11 +1508,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void swapScene(Scene scene)
 	{
-		if (computeMode == ComputeMode.NONE)
-		{
-			return;
-		}
-
 		if (computeMode == ComputeMode.OPENCL)
 		{
 			openCLManager.uploadTileHeights(scene);
@@ -1718,30 +1656,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			offsetModel = model;
 		}
 
-		if (computeMode == ComputeMode.NONE)
-		{
-			// Apply height to renderable from the model
-			if (model != renderable)
-			{
-				renderable.setModelHeight(model.getModelHeight());
-			}
-
-			if (!isVisible(model, pitchSin, pitchCos, yawSin, yawCos, x, y, z))
-			{
-				return;
-			}
-
-			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
-
-			targetBufferOffset += sceneUploader.pushSortedModel(
-				model, orientation,
-				pitchSin, pitchCos,
-				yawSin, yawCos,
-				x, y, z,
-				vertexBuffer, uvBuffer);
-		}
 		// Model may be in the scene buffer
-		else if (offsetModel.getSceneId() == sceneId)
+		if (offsetModel.getSceneId() == sceneId)
 		{
 			assert model == renderable;
 
