@@ -53,3 +53,11 @@ layout(std430, binding = 5) readonly buffer texturebuffer_in {
 layout(std430, binding = 6) readonly buffer temptexturebuffer_in {
   vec4 temptexb[];
 };
+
+layout(std430, binding = 7) readonly buffer normalbuffer_in {
+  vec4 normal[];
+};
+
+layout(std430, binding = 8) readonly buffer normal_out {
+  vec4 normalout[];
+};

@@ -177,13 +177,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private final GLBuffer sceneVertexBuffer = new GLBuffer("scene vertex buffer");
 	private final GLBuffer sceneUvBuffer = new GLBuffer("scene tex buffer");
+	private final GLBuffer sceneNormalBuffer = new GLBuffer("scene normal buffer");
+
 	private final GLBuffer tmpVertexBuffer = new GLBuffer("tmp vertex buffer");
 	private final GLBuffer tmpUvBuffer = new GLBuffer("tmp tex buffer");
+
+	private final GLBuffer renderVertexBuffer = new GLBuffer("out vertex buffer");
+	private final GLBuffer renderUvBuffer = new GLBuffer("out tex buffer");
+	private final GLBuffer renderNormalBuffer = new GLBuffer("out normal buffer");
+
+
+	// Used for model sorting.
 	private final GLBuffer tmpModelBufferLarge = new GLBuffer("model buffer large");
 	private final GLBuffer tmpModelBufferSmall = new GLBuffer("model buffer small");
 	private final GLBuffer tmpModelBufferUnordered = new GLBuffer("model buffer unordered");
-	private final GLBuffer tmpOutBuffer = new GLBuffer("out vertex buffer");
-	private final GLBuffer tmpOutUvBuffer = new GLBuffer("out tex buffer");
+
 
 	private int textureArrayId;
 	private int tileHeightTex;
@@ -273,7 +281,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environment = new Environment();
 				environment.ambientColor = new Color(0,0,0);
 				environment.fogColor = new Color(0,0,0);
-				environment.AddDirectionalLight(new Vector4(0.5, 0.5, 0.5, 0), new Color(1, 1, 1), 1);
+				environment.AddDirectionalLight(new Vector4(0.5, 0.75, 0.5, 0), new Color(1, 1, 1), 1);
 
 				if(Instance == null)
 				{
@@ -369,7 +377,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initUniformBuffer();
 
 				client.setDrawCallbacks(this);
-				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW);
+				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
 				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
 
 				// force rebuild of main buffer provider to enable alpha channel
@@ -627,12 +635,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindVertexArray(vaoCompute);
 
 		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, tmpOutBuffer.glBufferId);
+		glBindBuffer(GL_ARRAY_BUFFER, renderVertexBuffer.glBufferId);
 		glVertexAttribIPointer(0, 4, GL_INT, 0, 0);
 
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, tmpOutUvBuffer.glBufferId);
+		glBindBuffer(GL_ARRAY_BUFFER, renderUvBuffer.glBufferId);
 		glVertexAttribPointer(1, 4, GL_FLOAT, false, 0, 0);
+
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, renderNormalBuffer.glBufferId);
+		glVertexAttribPointer(2, 4, GL_FLOAT, false, 0, 0);
 
 		// Create temp VAO
 		vaoTemp = glGenVertexArrays();
@@ -695,13 +707,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		initGlBuffer(sceneVertexBuffer);
 		initGlBuffer(sceneUvBuffer);
+		initGlBuffer(sceneNormalBuffer);
+
 		initGlBuffer(tmpVertexBuffer);
 		initGlBuffer(tmpUvBuffer);
 		initGlBuffer(tmpModelBufferLarge);
 		initGlBuffer(tmpModelBufferSmall);
 		initGlBuffer(tmpModelBufferUnordered);
-		initGlBuffer(tmpOutBuffer);
-		initGlBuffer(tmpOutUvBuffer);
+
+		initGlBuffer(renderVertexBuffer);
+		initGlBuffer(renderUvBuffer);
+		initGlBuffer(renderNormalBuffer);
 	}
 
 	private void initGlBuffer(GLBuffer glBuffer)
@@ -713,14 +729,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		destroyGlBuffer(sceneVertexBuffer);
 		destroyGlBuffer(sceneUvBuffer);
+		destroyGlBuffer(sceneNormalBuffer);
 
 		destroyGlBuffer(tmpVertexBuffer);
 		destroyGlBuffer(tmpUvBuffer);
 		destroyGlBuffer(tmpModelBufferLarge);
 		destroyGlBuffer(tmpModelBufferSmall);
 		destroyGlBuffer(tmpModelBufferUnordered);
-		destroyGlBuffer(tmpOutBuffer);
-		destroyGlBuffer(tmpOutUvBuffer);
+		destroyGlBuffer(renderVertexBuffer);
+		destroyGlBuffer(renderUvBuffer);
+		destroyGlBuffer(renderNormalBuffer);
 	}
 
 	private void destroyGlBuffer(GLBuffer glBuffer)
@@ -897,35 +915,25 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		updateBuffer(tmpModelBufferUnordered, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 
 		// Output buffers
-		updateBuffer(tmpOutBuffer,
+		updateBuffer(renderVertexBuffer,
 			GL_ARRAY_BUFFER,
 			targetBufferOffset * 16, // each element is an ivec4, which is 16 bytes
 			GL_STREAM_DRAW,
 			CL12.CL_MEM_WRITE_ONLY);
-		updateBuffer(tmpOutUvBuffer,
+
+		updateBuffer(renderUvBuffer,
 			GL_ARRAY_BUFFER,
 			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
 			GL_STREAM_DRAW,
 			CL12.CL_MEM_WRITE_ONLY);
 
-		if (computeMode == ComputeMode.OPENCL)
-		{
-			// The docs for clEnqueueAcquireGLObjects say all pending GL operations must be completed before calling
-			// clEnqueueAcquireGLObjects, and recommends calling glFinish() as the only portable way to do that.
-			// However no issues have been observed from not calling it, and so will leave disabled for now.
-			// glFinish();
+		updateBuffer(renderNormalBuffer,
+				GL_ARRAY_BUFFER,
+				targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
+				GL_STREAM_DRAW,
+				CL12.CL_MEM_WRITE_ONLY);
 
-			openCLManager.compute(
-				unorderedModels, smallModels, largeModels,
-				sceneVertexBuffer, sceneUvBuffer,
-				tmpVertexBuffer, tmpUvBuffer,
-				tmpModelBufferUnordered, tmpModelBufferSmall, tmpModelBufferLarge,
-				tmpOutBuffer, tmpOutUvBuffer,
-				uniformBuffer);
-
-			checkGLErrors();
-			return;
-		}
+		// TODO:: make OpenCL work. This is for Mac.
 
 		/*
 		 * Compute is split into three separate programs: 'unordered', 'small', and 'large'
@@ -936,46 +944,61 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniformBlockBinding(glSmallComputeProgram, uniforms.BlockSmall, 0);
 		glUniformBlockBinding(glComputeProgram, uniforms.BlockLarge, 0);
 
-		// unordered
-		glUseProgram(glUnorderedComputeProgram);
-
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, tmpModelBufferUnordered.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, sceneVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, tmpVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, tmpOutBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, tmpOutUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId);
-
-		glDispatchCompute(unorderedModels, 1, 1);
-
-		// small
-		glUseProgram(glSmallComputeProgram);
-
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, tmpModelBufferSmall.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, sceneVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, tmpVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, tmpOutBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, tmpOutUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId);
-
-		glDispatchCompute(smallModels, 1, 1);
-
-		// large
-		glUseProgram(glComputeProgram);
-
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, tmpModelBufferLarge.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, sceneVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, tmpVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, tmpOutBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, tmpOutUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId);
-
-		glDispatchCompute(largeModels, 1, 1);
+		dispatchModelSortingComputeShader(glUnorderedComputeProgram, unorderedModels, tmpModelBufferUnordered);
+		dispatchModelSortingComputeShader(glSmallComputeProgram, smallModels, tmpModelBufferSmall);
+		dispatchModelSortingComputeShader(glComputeProgram, largeModels, tmpModelBufferLarge);
 
 		checkGLErrors();
+	}
+
+	public void dispatchModelSortingComputeShader(int computeShader, int models, GLBuffer modelBuffer)
+	{
+		glUseProgram(computeShader);
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, modelBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, sceneVertexBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, tmpVertexBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, renderVertexBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, renderUvBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, sceneNormalBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, renderNormalBuffer.glBufferId);
+
+		glDispatchCompute(models, 1, 1);
+	}
+
+	public void dispatchModelSortingComputeForMacOS()
+	{
+//		if (computeMode == ComputeMode.OPENCL)
+//		{
+//			// The docs for clEnqueueAcquireGLObjects say all pending GL operations must be completed before calling
+//			// clEnqueueAcquireGLObjects, and recommends calling glFinish() as the only portable way to do that.
+//			// However no issues have been observed from not calling it, and so will leave disabled for now.
+//			// glFinish();
+//
+//			openCLManager.compute
+//			(
+//				unorderedModels,
+//				smallModels,
+//				largeModels,
+//				sceneVertexBuffer,
+//				sceneUvBuffer,
+//				sceneNormalBuffer,
+//				tmpVertexBuffer,
+//				tmpUvBuffer,
+//				tmpModelBufferUnordered,
+//				tmpModelBufferSmall,
+//				tmpModelBufferLarge,
+//				renderVertexBuffer,
+//				renderUvBuffer,
+//				renderNormalBuffer,
+//				uniformBuffer
+//			);
+//
+//			checkGLErrors();
+//			return;
+//		}
 	}
 
 	@Override
@@ -1521,6 +1544,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		sceneId = nextSceneId;
 		updateBuffer(sceneVertexBuffer, GL_ARRAY_BUFFER, nextSceneVertexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(sceneUvBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
+		updateBuffer(sceneNormalBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 
 		nextSceneVertexBuffer = null;
 		nextSceneTexBuffer = null;

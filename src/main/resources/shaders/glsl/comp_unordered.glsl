@@ -57,4 +57,15 @@ void main() {
     uvout[outOffset + myOffset * 3 + 1] = texPos + texb[toffset + localId * 3 + 1];
     uvout[outOffset + myOffset * 3 + 2] = texPos + texb[toffset + localId * 3 + 2];
   }
+
+  vec4 normA, normB, normC;
+
+  // Grab triangle normals from the correct buffer
+  normA = normal[offset + ssboOffset * 3    ];
+  normB = normal[offset + ssboOffset * 3 + 1];
+  normC = normal[offset + ssboOffset * 3 + 2];
+
+  normalout[outOffset + myOffset * 3]     = normA;
+  normalout[outOffset + myOffset * 3 + 1] = normB;
+  normalout[outOffset + myOffset * 3 + 2] = normC;
 }
