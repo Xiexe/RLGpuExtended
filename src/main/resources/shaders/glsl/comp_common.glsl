@@ -30,18 +30,20 @@ layout(std430, binding = 0) readonly buffer modelbuffer_in {
   modelinfo ol[];
 };
 
-layout(std430, binding = 1) readonly buffer vertexbuffer_in {
-  ivec4 vb[];
-};
-
-layout(std430, binding = 2) readonly buffer tempvertexbuffer_in {
-  ivec4 tempvb[];
-};
-
-layout(std430, binding = 3) writeonly buffer vertex_out {
+// position data
+layout(std430, binding = 1) writeonly buffer vertex_out {
   ivec4 vout[];
 };
 
+layout(std430, binding = 2) readonly buffer vertexbuffer_in {
+  ivec4 vb[];
+};
+
+layout(std430, binding = 3) readonly buffer tempvertexbuffer_in {
+  ivec4 tempvb[];
+};
+
+// uv data
 layout(std430, binding = 4) writeonly buffer uv_out {
   vec4 uvout[];
 };
@@ -54,10 +56,15 @@ layout(std430, binding = 6) readonly buffer temptexturebuffer_in {
   vec4 temptexb[];
 };
 
-layout(std430, binding = 7) readonly buffer normalbuffer_in {
+// normal data
+layout(std430, binding = 7) writeonly buffer normal_out {
+  vec4 normalout[];
+};
+
+layout(std430, binding = 8) readonly buffer normalbuffer_in {
   vec4 normal[];
 };
 
-layout(std430, binding = 8) readonly buffer normal_out {
-  vec4 normalout[];
+layout(std430, binding = 9) readonly buffer tempnormalbuffer_in {
+  vec4 tempnormal[];
 };

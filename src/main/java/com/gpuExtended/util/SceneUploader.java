@@ -9,6 +9,10 @@ import javax.inject.Singleton;
 
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.rendering.Triangle;
+import com.gpuExtended.rendering.Vector3;
+import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.rendering.Vertex;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -59,13 +63,14 @@ public class SceneUploader
 		}
 	}
 
-	public void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
 		++sceneId;
 		offset = 0;
 		uvoffset = 0;
 		uniqueModels = 0;
 		vertexBuffer.clear();
+		normalBuffer.clear();
 		uvBuffer.clear();
 
 		Stopwatch stopwatch = Stopwatch.createStarted();
@@ -83,7 +88,7 @@ public class SceneUploader
 					Tile tile = scene.getExtendedTiles()[z][x][y];
 					if (tile != null)
 					{
-						upload(scene, tile, vertexBuffer, uvBuffer);
+						upload(scene, tile, vertexBuffer, uvBuffer, normalBuffer);
 					}
 				}
 			}
@@ -93,12 +98,12 @@ public class SceneUploader
 		log.debug("Scene upload time: {} unique models: {} length: {}KB", stopwatch, uniqueModels, (offset * 16) / 1024);
 	}
 
-	private void upload(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	private void upload(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
 		{
-			upload(scene, bridge, vertexBuffer, uvBuffer);
+			upload(scene, bridge, vertexBuffer, uvBuffer, normalBuffer);
 		}
 
 		SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
@@ -114,9 +119,9 @@ public class SceneUploader
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
 			Point tilePoint = tile.getSceneLocation();
-			int len = upload(scene, sceneTilePaint,
+			int len = uploadMapTile(scene, sceneTilePaint,
 				tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(),
-				vertexBuffer, uvBuffer,
+				vertexBuffer, uvBuffer, normalBuffer,
 				0, 0, false);
 			sceneTilePaint.setBufferLen(len);
 			offset += len;
@@ -142,7 +147,7 @@ public class SceneUploader
 			int len = upload(sceneTileModel,
 				tilePoint.getX(), tilePoint.getY(),
 				0, 0,
-				vertexBuffer, uvBuffer, false);
+				vertexBuffer, uvBuffer, normalBuffer, false);
 			sceneTileModel.setBufferLen(len);
 			offset += len;
 			if (sceneTileModel.getTriangleTextureId() != null)
@@ -157,13 +162,13 @@ public class SceneUploader
 			Renderable renderable1 = wallObject.getRenderable1();
 			if (renderable1 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable1, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable1, vertexBuffer, uvBuffer, normalBuffer);
 			}
 
 			Renderable renderable2 = wallObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer, normalBuffer);
 			}
 		}
 
@@ -173,7 +178,7 @@ public class SceneUploader
 			Renderable renderable = groundObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer, normalBuffer);
 			}
 		}
 
@@ -183,13 +188,13 @@ public class SceneUploader
 			Renderable renderable = decorativeObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer, normalBuffer);
 			}
 
 			Renderable renderable2 = decorativeObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer, normalBuffer);
 			}
 		}
 
@@ -204,12 +209,13 @@ public class SceneUploader
 			Renderable renderable = gameObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) gameObject.getRenderable(), vertexBuffer, uvBuffer);
+				uploadSceneModel((Model) gameObject.getRenderable(), vertexBuffer, uvBuffer, normalBuffer);
 			}
 		}
 	}
 
-	public int upload(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer,
+	// Map Tiles
+	public int uploadMapTile(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer,
 					  int offsetX, int offsetY, boolean padUvs)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
@@ -236,6 +242,7 @@ public class SceneUploader
 
 		vertexBuffer.ensureCapacity(24);
 		uvBuffer.ensureCapacity(24);
+		normalBuffer.ensureCapacity(24);
 
 		// 0,0
 		int vertexDx = localX;
@@ -261,13 +268,32 @@ public class SceneUploader
 		int vertexBz = nwHeight;
 		final int c4 = nwColor;
 
-		vertexBuffer.put(vertexAx, vertexAz, vertexAy, c3);
-		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
-		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+		Vertex v0 = new Vertex(vertexAx, vertexAz, vertexAy);
+		Vertex v1 = new Vertex(vertexBx, vertexBz, vertexBy);
+		Vertex v2 = new Vertex(vertexCx, vertexCz, vertexCy);
+		Vertex v3 = new Vertex(vertexDx, vertexDz, vertexDy);
+		Triangle triangle = new Triangle(v0, v1, v2);
+		Triangle triangle1 = new Triangle(v3, v2, v1);
+		Vector3 norm = triangle.GetNormal();
+		Vector3 norm1 = triangle1.GetNormal();
 
-		vertexBuffer.put(vertexDx, vertexDz, vertexDy, c1);
-		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
-		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+		// Face 1
+		vertexBuffer.put((int)v0.x, (int)v0.y, (int)v0.z, c3);
+		vertexBuffer.put((int)v1.x, (int)v1.y, (int)v1.z, c4);
+		vertexBuffer.put((int)v2.x, (int)v2.y, (int)v2.z, c2);
+
+		// Face 2
+		vertexBuffer.put((int)v3.x, (int)v3.y, (int)v3.z, c1);
+		vertexBuffer.put((int)v2.x, (int)v2.y, (int)v2.z, c2);
+		vertexBuffer.put((int)v1.x, (int)v1.y, (int)v1.z, c4);
+
+		normalBuffer.put(norm.x, norm.x, norm.x, 1);
+		normalBuffer.put(norm.y, norm.y, norm.y, 1);
+		normalBuffer.put(norm.z, norm.z, norm.z, 1);
+
+		normalBuffer.put(norm1.x, norm1.x, norm1.x, 1);
+		normalBuffer.put(norm1.y, norm1.y, norm1.y, 1);
+		normalBuffer.put(norm1.z, norm1.z, norm1.z, 1);
 
 		if (padUvs || tile.getTexture() != -1)
 		{
@@ -284,8 +310,9 @@ public class SceneUploader
 		return 6;
 	}
 
+	// Overlays
 	public int upload(SceneTileModel sceneTileModel, int tileX, int tileY, int offsetX, int offsetZ,
-					  GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, boolean padUvs)
+					  GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean padUvs)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -305,6 +332,7 @@ public class SceneUploader
 
 		vertexBuffer.ensureCapacity(faceCount * 12);
 		uvBuffer.ensureCapacity(faceCount * 12);
+		normalBuffer.ensureCapacity(faceCount * 12);
 
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
@@ -344,6 +372,10 @@ public class SceneUploader
 			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
 			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
 
+			normalBuffer.put(0 + offsetX,0,1 + offsetZ,0);
+			normalBuffer.put(0 + offsetX,1,0 + offsetZ,0);
+			normalBuffer.put(1 + offsetX,0,0 + offsetZ,0);
+
 			if (padUvs || triangleTextures != null)
 			{
 				if (triangleTextures != null && triangleTextures[i] != -1)
@@ -365,7 +397,7 @@ public class SceneUploader
 		return cnt;
 	}
 
-	private void uploadSceneModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	private void uploadSceneModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
 		// deduplicate hillskewed models
 		if (model.getUnskewedModel() != null)
@@ -388,9 +420,9 @@ public class SceneUploader
 			model.setUvBufferOffset(-1);
 		}
 		model.setSceneId(sceneId);
-		++uniqueModels;
+		uniqueModels++;
 
-		int len = pushModel(model, vertexBuffer, uvBuffer);
+		int len = pushModel(model, vertexBuffer, uvBuffer, normalBuffer);
 
 		offset += len;
 		if (model.getFaceTextures() != null)
@@ -399,16 +431,21 @@ public class SceneUploader
 		}
 	}
 
-	public int pushModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
+	public int pushModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
 		final int triangleCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
 
 		vertexBuffer.ensureCapacity(triangleCount * 12);
 		uvBuffer.ensureCapacity(triangleCount * 12);
+		normalBuffer.ensureCapacity(triangleCount * 12);
 
 		final int[] vertexX = model.getVerticesX();
 		final int[] vertexY = model.getVerticesY();
 		final int[] vertexZ = model.getVerticesZ();
+
+		final int[] normalX = model.getVertexNormalsX();
+		final int[] normalY = model.getVertexNormalsY();
+		final int[] normalZ = model.getVertexNormalsZ();
 
 		final int[] indices1 = model.getFaceIndices1();
 		final int[] indices2 = model.getFaceIndices2();
@@ -433,11 +470,11 @@ public class SceneUploader
 		final byte overrideLum = model.getOverrideLuminance();
 
 		int len = 0;
-		for (int face = 0; face < triangleCount; ++face)
+		for (int tri = 0; tri < triangleCount; tri++)
 		{
-			int color1 = color1s[face];
-			int color2 = color2s[face];
-			int color3 = color3s[face];
+			int color1 = color1s[tri];
+			int color2 = color2s[tri];
+			int color3 = color3s[tri];
 
 			if (color3 == -1)
 			{
@@ -448,6 +485,10 @@ public class SceneUploader
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
+
+				normalBuffer.put(0,0,0,0);
+				normalBuffer.put(0,0,0,0);
+				normalBuffer.put(0,0,0,0);
 
 				if (faceTextures != null)
 				{
@@ -461,7 +502,7 @@ public class SceneUploader
 			}
 
 			// HSL override is not applied to textured faces
-			if (faceTextures == null || faceTextures[face] == -1)
+			if (faceTextures == null || faceTextures[tri] == -1)
 			{
 				if (overrideAmount > 0)
 				{
@@ -471,37 +512,37 @@ public class SceneUploader
 				}
 			}
 
-			int packAlphaPriority = packAlphaPriority(faceTextures, transparencies, facePriorities, face);
+			int packAlphaPriority = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
 
-			int triangleA = indices1[face];
-			int triangleB = indices2[face];
-			int triangleC = indices3[face];
+			int v0 = indices1[tri];
+			int v1 = indices2[tri];
+			int v2 = indices3[tri];
 
-			vertexBuffer.put(vertexX[triangleA], vertexY[triangleA], vertexZ[triangleA], packAlphaPriority | color1);
-			vertexBuffer.put(vertexX[triangleB], vertexY[triangleB], vertexZ[triangleB], packAlphaPriority | color2);
-			vertexBuffer.put(vertexX[triangleC], vertexY[triangleC], vertexZ[triangleC], packAlphaPriority | color3);
+			vertexBuffer.put(vertexX[v0], vertexY[v0], vertexZ[v0], packAlphaPriority | color1);
+			vertexBuffer.put(vertexX[v1], vertexY[v1], vertexZ[v1], packAlphaPriority | color2);
+			vertexBuffer.put(vertexX[v2], vertexY[v2], vertexZ[v2], packAlphaPriority | color3);
 
 			if (faceTextures != null)
 			{
-				if (faceTextures[face] != -1)
+				if (faceTextures[tri] != -1)
 				{
 					int texA, texB, texC;
 
-					if (textureFaces != null && textureFaces[face] != -1)
+					if (textureFaces != null && textureFaces[tri] != -1)
 					{
-						int tface = textureFaces[face] & 0xff;
+						int tface = textureFaces[tri] & 0xff;
 						texA = texIndices1[tface];
 						texB = texIndices2[tface];
 						texC = texIndices3[tface];
 					}
 					else
 					{
-						texA = triangleA;
-						texB = triangleB;
-						texC = triangleC;
+						texA = v0;
+						texB = v1;
+						texC = v2;
 					}
 
-					int texture = faceTextures[face] + 1;
+					int texture = faceTextures[tri] + 1;
 					uvBuffer.put(texture, vertexX[texA], vertexY[texA], vertexZ[texA]);
 					uvBuffer.put(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
 					uvBuffer.put(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
@@ -514,478 +555,22 @@ public class SceneUploader
 				}
 			}
 
+			if (normalX != null || normalY != null || normalZ != null)
+			{
+				normalBuffer.put(vertexX[v0], vertexY[v0], vertexZ[v0], 1);
+				normalBuffer.put(vertexX[v1], vertexY[v1], vertexZ[v1], 1);
+				normalBuffer.put(vertexX[v2], vertexY[v2], vertexZ[v2], 1);
+			}
+
 			len += 3;
 		}
 
-		return len;
-	}
-
-	private static int[] distances;
-	private static char[] distanceFaceCount;
-	private static char[][] distanceToFaces;
-
-	private static float[] modelCanvasX;
-	private static float[] modelCanvasY;
-
-	private static int[] modelLocalX;
-	private static int[] modelLocalY;
-	private static int[] modelLocalZ;
-
-	private static int[] numOfPriority;
-	private static int[] eq10;
-	private static int[] eq11;
-	private static int[] lt10;
-	private static int[][] orderedFaces;
-
-	public void initSortingBuffers()
-	{
-		int MAX_VERTEX_COUNT = 6500;
-		int MAX_DIAMETER = 6000;
-
-		distances = new int[MAX_VERTEX_COUNT];
-		distanceFaceCount = new char[MAX_DIAMETER];
-		distanceToFaces = new char[MAX_DIAMETER][512];
-
-		modelCanvasX = new float[MAX_VERTEX_COUNT];
-		modelCanvasY = new float[MAX_VERTEX_COUNT];
-
-		modelLocalX = new int[MAX_VERTEX_COUNT];
-		modelLocalY = new int[MAX_VERTEX_COUNT];
-		modelLocalZ = new int[MAX_VERTEX_COUNT];
-
-		numOfPriority = new int[12];
-		eq10 = new int[2000];
-		eq11 = new int[2000];
-		lt10 = new int[12];
-		orderedFaces = new int[12][2000];
-	}
-
-	public void releaseSortingBuffers()
-	{
-		distances = null;
-		distanceFaceCount = null;
-		distanceToFaces = null;
-
-		modelCanvasX = null;
-		modelCanvasY = null;
-
-		modelLocalX = null;
-		modelLocalY = null;
-		modelLocalZ = null;
-
-		numOfPriority = null;
-		eq10 = null;
-		eq11 = null;
-		lt10 = null;
-		orderedFaces = null;
-	}
-
-	public int pushSortedModel(Model model, int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
-	{
-		final int vertexCount = model.getVerticesCount();
-		final int[] verticesX = model.getVerticesX();
-		final int[] verticesY = model.getVerticesY();
-		final int[] verticesZ = model.getVerticesZ();
-
-		final int faceCount = model.getFaceCount();
-		final int[] indices1 = model.getFaceIndices1();
-		final int[] indices2 = model.getFaceIndices2();
-		final int[] indices3 = model.getFaceIndices3();
-
-		final int[] faceColors3 = model.getFaceColors3();
-		final byte[] faceRenderPriorities = model.getFaceRenderPriorities();
-
-		final int centerX = client.getCenterX();
-		final int centerY = client.getCenterY();
-		final int zoom = client.get3dZoom();
-
-		final int cameraX = client.getCameraX2();
-		final int cameraY = client.getCameraY2();
-		final int cameraZ = client.getCameraZ2();
-
-		// remove camera offset from model
-		x += cameraX;
-		y += cameraY;
-		z += cameraZ;
-
-		int orientSine = 0;
-		int orientCosine = 0;
-		if (orientation != 0)
-		{
-			orientSine = Perspective.SINE[orientation];
-			orientCosine = Perspective.COSINE[orientation];
-		}
-
-		for (int v = 0; v < vertexCount; ++v)
-		{
-			int vertexX = verticesX[v];
-			int vertexY = verticesY[v];
-			int vertexZ = verticesZ[v];
-
-			if (orientation != 0)
-			{
-				int i = vertexZ * orientSine + vertexX * orientCosine >> 16;
-				vertexZ = vertexZ * orientCosine - vertexX * orientSine >> 16;
-				vertexX = i;
-			}
-
-			int d = yawCos * vertexZ - vertexX * yawSin >> 16;
-			d = pitchCos * d + vertexY * pitchSin >> 16;
-			distances[v] = d;
-
-			// move to local position
-			vertexX += x;
-			vertexY += y;
-			vertexZ += z;
-
-			modelLocalX[v] = vertexX;
-			modelLocalY[v] = vertexY;
-			modelLocalZ[v] = vertexZ;
-
-			// adjust for camera
-			vertexX -= cameraX;
-			vertexY -= cameraY;
-			vertexZ -= cameraZ;
-
-			final float fpitchSin = pitchSin / 65536f;
-			final float fpitchCos = pitchCos / 65536f;
-
-			final float fyawSin = yawSin / 65536f;
-			final float fyawCos = yawCos / 65536f;
-
-			final float rotatedX = (vertexZ * fyawSin) + (vertexX * fyawCos);
-			final float rotatedZ = (vertexZ * fyawCos) - (vertexX * fyawSin);
-
-			final float var13 = (vertexY * fpitchCos) - (rotatedZ * fpitchSin);
-			final float var12 = (vertexY * fpitchSin) + (rotatedZ * fpitchCos);
-
-			modelCanvasX[v] = rotatedX * zoom / var12 + centerX;
-			modelCanvasY[v] = var13 * zoom / var12 + centerY;
-		}
-
-		final int diameter = model.getDiameter();
-		final int radius = model.getRadius();
-		if (diameter >= 6000)
-		{
-			return 0;
-		}
-
-		Arrays.fill(distanceFaceCount, 0, diameter, (char) 0);
-
-		for (char i = 0; i < faceCount; ++i)
-		{
-			if (faceColors3[i] != -2)
-			{
-				final int v1 = indices1[i];
-				final int v2 = indices2[i];
-				final int v3 = indices3[i];
-
-				final float
-					aX = modelCanvasX[v1],
-					aY = modelCanvasY[v1],
-					bX = modelCanvasX[v2],
-					bY = modelCanvasY[v2],
-					cX = modelCanvasX[v3],
-					cY = modelCanvasY[v3];
-
-				if ((aX - bX) * (cY - bY) - (cX - bX) * (aY - bY) > 0)
-				{
-					int distance = radius + (distances[v1] + distances[v2] + distances[v3]) / 3;
-					assert distance >= 0 && distance < diameter;
-					distanceToFaces[distance][distanceFaceCount[distance]++] = i;
-				}
-			}
-		}
-
-		vertexBuffer.ensureCapacity(12 * faceCount);
-		uvBuffer.ensureCapacity(12 * faceCount);
-
-		int len = 0;
-		if (faceRenderPriorities == null)
-		{
-			for (int i = diameter - 1; i >= 0; --i)
-			{
-				final int cnt = distanceFaceCount[i];
-				if (cnt > 0)
-				{
-					final char[] faces = distanceToFaces[i];
-
-					for (int faceIdx = 0; faceIdx < cnt; ++faceIdx)
-					{
-						final int face = faces[faceIdx];
-						len += pushFace(model, face, vertexBuffer, uvBuffer);
-					}
-				}
-			}
-		}
-		else
-		{
-			Arrays.fill(numOfPriority, 0);
-			Arrays.fill(lt10, 0);
-
-			for (int i = diameter - 1; i >= 0; --i)
-			{
-				final int cnt = distanceFaceCount[i];
-				if (cnt > 0)
-				{
-					final char[] faces = distanceToFaces[i];
-
-					for (int faceIdx = 0; faceIdx < cnt; ++faceIdx)
-					{
-						final int face = faces[faceIdx];
-						final byte pri = faceRenderPriorities[face];
-						final int distIdx = numOfPriority[pri]++;
-
-						orderedFaces[pri][distIdx] = face;
-						if (pri < 10)
-						{
-							lt10[pri] += i;
-						}
-						else if (pri == 10)
-						{
-							eq10[distIdx] = i;
-						}
-						else
-						{
-							eq11[distIdx] = i;
-						}
-					}
-				}
-			}
-
-			int avg12 = 0;
-			if (numOfPriority[1] > 0 || numOfPriority[2] > 0)
-			{
-				avg12 = (lt10[1] + lt10[2]) / (numOfPriority[1] + numOfPriority[2]);
-			}
-
-			int avg34 = 0;
-			if (numOfPriority[3] > 0 || numOfPriority[4] > 0)
-			{
-				avg34 = (lt10[3] + lt10[4]) / (numOfPriority[3] + numOfPriority[4]);
-			}
-
-			int avg68 = 0;
-			if (numOfPriority[6] > 0 || numOfPriority[8] > 0)
-			{
-				avg68 = (lt10[8] + lt10[6]) / (numOfPriority[8] + numOfPriority[6]);
-			}
-
-			int drawnFaces = 0;
-			int numDynFaces = numOfPriority[10];
-			int[] dynFaces = orderedFaces[10];
-			int[] dynFaceDistances = eq10;
-			if (drawnFaces == numDynFaces)
-			{
-				drawnFaces = 0;
-				numDynFaces = numOfPriority[11];
-				dynFaces = orderedFaces[11];
-				dynFaceDistances = eq11;
-			}
-
-			int currFaceDistance;
-			if (drawnFaces < numDynFaces)
-			{
-				currFaceDistance = dynFaceDistances[drawnFaces];
-			}
-			else
-			{
-				currFaceDistance = -1000;
-			}
-
-			for (int pri = 0; pri < 10; ++pri)
-			{
-				while (pri == 0 && currFaceDistance > avg12)
-				{
-					final int face = dynFaces[drawnFaces++];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
-
-					if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
-					{
-						drawnFaces = 0;
-						numDynFaces = numOfPriority[11];
-						dynFaces = orderedFaces[11];
-						dynFaceDistances = eq11;
-					}
-
-					if (drawnFaces < numDynFaces)
-					{
-						currFaceDistance = dynFaceDistances[drawnFaces];
-					}
-					else
-					{
-						currFaceDistance = -1000;
-					}
-				}
-
-				while (pri == 3 && currFaceDistance > avg34)
-				{
-					final int face = dynFaces[drawnFaces++];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
-
-					if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
-					{
-						drawnFaces = 0;
-						numDynFaces = numOfPriority[11];
-						dynFaces = orderedFaces[11];
-						dynFaceDistances = eq11;
-					}
-
-					if (drawnFaces < numDynFaces)
-					{
-						currFaceDistance = dynFaceDistances[drawnFaces];
-					}
-					else
-					{
-						currFaceDistance = -1000;
-					}
-				}
-
-				while (pri == 5 && currFaceDistance > avg68)
-				{
-					final int face = dynFaces[drawnFaces++];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
-
-					if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
-					{
-						drawnFaces = 0;
-						numDynFaces = numOfPriority[11];
-						dynFaces = orderedFaces[11];
-						dynFaceDistances = eq11;
-					}
-
-					if (drawnFaces < numDynFaces)
-					{
-						currFaceDistance = dynFaceDistances[drawnFaces];
-					}
-					else
-					{
-						currFaceDistance = -1000;
-					}
-				}
-
-				final int priNum = numOfPriority[pri];
-				final int[] priFaces = orderedFaces[pri];
-
-				for (int faceIdx = 0; faceIdx < priNum; ++faceIdx)
-				{
-					final int face = priFaces[faceIdx];
-					len += pushFace(model, face, vertexBuffer, uvBuffer);
-				}
-			}
-
-			while (currFaceDistance != -1000)
-			{
-				final int face = dynFaces[drawnFaces++];
-				len += pushFace(model, face, vertexBuffer, uvBuffer);
-
-				if (drawnFaces == numDynFaces && dynFaces != orderedFaces[11])
-				{
-					drawnFaces = 0;
-					dynFaces = orderedFaces[11];
-					numDynFaces = numOfPriority[11];
-					dynFaceDistances = eq11;
-				}
-
-				if (drawnFaces < numDynFaces)
-				{
-					currFaceDistance = dynFaceDistances[drawnFaces];
-				}
-				else
-				{
-					currFaceDistance = -1000;
-				}
-			}
-		}
+		//		System.out.println("------ MODEL INFORMATION ------");
+		//		System.out.println("Face Count: " + model.getFaceCount());
+		//		System.out.println("Vert Count: " + (vertexX.length + vertexY.length + vertexZ.length));
+		//		System.out.println("Norm Count: " + (normalX.length + normalY.length + normalZ.length));
 
 		return len;
-	}
-
-	private int pushFace(Model model, int face, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer)
-	{
-		final int[] indices1 = model.getFaceIndices1();
-		final int[] indices2 = model.getFaceIndices2();
-		final int[] indices3 = model.getFaceIndices3();
-
-		final int[] faceColors1 = model.getFaceColors1();
-		final int[] faceColors2 = model.getFaceColors2();
-		final int[] faceColors3 = model.getFaceColors3();
-
-		final byte overrideAmount = model.getOverrideAmount();
-		final byte overrideHue = model.getOverrideHue();
-		final byte overrideSat = model.getOverrideSaturation();
-		final byte overrideLum = model.getOverrideLuminance();
-
-		final short[] faceTextures = model.getFaceTextures();
-		final byte[] textureFaces = model.getTextureFaces();
-		final int[] texIndices1 = model.getTexIndices1();
-		final int[] texIndices2 = model.getTexIndices2();
-		final int[] texIndices3 = model.getTexIndices3();
-
-		final byte[] faceRenderPriorities = model.getFaceRenderPriorities();
-		final byte[] transparencies = model.getFaceTransparencies();
-
-		final int packAlphaPriority = packAlphaPriority(faceTextures, transparencies, faceRenderPriorities, face);
-
-		final int triangleA = indices1[face];
-		final int triangleB = indices2[face];
-		final int triangleC = indices3[face];
-
-		int color1 = faceColors1[face];
-		int color2 = faceColors2[face];
-		int color3 = faceColors3[face];
-
-		if (color3 == -1)
-		{
-			color2 = color3 = color1;
-		}
-
-		// HSL override is not applied to textured faces
-		if (faceTextures == null || faceTextures[face] == -1)
-		{
-			if (overrideAmount > 0)
-			{
-				color1 = interpolateHSL(color1, overrideHue, overrideSat, overrideLum, overrideAmount);
-				color2 = interpolateHSL(color2, overrideHue, overrideSat, overrideLum, overrideAmount);
-				color3 = interpolateHSL(color3, overrideHue, overrideSat, overrideLum, overrideAmount);
-			}
-		}
-
-		vertexBuffer.put(modelLocalX[triangleA], modelLocalY[triangleA], modelLocalZ[triangleA], packAlphaPriority | color1);
-		vertexBuffer.put(modelLocalX[triangleB], modelLocalY[triangleB], modelLocalZ[triangleB], packAlphaPriority | color2);
-		vertexBuffer.put(modelLocalX[triangleC], modelLocalY[triangleC], modelLocalZ[triangleC], packAlphaPriority | color3);
-
-		if (faceTextures != null && faceTextures[face] != -1)
-		{
-			int texA, texB, texC;
-
-			if (textureFaces != null && textureFaces[face] != -1)
-			{
-				int tfaceIdx = textureFaces[face] & 0xff;
-				texA = texIndices1[tfaceIdx];
-				texB = texIndices2[tfaceIdx];
-				texC = texIndices3[tfaceIdx];
-			}
-			else
-			{
-				texA = triangleA;
-				texB = triangleB;
-				texC = triangleC;
-			}
-
-			int texture = faceTextures[face] + 1;
-			uvBuffer.put(texture, modelLocalX[texA], modelLocalY[texA], modelLocalZ[texA]);
-			uvBuffer.put(texture, modelLocalX[texB], modelLocalY[texB], modelLocalZ[texB]);
-			uvBuffer.put(texture, modelLocalX[texC], modelLocalY[texC], modelLocalZ[texC]);
-		}
-		else
-		{
-			uvBuffer.put(0, 0, 0, 0);
-			uvBuffer.put(0, 0, 0, 0);
-			uvBuffer.put(0, 0, 0, 0);
-		}
-
-		return 3;
 	}
 
 	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)

@@ -181,6 +181,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private final GLBuffer tmpVertexBuffer = new GLBuffer("tmp vertex buffer");
 	private final GLBuffer tmpUvBuffer = new GLBuffer("tmp tex buffer");
+	private final GLBuffer tmpNormalBuffer = new GLBuffer("tmp normal buffer");
 
 	private final GLBuffer renderVertexBuffer = new GLBuffer("out vertex buffer");
 	private final GLBuffer renderUvBuffer = new GLBuffer("out tex buffer");
@@ -200,6 +201,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private GpuIntBuffer vertexBuffer;
 	private GpuFloatBuffer uvBuffer;
+	private GpuFloatBuffer normalBuffer;
 
 	private GpuIntBuffer modelBufferUnordered;
 	private GpuIntBuffer modelBufferSmall;
@@ -252,6 +254,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int nextSceneId;
 	private GpuIntBuffer nextSceneVertexBuffer;
 	private GpuFloatBuffer nextSceneTexBuffer;
+	private GpuFloatBuffer nextSceneNormalBuffer;
 
 	public void Reload(FileWatcher.ReloadType reloadType) throws ShaderException {
 		switch (reloadType) {
@@ -277,6 +280,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			try
 			{
+				client.setDrawCallbacks(this);
+				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
+				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
+
+				if(client.getGameState() == GameState.LOGGED_IN) {
+					client.setGameState(GameState.LOADING);
+				}
+
 				// TODO:: Temporary Scene Initializtion should be moved into a scene loader of some kind through json
 				environment = new Environment();
 				environment.ambientColor = new Color(0,0,0);
@@ -363,6 +374,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				vertexBuffer = new GpuIntBuffer();
 				uvBuffer = new GpuFloatBuffer();
+				normalBuffer = new GpuFloatBuffer();
 
 				modelBufferUnordered = new GpuIntBuffer();
 				modelBufferSmall = new GpuIntBuffer();
@@ -375,10 +387,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initShaders();
 				initInterfaceTexture();
 				initUniformBuffer();
-
-				client.setDrawCallbacks(this);
-				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
-				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -431,8 +439,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			client.setUnlockedFps(false);
 			client.setExpandedMapLoading(0);
 
-			sceneUploader.releaseSortingBuffers();
-
 			if (lwjglInitted)
 			{
 				if (textureArrayId != -1)
@@ -475,6 +481,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			vertexBuffer = null;
 			uvBuffer = null;
+			normalBuffer = null;
 
 			modelBufferSmall = null;
 			modelBuffer = null;
@@ -658,6 +665,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindBuffer(GL_ARRAY_BUFFER, tmpUvBuffer.glBufferId);
 		glVertexAttribPointer(1, 4, GL_FLOAT, false, 0, 0);
 
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, tmpNormalBuffer.glBufferId);
+		glVertexAttribPointer(2, 4, GL_FLOAT, false, 0, 0);
+
 		// Create UI VAO
 		vaoUiHandle = glGenVertexArrays();
 		// Create UI buffer
@@ -680,9 +691,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * Float.BYTES, 0);
 		glEnableVertexAttribArray(0);
 
-		// texture coord attribute
+		// uv attribute
 		glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * Float.BYTES, 3 * Float.BYTES);
 		glEnableVertexAttribArray(1);
+
+		// ui does not need normals
 
 		// unbind VBO
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -711,6 +724,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		initGlBuffer(tmpVertexBuffer);
 		initGlBuffer(tmpUvBuffer);
+		initGlBuffer(tmpNormalBuffer);
+
 		initGlBuffer(tmpModelBufferLarge);
 		initGlBuffer(tmpModelBufferSmall);
 		initGlBuffer(tmpModelBufferUnordered);
@@ -733,9 +748,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		destroyGlBuffer(tmpVertexBuffer);
 		destroyGlBuffer(tmpUvBuffer);
+		destroyGlBuffer(tmpNormalBuffer);
+
 		destroyGlBuffer(tmpModelBufferLarge);
 		destroyGlBuffer(tmpModelBufferSmall);
 		destroyGlBuffer(tmpModelBufferUnordered);
+
 		destroyGlBuffer(renderVertexBuffer);
 		destroyGlBuffer(renderUvBuffer);
 		destroyGlBuffer(renderNormalBuffer);
@@ -895,12 +913,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// Upload buffers
 		vertexBuffer.flip();
 		uvBuffer.flip();
+		normalBuffer.flip();
 		modelBuffer.flip();
 		modelBufferSmall.flip();
 		modelBufferUnordered.flip();
 
 		IntBuffer vertexBuffer = this.vertexBuffer.getBuffer();
 		FloatBuffer uvBuffer = this.uvBuffer.getBuffer();
+		FloatBuffer normalBuffer = this.normalBuffer.getBuffer();
 		IntBuffer modelBuffer = this.modelBuffer.getBuffer();
 		IntBuffer modelBufferSmall = this.modelBufferSmall.getBuffer();
 		IntBuffer modelBufferUnordered = this.modelBufferUnordered.getBuffer();
@@ -908,6 +928,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// temp buffers
 		updateBuffer(tmpVertexBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(tmpUvBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+		updateBuffer(tmpNormalBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 
 		// model buffers
 		updateBuffer(tmpModelBufferLarge, GL_ARRAY_BUFFER, modelBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
@@ -928,10 +949,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			CL12.CL_MEM_WRITE_ONLY);
 
 		updateBuffer(renderNormalBuffer,
-				GL_ARRAY_BUFFER,
-				targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
-				GL_STREAM_DRAW,
-				CL12.CL_MEM_WRITE_ONLY);
+			GL_ARRAY_BUFFER,
+			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
+			GL_STREAM_DRAW,
+			CL12.CL_MEM_WRITE_ONLY);
 
 		// TODO:: make OpenCL work. This is for Mac.
 
@@ -955,15 +976,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		glUseProgram(computeShader);
 
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, modelBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, sceneVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, tmpVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, renderVertexBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, renderUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, sceneNormalBuffer.glBufferId);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, renderNormalBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, modelBuffer.glBufferId); // modelbuffer_in
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderVertexBuffer.glBufferId); // vertex out
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, sceneVertexBuffer.glBufferId); // vertexbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, tmpVertexBuffer.glBufferId); // tempvertexbuffer_in
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, renderUvBuffer.glBufferId); // uv out
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId); // texturebuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId); // temptexturebuffer_in
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, renderNormalBuffer.glBufferId); // normal_out
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, sceneNormalBuffer.glBufferId); // normalbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, tmpNormalBuffer.glBufferId); // tempnormalbuffer_in
 
 		glDispatchCompute(models, 1, 1);
 	}
@@ -1310,6 +1335,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		vertexBuffer.clear();
 		uvBuffer.clear();
+		normalBuffer.clear();
+
 		modelBuffer.clear();
 		modelBufferSmall.clear();
 		modelBufferUnordered.clear();
@@ -1470,14 +1497,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		GpuIntBuffer vertexBuffer = new GpuIntBuffer();
 		GpuFloatBuffer uvBuffer = new GpuFloatBuffer();
+		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
 
-		sceneUploader.upload(scene, vertexBuffer, uvBuffer);
+		sceneUploader.upload(scene, vertexBuffer, uvBuffer, normalBuffer);
 
 		vertexBuffer.flip();
 		uvBuffer.flip();
+		normalBuffer.flip();
 
 		nextSceneVertexBuffer = vertexBuffer;
 		nextSceneTexBuffer = uvBuffer;
+		nextSceneNormalBuffer = normalBuffer;
 		nextSceneId = sceneUploader.sceneId;
 	}
 
@@ -1544,10 +1574,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		sceneId = nextSceneId;
 		updateBuffer(sceneVertexBuffer, GL_ARRAY_BUFFER, nextSceneVertexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(sceneUvBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-		updateBuffer(sceneNormalBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
+		updateBuffer(sceneNormalBuffer, GL_ARRAY_BUFFER, nextSceneNormalBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 
 		nextSceneVertexBuffer = null;
 		nextSceneTexBuffer = null;
+		nextSceneNormalBuffer = null;
 		nextSceneId = -1;
 
 		checkGLErrors();
@@ -1729,7 +1760,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			boolean hasUv = model.getFaceTextures() != null;
 
-			int len = sceneUploader.pushModel(model, vertexBuffer, uvBuffer);
+			int len = sceneUploader.pushModel(model, vertexBuffer, uvBuffer, normalBuffer);
 
 			GpuIntBuffer b = bufferForTriangles(len / 3);
 
@@ -1762,12 +1793,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		if (triangles <= SMALL_TRIANGLE_COUNT)
 		{
-			++smallModels;
+			smallModels++;
 			return modelBufferSmall;
 		}
 		else
 		{
-			++largeModels;
+			largeModels++;
 			return modelBuffer;
 		}
 	}
