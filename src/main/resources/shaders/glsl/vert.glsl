@@ -28,8 +28,8 @@ uniform int drawDistance;
 uniform int expandedMapLoadingChunks;
 
 out ivec3 gVertex;
-out vec3 gNormal;
 out vec3 gPosition;
+out vec4 gNormal;
 out vec4 gColor;
 out float gHsl;
 out int gTextureId;
@@ -52,7 +52,7 @@ void main() {
   vec3 rgb = hslToRgb(hsl);
 
   gVertex = vertex;
-  gNormal = vNorm.xyz;
+  gNormal = vNorm;
   gPosition = position;
   gColor = vec4(rgb, 1.f - a);
   gHsl = float(hsl);
@@ -71,9 +71,7 @@ void main() {
   int zDist = min(vertex.z - fogSouth, fogNorth - vertex.z);
   float nearestEdgeDistance = min(xDist, zDist);
   float secondNearestEdgeDistance = max(xDist, zDist);
-  float fogDistance =
-      nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE *
-                                max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));
+  float fogDistance = nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE * max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));
 
   gFogAmount = fogFactorLinear(fogDistance, 0, 10 * TILE_SIZE);
 }

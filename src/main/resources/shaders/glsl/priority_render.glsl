@@ -216,6 +216,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     int outOffset = minfo.idx;
     int toffset = minfo.toffset;
     int flags = minfo.flags;
+    int offset = minfo.offset;
 
     // we only have to order faces against others of the same priority
     const int priorityOffset = count_prio_offset(thisPriority);
@@ -224,6 +225,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     const int end = priorityOffset + numOfPriority;  // index of last face with this priority
     const uint renderPriority = uint(thisDistance << 16) | (~localId & 0xffffu);
     int myOffset = priorityOffset;
+    int orientation = flags & 0x7ff;
 
     // calculate position this face will be in
     for (int i = start; i < end; ++i) {
@@ -250,27 +252,61 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vout[outOffset + myOffset * 3 + 1] = thisrvB;
     vout[outOffset + myOffset * 3 + 2] = thisrvC;
 
-    if (toffset < 0) {
+    if (toffset < 0)
+    {
       uvout[outOffset + myOffset * 3] = vec4(0);
       uvout[outOffset + myOffset * 3 + 1] = vec4(0);
       uvout[outOffset + myOffset * 3 + 2] = vec4(0);
-    } else {
+    }
+    else
+    {
       vec4 texA, texB, texC;
 
       if (flags >= 0) {
         texA = temptexb[toffset + localId * 3];
         texB = temptexb[toffset + localId * 3 + 1];
         texC = temptexb[toffset + localId * 3 + 2];
-      } else {
+      }
+      else
+      {
         texA = texb[toffset + localId * 3];
         texB = texb[toffset + localId * 3 + 1];
         texC = texb[toffset + localId * 3 + 2];
       }
 
-      int orientation = flags & 0x7ff;
       uvout[outOffset + myOffset * 3] = vec4(texA.x, rotatef(texA.yzw, orientation) + pos.xyz);
       uvout[outOffset + myOffset * 3 + 1] = vec4(texB.x, rotatef(texB.yzw, orientation) + pos.xyz);
       uvout[outOffset + myOffset * 3 + 2] = vec4(texC.x, rotatef(texC.yzw, orientation) + pos.xyz);
     }
+
+    vec4 normA, normB, normC;
+
+    // Grab vertex normals from the correct buffer
+    if (flags < 0)
+    {
+        normA = normal[offset + localId * 3    ];
+        normB = normal[offset + localId * 3 + 1];
+        normC = normal[offset + localId * 3 + 2];
+    }
+    else
+    {
+        normA = tempnormal[offset + localId * 3    ];
+        normB = tempnormal[offset + localId * 3 + 1];
+        normC = tempnormal[offset + localId * 3 + 2];
+    }
+
+    normA = vec4(normalize(normA.xyz), normA.w);
+    normB = vec4(normalize(normB.xyz), normB.w);
+    normC = vec4(normalize(normC.xyz), normC.w);
+
+    vec4 normrvA, normrvB, normrvC;
+
+    normrvA = rotate2(normA, orientation);
+    normrvB = rotate2(normB, orientation);
+    normrvC = rotate2(normC, orientation);
+
+    normalout[outOffset + myOffset * 3]     = normrvA;
+    normalout[outOffset + myOffset * 3 + 1] = normrvB;
+    normalout[outOffset + myOffset * 3 + 2] = normrvC;
   }
 }

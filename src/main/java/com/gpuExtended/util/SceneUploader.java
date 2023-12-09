@@ -118,11 +118,22 @@ public class SceneUploader
 			{
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
+
 			Point tilePoint = tile.getSceneLocation();
-			int len = uploadMapTile(scene, sceneTilePaint,
-				tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(),
-				vertexBuffer, uvBuffer, normalBuffer,
-				0, 0, false);
+			int len = pushTile(
+				scene,
+				sceneTilePaint,
+				vertexBuffer,
+				uvBuffer,
+				normalBuffer,
+				tile.getRenderLevel(),
+				tilePoint.getX(),
+				tilePoint.getY(),
+				0,
+				0,
+				false
+			);
+
 			sceneTilePaint.setBufferLen(len);
 			offset += len;
 			if (sceneTilePaint.getTexture() != -1)
@@ -143,11 +154,20 @@ public class SceneUploader
 			{
 				sceneTileModel.setUvBufferOffset(-1);
 			}
+
 			Point tilePoint = tile.getSceneLocation();
-			int len = upload(sceneTileModel,
-				tilePoint.getX(), tilePoint.getY(),
-				0, 0,
-				vertexBuffer, uvBuffer, normalBuffer, false);
+			int len = pushDetailedTile(
+				sceneTileModel,
+				vertexBuffer,
+				uvBuffer,
+				normalBuffer,
+				tilePoint.getX(),
+				tilePoint.getY(),
+				0,
+				0,
+				false
+			);
+
 			sceneTileModel.setBufferLen(len);
 			offset += len;
 			if (sceneTileModel.getTriangleTextureId() != null)
@@ -215,8 +235,18 @@ public class SceneUploader
 	}
 
 	// Map Tiles
-	public int uploadMapTile(Scene scene, SceneTilePaint tile, int tileZ, int tileX, int tileY, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer,
-					  int offsetX, int offsetY, boolean padUvs)
+	public int pushTile(
+		Scene scene,
+		SceneTilePaint tile,
+		GpuIntBuffer vertexBuffer,
+		GpuFloatBuffer uvBuffer,
+		GpuFloatBuffer normalBuffer,
+		int tileZ,
+		int tileX,
+		int tileY,
+		int offsetX,
+		int offsetY,
+		boolean padUvs)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
@@ -272,10 +302,10 @@ public class SceneUploader
 		Vertex v1 = new Vertex(vertexBx, vertexBz, vertexBy);
 		Vertex v2 = new Vertex(vertexCx, vertexCz, vertexCy);
 		Vertex v3 = new Vertex(vertexDx, vertexDz, vertexDy);
-		Triangle triangle = new Triangle(v0, v1, v2);
-		Triangle triangle1 = new Triangle(v3, v2, v1);
-		Vector3 norm = triangle.GetNormal();
-		Vector3 norm1 = triangle1.GetNormal();
+//		Triangle triangle = new Triangle(v0, v1, v2);
+//		Triangle triangle1 = new Triangle(v3, v2, v1);
+//		Vector3 norm = triangle.GetNormal();
+//		Vector3 norm1 = triangle1.GetNormal();
 
 		// Face 1
 		vertexBuffer.put((int)v0.x, (int)v0.y, (int)v0.z, c3);
@@ -287,13 +317,13 @@ public class SceneUploader
 		vertexBuffer.put((int)v2.x, (int)v2.y, (int)v2.z, c2);
 		vertexBuffer.put((int)v1.x, (int)v1.y, (int)v1.z, c4);
 
-		normalBuffer.put(norm.x, norm.x, norm.x, 1);
-		normalBuffer.put(norm.y, norm.y, norm.y, 1);
-		normalBuffer.put(norm.z, norm.z, norm.z, 1);
+		normalBuffer.put(0, -1, 0, 0);
+		normalBuffer.put(0, -1, 0, 0);
+		normalBuffer.put(0, -1, 0, 0);
 
-		normalBuffer.put(norm1.x, norm1.x, norm1.x, 1);
-		normalBuffer.put(norm1.y, norm1.y, norm1.y, 1);
-		normalBuffer.put(norm1.z, norm1.z, norm1.z, 1);
+		normalBuffer.put(0, -1, 0, 0);
+		normalBuffer.put(0, -1, 0, 0);
+		normalBuffer.put(0, -1, 0, 0);
 
 		if (padUvs || tile.getTexture() != -1)
 		{
@@ -310,9 +340,17 @@ public class SceneUploader
 		return 6;
 	}
 
-	// Overlays
-	public int upload(SceneTileModel sceneTileModel, int tileX, int tileY, int offsetX, int offsetZ,
-					  GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean padUvs)
+	// Map tiles with extra geometry
+	public int pushDetailedTile(
+		SceneTileModel sceneTileModel,
+		GpuIntBuffer vertexBuffer,
+		GpuFloatBuffer uvBuffer,
+		GpuFloatBuffer normalBuffer,
+		int tileX,
+		int tileY,
+		int offsetX,
+		int offsetZ,
+		boolean padUvs)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -337,7 +375,7 @@ public class SceneUploader
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
 
-		int cnt = 0;
+		int len = 0;
 		for (int i = 0; i < faceCount; ++i)
 		{
 			final int triangleA = faceX[i];
@@ -353,7 +391,7 @@ public class SceneUploader
 				continue;
 			}
 
-			cnt += 3;
+			len += 3;
 
 			// vertexes are stored in scene local, convert to tile local
 			int vertexXA = vertexX[triangleA] - baseX;
@@ -372,9 +410,9 @@ public class SceneUploader
 			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
 			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
 
-			normalBuffer.put(0 + offsetX,0,1 + offsetZ,0);
-			normalBuffer.put(0 + offsetX,1,0 + offsetZ,0);
-			normalBuffer.put(1 + offsetX,0,0 + offsetZ,0);
+			normalBuffer.put(0,-1,0,0);
+			normalBuffer.put(0,-1,0,0);
+			normalBuffer.put(0,-1,0,0);
 
 			if (padUvs || triangleTextures != null)
 			{
@@ -394,10 +432,15 @@ public class SceneUploader
 			}
 		}
 
-		return cnt;
+		return len;
 	}
 
-	private void uploadSceneModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	private void uploadSceneModel(
+		Model model,
+		GpuIntBuffer vertexBuffer,
+		GpuFloatBuffer uvBuffer,
+		GpuFloatBuffer normalBuffer
+	)
 	{
 		// deduplicate hillskewed models
 		if (model.getUnskewedModel() != null)
@@ -422,7 +465,7 @@ public class SceneUploader
 		model.setSceneId(sceneId);
 		uniqueModels++;
 
-		int len = pushModel(model, vertexBuffer, uvBuffer, normalBuffer);
+		int len = pushModel(model, vertexBuffer, uvBuffer, normalBuffer, 1);
 
 		offset += len;
 		if (model.getFaceTextures() != null)
@@ -431,13 +474,19 @@ public class SceneUploader
 		}
 	}
 
-	public int pushModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	public int pushModel(
+		Model model,
+		GpuIntBuffer vertexBuffer,
+		GpuFloatBuffer uvBuffer,
+		GpuFloatBuffer normalBuffer,
+		int useFlatNormals
+	)
 	{
-		final int triangleCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
+		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
 
-		vertexBuffer.ensureCapacity(triangleCount * 12);
-		uvBuffer.ensureCapacity(triangleCount * 12);
-		normalBuffer.ensureCapacity(triangleCount * 12);
+		vertexBuffer.ensureCapacity(triCount * 12);
+		uvBuffer.ensureCapacity(triCount * 12);
+		normalBuffer.ensureCapacity(triCount * 12);
 
 		final int[] vertexX = model.getVerticesX();
 		final int[] vertexY = model.getVerticesY();
@@ -470,17 +519,17 @@ public class SceneUploader
 		final byte overrideLum = model.getOverrideLuminance();
 
 		int len = 0;
-		for (int tri = 0; tri < triangleCount; tri++)
+		for (int tri = 0; tri < triCount; tri++)
 		{
 			int color1 = color1s[tri];
 			int color2 = color2s[tri];
 			int color3 = color3s[tri];
 
-			if (color3 == -1)
+			if (color3 == -1) // Model only has one color.
 			{
 				color2 = color3 = color1;
 			}
-			else if (color3 == -2)
+			else if (color3 == -2) // Model should be skipped. Pad buffer.
 			{
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
@@ -522,6 +571,20 @@ public class SceneUploader
 			vertexBuffer.put(vertexX[v1], vertexY[v1], vertexZ[v1], packAlphaPriority | color2);
 			vertexBuffer.put(vertexX[v2], vertexY[v2], vertexZ[v2], packAlphaPriority | color3);
 
+			// The model does have normals
+			if (normalX != null)
+			{
+				normalBuffer.put(normalX[v0], normalY[v0], normalZ[v0], useFlatNormals);
+				normalBuffer.put(normalX[v1], normalY[v1], normalZ[v1], useFlatNormals);
+				normalBuffer.put(normalX[v2], normalY[v2], normalZ[v2], useFlatNormals);
+			}
+			else // The model does not have normals.
+			{
+				normalBuffer.put(0, 0, 0, useFlatNormals);
+				normalBuffer.put(0, 0, 0, useFlatNormals);
+				normalBuffer.put(0, 0, 0, useFlatNormals);
+			}
+
 			if (faceTextures != null)
 			{
 				if (faceTextures[tri] != -1)
@@ -555,20 +618,8 @@ public class SceneUploader
 				}
 			}
 
-			if (normalX != null || normalY != null || normalZ != null)
-			{
-				normalBuffer.put(vertexX[v0], vertexY[v0], vertexZ[v0], 1);
-				normalBuffer.put(vertexX[v1], vertexY[v1], vertexZ[v1], 1);
-				normalBuffer.put(vertexX[v2], vertexY[v2], vertexZ[v2], 1);
-			}
-
 			len += 3;
 		}
-
-		//		System.out.println("------ MODEL INFORMATION ------");
-		//		System.out.println("Face Count: " + model.getFaceCount());
-		//		System.out.println("Vert Count: " + (vertexX.length + vertexY.length + vertexZ.length));
-		//		System.out.println("Norm Count: " + (normalX.length + normalY.length + normalZ.length));
 
 		return len;
 	}

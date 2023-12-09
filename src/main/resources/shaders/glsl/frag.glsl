@@ -13,7 +13,7 @@ uniform vec3 fogColor;
 uniform int drawDistance;
 
 in vec4 fColor;
-smooth in vec3 fNormal;
+in vec4 fNormal;
 noperspective centroid in float fHsl;
 flat in int fTextureId;
 in vec2 fUv;
@@ -34,14 +34,13 @@ void main() {
     PopulateSurfaceColor(s);
     PopulateSurfaceNormal(s, fNormal);
 
-    float ndl = max(dot(s.normal, lightDirection), 0);
+    float ndl = max(dot(s.normal.xyz, lightDirection), 0);
     vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
 
     float distFog = distance(fPosition, fCamPos) / drawDistance;
     distFog = smoothstep(1 - (float(fogDepth) / 100), 1, distFog);
     distFog = max(distFog, fFogAmount);
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
-    finalColor = normalize(fNormal);
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

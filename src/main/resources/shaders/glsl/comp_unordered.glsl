@@ -25,7 +25,7 @@ void main() {
   ivec4 thisA, thisB, thisC;
   vec4 normA, normB, normC;
 
-  // Grab triangle vertices from the correct buffer
+  // Grab triangle vertices and normals from the correct buffer
   if (flags < 0) {
     thisA = vb[offset + ssboOffset * 3];
     thisB = vb[offset + ssboOffset * 3 + 1];
@@ -49,25 +49,25 @@ void main() {
   ivec4 texPos = pos.wxyz;
 
   // position vertices in scene and write to out buffer
-  vout[outOffset + myOffset * 3] = pos + thisA;
-  vout[outOffset + myOffset * 3 + 1] = pos + thisB;
-  vout[outOffset + myOffset * 3 + 2] = pos + thisC;
+  vout[outOffset + myOffset * 3]          = pos + thisA;
+  vout[outOffset + myOffset * 3 + 1]      = pos + thisB;
+  vout[outOffset + myOffset * 3 + 2]      = pos + thisC;
 
-  normalout[outOffset + myOffset * 3] = normA;
+  normalout[outOffset + myOffset * 3]     = normA;
   normalout[outOffset + myOffset * 3 + 1] = normB;
   normalout[outOffset + myOffset * 3 + 2] = normC;
 
   if (toffset < 0) {
-    uvout[outOffset + myOffset * 3] = vec4(0);
-    uvout[outOffset + myOffset * 3 + 1] = vec4(0);
-    uvout[outOffset + myOffset * 3 + 2] = vec4(0);
+    uvout[outOffset + myOffset * 3]       = vec4(0);
+    uvout[outOffset + myOffset * 3 + 1]   = vec4(0);
+    uvout[outOffset + myOffset * 3 + 2]   = vec4(0);
   } else if (flags >= 0) {
-    uvout[outOffset + myOffset * 3] = texPos + temptexb[toffset + localId * 3];
-    uvout[outOffset + myOffset * 3 + 1] = texPos + temptexb[toffset + localId * 3 + 1];
-    uvout[outOffset + myOffset * 3 + 2] = texPos + temptexb[toffset + localId * 3 + 2];
+    uvout[outOffset + myOffset * 3]       = texPos + temptexb[toffset + localId * 3];
+    uvout[outOffset + myOffset * 3 + 1]   = texPos + temptexb[toffset + localId * 3 + 1];
+    uvout[outOffset + myOffset * 3 + 2]   = texPos + temptexb[toffset + localId * 3 + 2];
   } else {
-    uvout[outOffset + myOffset * 3] = texPos + texb[toffset + localId * 3];
-    uvout[outOffset + myOffset * 3 + 1] = texPos + texb[toffset + localId * 3 + 1];
-    uvout[outOffset + myOffset * 3 + 2] = texPos + texb[toffset + localId * 3 + 2];
+    uvout[outOffset + myOffset * 3]       = texPos + texb[toffset + localId * 3];
+    uvout[outOffset + myOffset * 3 + 1]   = texPos + texb[toffset + localId * 3 + 1];
+    uvout[outOffset + myOffset * 3 + 2]   = texPos + texb[toffset + localId * 3 + 2];
   }
 }

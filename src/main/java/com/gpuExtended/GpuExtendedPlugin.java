@@ -290,8 +290,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				// TODO:: Temporary Scene Initializtion should be moved into a scene loader of some kind through json
 				environment = new Environment();
-				environment.ambientColor = new Color(0,0,0);
-				environment.fogColor = new Color(0,0,0);
+				environment.ambientColor = new Color(0.5f,0.4f,0.4f);
+				environment.fogColor = new Color(1,0.8f,0.8f);
 				environment.AddDirectionalLight(new Vector4(0.5, 0.75, 0.5, 0), new Color(1, 1, 1), 1);
 
 				if(Instance == null)
@@ -1760,7 +1760,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			boolean hasUv = model.getFaceTextures() != null;
 
-			int len = sceneUploader.pushModel(model, vertexBuffer, uvBuffer, normalBuffer);
+			int len = sceneUploader.pushModel(model, vertexBuffer, uvBuffer, normalBuffer, 0);
 
 			GpuIntBuffer b = bufferForTriangles(len / 3);
 

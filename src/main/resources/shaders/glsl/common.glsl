@@ -22,6 +22,12 @@ vec3 rotatef(vec3 vertex, int orientation) {
   return vertex * m;
 }
 
+vec4 rotate2(vec4 vertex, int orientation) {
+  ivec4 iVertex = ivec4(vertex * 1000);
+  vertex = rotate(iVertex, orientation) / 1000.0;
+  return vertex;
+}
+
 /*
  * Calculate the distance to a vertex given the camera angle
  */
