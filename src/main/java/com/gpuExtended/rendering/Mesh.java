@@ -4,7 +4,9 @@ import com.gpuExtended.util.GpuFloatBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Mesh
 {
@@ -21,6 +23,71 @@ public class Mesh
     {
         vertices.clear();
         triangles.clear();
+    }
+
+    public void ComputeSmoothNormals(double tolerance)
+    {
+        Map<Vertex, List<Vector4>> normalMap = new HashMap<>();
+
+        // Calculate normals for each triangle and accumulate them
+        for (Triangle t : triangles)
+        {
+            if(t.normal == null) continue;
+            if(t.normal.w == 1) continue;
+            for (Vertex v : new Vertex[]{t.v0, t.v1, t.v2}) {
+                normalMap.computeIfAbsent(v, k -> new ArrayList<>()).add(t.normal);
+            }
+        }
+
+        // Smooth normals
+        for (Triangle t : triangles) {
+            if(t.normal == null) continue;
+            if(t.normal.w == 1) continue;
+            Vector4 smoothed0 = smoothVertexNormal(t.v0, normalMap, tolerance);
+            Vector4 smoothed1 = smoothVertexNormal(t.v1, normalMap, tolerance);
+            Vector4 smoothed2 = smoothVertexNormal(t.v2, normalMap, tolerance);
+
+            if(smoothed0 != null)
+                t.v0.SetNormal(smoothed0);
+
+            if(smoothed1 != null)
+                t.v1.SetNormal(smoothed1);
+
+            if(smoothed2 != null)
+                t.v2.SetNormal(smoothed2);
+        }
+    }
+
+    private Vector4 smoothVertexNormal(Vertex v, Map<Vertex, List<Vector4>> normalMap, double tolerance)
+    {
+        List<Vector4> similarNormals = new ArrayList<>();
+
+        for (Vertex key : normalMap.keySet()) {
+            if (v.IsSamePosition(key, tolerance)) {
+                similarNormals.addAll(normalMap.get(key));
+            }
+        }
+
+        if (!similarNormals.isEmpty()) {
+            Vector4 smoothedNormal = averageNormals(similarNormals);
+            return smoothedNormal;
+        }
+
+        return null;
+    }
+
+    private Vector4 averageNormals(List<Vector4> normals) {
+        System.out.println("\nSimilar Normal Count: " + normals.size());
+
+        double sumX = 0, sumY = 0, sumZ = 0;
+        for (Vector4 n : normals) {
+            if(n == null) break;
+            sumX += n.x;
+            sumY += n.y;
+            sumZ += n.z;
+        }
+        double count = normals.size();
+        return new Vector4((sumX / count), (sumY / count), (sumZ / count), 1);
     }
 
     public void PushToBuffers(GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)

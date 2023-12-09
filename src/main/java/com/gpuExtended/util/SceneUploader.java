@@ -91,6 +91,7 @@ public class SceneUploader
 			}
 		}
 
+		sceneMesh.ComputeSmoothNormals(0.00001);
 		sceneMesh.PushToBuffers(vertexBuffer, uvBuffer, normalBuffer);
 
 		stopwatch.stop();
@@ -289,6 +290,11 @@ public class SceneUploader
 		v2.SetColor(c2);
 		v3.SetColor(c1);
 
+		v0.SetWorldPosition();
+		v1.SetWorldPosition();
+		v2.SetWorldPosition();
+		v3.SetWorldPosition();
+
 		if (tile.getTexture() != -1)
 		{
 			int tex = tile.getTexture() + 1;
@@ -375,6 +381,9 @@ public class SceneUploader
 			v0.SetColor(colorA);
 			v1.SetColor(colorB);
 			v2.SetColor(colorC);
+			v0.SetWorldPosition();
+			v1.SetWorldPosition();
+			v2.SetWorldPosition();
 
 			if (triangleTextures != null)
 			{
@@ -485,6 +494,7 @@ public class SceneUploader
 			else if (color3 == -2) // Model should be skipped. Pad buffer.
 			{
 				Vertex empty = Vertex.GetEmptyVertex();
+				empty.SetWorldPosition();
 				Triangle t = new Triangle(empty, empty, empty);
 				mesh.AddTriangle(t);
 				len += 3;
@@ -514,6 +524,10 @@ public class SceneUploader
 			v0.SetColor(packAlphaPriority | color1);
 			v1.SetColor(packAlphaPriority | color2);
 			v2.SetColor(packAlphaPriority | color3);
+
+			v0.SetWorldPosition();
+			v1.SetWorldPosition();
+			v2.SetWorldPosition();
 
 			if (normalX != null) // The model does have normals
 			{

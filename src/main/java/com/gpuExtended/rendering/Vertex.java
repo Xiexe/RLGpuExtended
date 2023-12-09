@@ -26,9 +26,10 @@ public class Vertex
         this.localPosition = new Vector3(x, y, z);
     }
 
-    public void ApplyWorldPosition(int x, int y, int z)
+    public void SetWorldPosition()
     {
-        this.worldPosition = new Vector3(localPosition.x + x, localPosition.y + y,  localPosition.z + z);
+        float divisor = 10f;
+        this.worldPosition = new Vector3(localPosition.x / divisor , localPosition.y / divisor,  localPosition.z / divisor);
     }
 
     public void SetColor(int color)
@@ -44,5 +45,12 @@ public class Vertex
     public void SetNormal(Vector4 normal)
     {
         this.normal = normal;
+    }
+
+    boolean IsSamePosition(Vertex other, double tolerance)
+    {
+        return Math.abs(this.worldPosition.x - other.worldPosition.x) < tolerance &&
+               Math.abs(this.worldPosition.y - other.worldPosition.y) < tolerance &&
+               Math.abs(this.worldPosition.z - other.worldPosition.z) < tolerance;
     }
 }
