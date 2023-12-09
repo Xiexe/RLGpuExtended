@@ -40,7 +40,13 @@ void main() {
     float distFog = distance(fPosition, fCamPos) / drawDistance;
     distFog = smoothstep(1 - (float(fogDepth) / 100), 1, distFog);
     distFog = max(distFog, fFogAmount);
+
+    float heightFog = distance(fPosition / 20000, vec3(fPosition.x, 0, fPosition.z));
+    //heightFog = smoothstep(1 - (float(5) / 100), 1, heightFog);
+//    heightFog = max(distFog, fFogAmount);
+
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
+    finalColor = s.normal.xyz;
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

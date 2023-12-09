@@ -6,6 +6,7 @@
 
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
+//layout(line_strip, max_vertices = 3) out;
 //layout(points, max_vertices = 3) out;
 
 layout(std140) uniform uniforms {

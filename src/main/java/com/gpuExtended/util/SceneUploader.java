@@ -3,16 +3,15 @@ package com.gpuExtended.util;
 
 import com.google.common.base.Stopwatch;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.rendering.Triangle;
-import com.gpuExtended.rendering.Vector3;
-import com.gpuExtended.rendering.Vector4;
-import com.gpuExtended.rendering.Vertex;
+import com.gpuExtended.rendering.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -246,7 +245,8 @@ public class SceneUploader
 		int tileY,
 		int offsetX,
 		int offsetY,
-		boolean padUvs)
+		boolean padUvs
+	)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
@@ -302,28 +302,35 @@ public class SceneUploader
 		Vertex v1 = new Vertex(vertexBx, vertexBz, vertexBy);
 		Vertex v2 = new Vertex(vertexCx, vertexCz, vertexCy);
 		Vertex v3 = new Vertex(vertexDx, vertexDz, vertexDy);
-//		Triangle triangle = new Triangle(v0, v1, v2);
-//		Triangle triangle1 = new Triangle(v3, v2, v1);
-//		Vector3 norm = triangle.GetNormal();
-//		Vector3 norm1 = triangle1.GetNormal();
+		v0.ApplyWorldPosition(tileX, tileY, tileZ);
+		v1.ApplyWorldPosition(tileX, tileY, tileZ);
+		v2.ApplyWorldPosition(tileX, tileY, tileZ);
+		v3.ApplyWorldPosition(tileX, tileY, tileZ);
+
+		Triangle triangle = new Triangle(v0, v1, v2);
+		Triangle triangle1 = new Triangle(v3, v2, v1);
+		Vector3 norm = triangle.GetNormal();
+		Vector3 norm1 = triangle1.GetNormal();
 
 		// Face 1
-		vertexBuffer.put((int)v0.x, (int)v0.y, (int)v0.z, c3);
-		vertexBuffer.put((int)v1.x, (int)v1.y, (int)v1.z, c4);
-		vertexBuffer.put((int)v2.x, (int)v2.y, (int)v2.z, c2);
+		vertexBuffer.put((int)v0.localPosition.x, (int)v0.localPosition.y, (int)v0.localPosition.z, c3);
+		vertexBuffer.put((int)v1.localPosition.x, (int)v1.localPosition.y, (int)v1.localPosition.z, c4);
+		vertexBuffer.put((int)v2.localPosition.x, (int)v2.localPosition.y, (int)v2.localPosition.z, c2);
 
 		// Face 2
-		vertexBuffer.put((int)v3.x, (int)v3.y, (int)v3.z, c1);
-		vertexBuffer.put((int)v2.x, (int)v2.y, (int)v2.z, c2);
-		vertexBuffer.put((int)v1.x, (int)v1.y, (int)v1.z, c4);
+		vertexBuffer.put((int)v3.localPosition.x, (int)v3.localPosition.y, (int)v3.localPosition.z, c1);
+		vertexBuffer.put((int)v2.localPosition.x, (int)v2.localPosition.y, (int)v2.localPosition.z, c2);
+		vertexBuffer.put((int)v1.localPosition.x, (int)v1.localPosition.y, (int)v1.localPosition.z, c4);
 
-		normalBuffer.put(0, -1, 0, 0);
-		normalBuffer.put(0, -1, 0, 0);
-		normalBuffer.put(0, -1, 0, 0);
+		normalBuffer.put(norm.x, -norm.y, norm.z, 0);
+		normalBuffer.put(norm.x, -norm.y, norm.z, 0);
+		normalBuffer.put(norm.x, -norm.y, norm.z, 0);
 
-		normalBuffer.put(0, -1, 0, 0);
-		normalBuffer.put(0, -1, 0, 0);
-		normalBuffer.put(0, -1, 0, 0);
+		normalBuffer.put(norm1.x, -norm1.y, norm1.z, 0);
+		normalBuffer.put(norm1.x, -norm1.y, norm1.z, 0);
+		normalBuffer.put(norm1.x, -norm1.y, norm1.z, 0);
+
+
 
 		if (padUvs || tile.getTexture() != -1)
 		{
@@ -350,7 +357,8 @@ public class SceneUploader
 		int tileY,
 		int offsetX,
 		int offsetZ,
-		boolean padUvs)
+		boolean padUvs
+	)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -375,6 +383,7 @@ public class SceneUploader
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
 
+		Mesh mesh = new Mesh();
 		int len = 0;
 		for (int i = 0; i < faceCount; ++i)
 		{
@@ -410,9 +419,17 @@ public class SceneUploader
 			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
 			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
 
-			normalBuffer.put(0,-1,0,0);
-			normalBuffer.put(0,-1,0,0);
-			normalBuffer.put(0,-1,0,0);
+			Vertex v0 = new Vertex(vertexXA, vertexYA, vertexZA);
+			Vertex v1 = new Vertex(vertexXB, vertexYB, vertexZB);
+			Vertex v2 = new Vertex(vertexXC, vertexYC, vertexZC);
+			Triangle t = new Triangle(v0, v1, v2);
+			Vector3 triNorm = t.GetNormal();
+			mesh.addTriangle(t);
+
+			// temp
+			normalBuffer.put((int)triNorm.x + offsetX, -(int)triNorm.y, (int)triNorm.z + offsetZ, 0);
+			normalBuffer.put((int)triNorm.x + offsetX, -(int)triNorm.y, (int)triNorm.z + offsetZ, 0);
+			normalBuffer.put((int)triNorm.x + offsetX, -(int)triNorm.y, (int)triNorm.z + offsetZ, 0);
 
 			if (padUvs || triangleTextures != null)
 			{
@@ -431,6 +448,27 @@ public class SceneUploader
 				}
 			}
 		}
+
+//		for (Triangle t : mesh.triangles)
+//		{
+//			Vector3 avg = Vector3.Cross(Vector3.Subtract(t.v1.normal, t.v0.normal), Vector3.Subtract(t.v2.normal, t.v0.normal));
+//			t.v0.normal = Vector3.Add(t.v0.normal, avg);
+//			t.v1.normal = Vector3.Add(t.v1.normal, avg);
+//			t.v2.normal = Vector3.Add(t.v2.normal, avg);
+//		}
+//
+//		for (Vertex v : mesh.vertices)
+//		{
+//			v.normal.Normalize();
+//		}
+//
+//		for (Triangle t : mesh.triangles)
+//		{
+//			// temp
+//			normalBuffer.put((int)t.v0.normal.x, (int)t.v0.normal.y, (int)t.v0.normal.z, 0);
+//			normalBuffer.put((int)t.v1.normal.x, (int)t.v1.normal.y, (int)t.v1.normal.z, 0);
+//			normalBuffer.put((int)t.v2.normal.x, (int)t.v2.normal.y, (int)t.v2.normal.z, 0);
+//		}
 
 		return len;
 	}
