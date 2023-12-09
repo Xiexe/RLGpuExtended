@@ -14,7 +14,7 @@ public class GpuIntBuffer
 		buffer.put(x).put(y).put(z);
 	}
 
-	void put(int x, int y, int z, int c)
+	public void put(int x, int y, int z, int c)
 	{
 		buffer.put(x).put(y).put(z).put(c);
 	}

@@ -3,9 +3,6 @@ package com.gpuExtended.util;
 
 import com.google.common.base.Stopwatch;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -78,6 +75,7 @@ public class SceneUploader
 		log.debug("Scene preparation time: {}", stopwatch);
 
 		stopwatch = Stopwatch.createStarted();
+		Mesh sceneMesh = new Mesh();
 		for (int z = 0; z < Constants.MAX_Z; ++z)
 		{
 			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x)
@@ -87,22 +85,24 @@ public class SceneUploader
 					Tile tile = scene.getExtendedTiles()[z][x][y];
 					if (tile != null)
 					{
-						upload(scene, tile, vertexBuffer, uvBuffer, normalBuffer);
+						PopulateSceneMesh(scene, tile, sceneMesh);
 					}
 				}
 			}
 		}
 
+		sceneMesh.PushToBuffers(vertexBuffer, uvBuffer, normalBuffer);
+
 		stopwatch.stop();
 		log.debug("Scene upload time: {} unique models: {} length: {}KB", stopwatch, uniqueModels, (offset * 16) / 1024);
 	}
 
-	private void upload(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	private void PopulateSceneMesh(Scene scene, Tile tile, Mesh mesh)
 	{
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
-		{
-			upload(scene, bridge, vertexBuffer, uvBuffer, normalBuffer);
+		{   // draw the tile underneath the bridge.
+			PopulateSceneMesh(scene, bridge, mesh);
 		}
 
 		SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
@@ -119,26 +119,20 @@ public class SceneUploader
 			}
 
 			Point tilePoint = tile.getSceneLocation();
-			int len = pushTile(
+			int len = AddWorldTileMesh(
 				scene,
 				sceneTilePaint,
-				vertexBuffer,
-				uvBuffer,
-				normalBuffer,
+				mesh,
 				tile.getRenderLevel(),
 				tilePoint.getX(),
 				tilePoint.getY(),
 				0,
-				0,
-				false
+				0
 			);
 
 			sceneTilePaint.setBufferLen(len);
 			offset += len;
-			if (sceneTilePaint.getTexture() != -1)
-			{
-				uvoffset += len;
-			}
+			uvoffset += len;
 		}
 
 		SceneTileModel sceneTileModel = tile.getSceneTileModel();
@@ -155,24 +149,18 @@ public class SceneUploader
 			}
 
 			Point tilePoint = tile.getSceneLocation();
-			int len = pushDetailedTile(
+			int len = AddWorldTileMeshDetailed(
 				sceneTileModel,
-				vertexBuffer,
-				uvBuffer,
-				normalBuffer,
+				mesh,
 				tilePoint.getX(),
 				tilePoint.getY(),
 				0,
-				0,
-				false
+				0
 			);
 
 			sceneTileModel.setBufferLen(len);
 			offset += len;
-			if (sceneTileModel.getTriangleTextureId() != null)
-			{
-				uvoffset += len;
-			}
+			uvoffset += len;
 		}
 
 		WallObject wallObject = tile.getWallObject();
@@ -181,13 +169,13 @@ public class SceneUploader
 			Renderable renderable1 = wallObject.getRenderable1();
 			if (renderable1 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable1, vertexBuffer, uvBuffer, normalBuffer);
+				AddStaticModel((Model) renderable1, mesh);
 			}
 
 			Renderable renderable2 = wallObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer, normalBuffer);
+				AddStaticModel((Model) renderable2, mesh);
 			}
 		}
 
@@ -197,7 +185,7 @@ public class SceneUploader
 			Renderable renderable = groundObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer, normalBuffer);
+				AddStaticModel((Model) renderable, mesh);
 			}
 		}
 
@@ -207,13 +195,13 @@ public class SceneUploader
 			Renderable renderable = decorativeObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) renderable, vertexBuffer, uvBuffer, normalBuffer);
+				AddStaticModel((Model) renderable, mesh);
 			}
 
 			Renderable renderable2 = decorativeObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				uploadSceneModel((Model) renderable2, vertexBuffer, uvBuffer, normalBuffer);
+				AddStaticModel((Model) renderable2, mesh);
 			}
 		}
 
@@ -228,24 +216,21 @@ public class SceneUploader
 			Renderable renderable = gameObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				uploadSceneModel((Model) gameObject.getRenderable(), vertexBuffer, uvBuffer, normalBuffer);
+				AddStaticModel((Model) gameObject.getRenderable(), mesh);
 			}
 		}
 	}
 
 	// Map Tiles
-	public int pushTile(
+	public int AddWorldTileMesh(
 		Scene scene,
 		SceneTilePaint tile,
-		GpuIntBuffer vertexBuffer,
-		GpuFloatBuffer uvBuffer,
-		GpuFloatBuffer normalBuffer,
+		Mesh mesh,
 		int tileZ,
 		int tileX,
 		int tileY,
 		int offsetX,
-		int offsetY,
-		boolean padUvs
+		int offsetY
 	)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
@@ -269,10 +254,6 @@ public class SceneUploader
 		{
 			return 0;
 		}
-
-		vertexBuffer.ensureCapacity(24);
-		uvBuffer.ensureCapacity(24);
-		normalBuffer.ensureCapacity(24);
 
 		// 0,0
 		int vertexDx = localX;
@@ -302,62 +283,40 @@ public class SceneUploader
 		Vertex v1 = new Vertex(vertexBx, vertexBz, vertexBy);
 		Vertex v2 = new Vertex(vertexCx, vertexCz, vertexCy);
 		Vertex v3 = new Vertex(vertexDx, vertexDz, vertexDy);
-		v0.ApplyWorldPosition(tileX, tileY, tileZ);
-		v1.ApplyWorldPosition(tileX, tileY, tileZ);
-		v2.ApplyWorldPosition(tileX, tileY, tileZ);
-		v3.ApplyWorldPosition(tileX, tileY, tileZ);
+
+		v0.SetColor(c3);
+		v1.SetColor(c4);
+		v2.SetColor(c2);
+		v3.SetColor(c1);
+
+		if (tile.getTexture() != -1)
+		{
+			int tex = tile.getTexture() + 1;
+			v0.SetUv(tex, vertexDx, vertexDz, vertexDy);
+			v1.SetUv(tex, vertexCx, vertexCz, vertexCy);
+			v2.SetUv(tex, vertexBx, vertexBz, vertexBy);
+			v3.SetUv(tex, vertexDx, vertexDz, vertexDy);
+		}
 
 		Triangle triangle = new Triangle(v0, v1, v2);
 		Triangle triangle1 = new Triangle(v3, v2, v1);
-		Vector3 norm = triangle.GetNormal();
-		Vector3 norm1 = triangle1.GetNormal();
+		triangle.GetNormal();
+		triangle1.GetNormal();
 
-		// Face 1
-		vertexBuffer.put((int)v0.localPosition.x, (int)v0.localPosition.y, (int)v0.localPosition.z, c3);
-		vertexBuffer.put((int)v1.localPosition.x, (int)v1.localPosition.y, (int)v1.localPosition.z, c4);
-		vertexBuffer.put((int)v2.localPosition.x, (int)v2.localPosition.y, (int)v2.localPosition.z, c2);
-
-		// Face 2
-		vertexBuffer.put((int)v3.localPosition.x, (int)v3.localPosition.y, (int)v3.localPosition.z, c1);
-		vertexBuffer.put((int)v2.localPosition.x, (int)v2.localPosition.y, (int)v2.localPosition.z, c2);
-		vertexBuffer.put((int)v1.localPosition.x, (int)v1.localPosition.y, (int)v1.localPosition.z, c4);
-
-		normalBuffer.put(norm.x, -norm.y, norm.z, 0);
-		normalBuffer.put(norm.x, -norm.y, norm.z, 0);
-		normalBuffer.put(norm.x, -norm.y, norm.z, 0);
-
-		normalBuffer.put(norm1.x, -norm1.y, norm1.z, 0);
-		normalBuffer.put(norm1.x, -norm1.y, norm1.z, 0);
-		normalBuffer.put(norm1.x, -norm1.y, norm1.z, 0);
-
-
-
-		if (padUvs || tile.getTexture() != -1)
-		{
-			int tex = tile.getTexture() + 1;
-			uvBuffer.put(tex, vertexDx, vertexDz, vertexDy);
-			uvBuffer.put(tex, vertexCx, vertexCz, vertexCy);
-			uvBuffer.put(tex, vertexBx, vertexBz, vertexBy);
-
-			uvBuffer.put(tex, vertexDx, vertexDz, vertexDy);
-			uvBuffer.put(tex, vertexCx, vertexCz, vertexCy);
-			uvBuffer.put(tex, vertexBx, vertexBz, vertexBy);
-		}
+		mesh.AddTriangle(triangle);
+		mesh.AddTriangle(triangle1);
 
 		return 6;
 	}
 
 	// Map tiles with extra geometry
-	public int pushDetailedTile(
+	public int AddWorldTileMeshDetailed(
 		SceneTileModel sceneTileModel,
-		GpuIntBuffer vertexBuffer,
-		GpuFloatBuffer uvBuffer,
-		GpuFloatBuffer normalBuffer,
+		Mesh mesh,
 		int tileX,
 		int tileY,
 		int offsetX,
-		int offsetZ,
-		boolean padUvs
+		int offsetZ
 	)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
@@ -376,14 +335,9 @@ public class SceneUploader
 
 		final int faceCount = faceX.length;
 
-		vertexBuffer.ensureCapacity(faceCount * 12);
-		uvBuffer.ensureCapacity(faceCount * 12);
-		normalBuffer.ensureCapacity(faceCount * 12);
-
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
 
-		Mesh mesh = new Mesh();
 		int len = 0;
 		for (int i = 0; i < faceCount; ++i)
 		{
@@ -415,69 +369,35 @@ public class SceneUploader
 			int vertexYC = vertexY[triangleC];
 			int vertexZC = vertexZ[triangleC] - baseY;
 
-			vertexBuffer.put(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, colorA);
-			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
-			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
+			Vertex v0 = new Vertex(vertexXA + offsetX, vertexYA, vertexZA + offsetZ);
+			Vertex v1 = new Vertex(vertexXB + offsetX, vertexYB, vertexZB + offsetZ);
+			Vertex v2 = new Vertex(vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
+			v0.SetColor(colorA);
+			v1.SetColor(colorB);
+			v2.SetColor(colorC);
 
-			Vertex v0 = new Vertex(vertexXA, vertexYA, vertexZA);
-			Vertex v1 = new Vertex(vertexXB, vertexYB, vertexZB);
-			Vertex v2 = new Vertex(vertexXC, vertexYC, vertexZC);
-			Triangle t = new Triangle(v0, v1, v2);
-			Vector3 triNorm = t.GetNormal();
-			mesh.addTriangle(t);
-
-			// temp
-			normalBuffer.put((int)triNorm.x + offsetX, -(int)triNorm.y, (int)triNorm.z + offsetZ, 0);
-			normalBuffer.put((int)triNorm.x + offsetX, -(int)triNorm.y, (int)triNorm.z + offsetZ, 0);
-			normalBuffer.put((int)triNorm.x + offsetX, -(int)triNorm.y, (int)triNorm.z + offsetZ, 0);
-
-			if (padUvs || triangleTextures != null)
+			if (triangleTextures != null)
 			{
-				if (triangleTextures != null && triangleTextures[i] != -1)
+				if (triangleTextures[i] != -1)
 				{
 					int tex = triangleTextures[i] + 1;
-					uvBuffer.put(tex, offsetX, vertexYA, offsetZ);
-					uvBuffer.put(tex, offsetX + 128, vertexYB, offsetZ);
-					uvBuffer.put(tex, offsetX, vertexYC, offsetZ + 128);
-				}
-				else
-				{
-					uvBuffer.put(0, 0, 0, 0f);
-					uvBuffer.put(0, 0, 0, 0f);
-					uvBuffer.put(0, 0, 0, 0f);
+					v0.SetUv(tex, offsetX, vertexYA, offsetZ);
+					v1.SetUv(tex, offsetX + 128, vertexYB, offsetZ);
+					v2.SetUv(tex, offsetX, vertexYC, offsetZ + 128);
 				}
 			}
-		}
 
-//		for (Triangle t : mesh.triangles)
-//		{
-//			Vector3 avg = Vector3.Cross(Vector3.Subtract(t.v1.normal, t.v0.normal), Vector3.Subtract(t.v2.normal, t.v0.normal));
-//			t.v0.normal = Vector3.Add(t.v0.normal, avg);
-//			t.v1.normal = Vector3.Add(t.v1.normal, avg);
-//			t.v2.normal = Vector3.Add(t.v2.normal, avg);
-//		}
-//
-//		for (Vertex v : mesh.vertices)
-//		{
-//			v.normal.Normalize();
-//		}
-//
-//		for (Triangle t : mesh.triangles)
-//		{
-//			// temp
-//			normalBuffer.put((int)t.v0.normal.x, (int)t.v0.normal.y, (int)t.v0.normal.z, 0);
-//			normalBuffer.put((int)t.v1.normal.x, (int)t.v1.normal.y, (int)t.v1.normal.z, 0);
-//			normalBuffer.put((int)t.v2.normal.x, (int)t.v2.normal.y, (int)t.v2.normal.z, 0);
-//		}
+			Triangle t = new Triangle(v0, v1, v2);
+			t.GetNormal();
+			mesh.AddTriangle(t);
+		}
 
 		return len;
 	}
 
-	private void uploadSceneModel(
+	private void AddStaticModel(
 		Model model,
-		GpuIntBuffer vertexBuffer,
-		GpuFloatBuffer uvBuffer,
-		GpuFloatBuffer normalBuffer
+		Mesh mesh
 	)
 	{
 		// deduplicate hillskewed models
@@ -503,28 +423,19 @@ public class SceneUploader
 		model.setSceneId(sceneId);
 		uniqueModels++;
 
-		int len = pushModel(model, vertexBuffer, uvBuffer, normalBuffer, 1);
+		int len = AddGenericMesh(model, mesh, 1);
 
 		offset += len;
-		if (model.getFaceTextures() != null)
-		{
-			uvoffset += len;
-		}
+		uvoffset += len;
 	}
 
-	public int pushModel(
+	public int AddGenericMesh(
 		Model model,
-		GpuIntBuffer vertexBuffer,
-		GpuFloatBuffer uvBuffer,
-		GpuFloatBuffer normalBuffer,
+		Mesh mesh,
 		int useFlatNormals
 	)
 	{
 		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
-
-		vertexBuffer.ensureCapacity(triCount * 12);
-		uvBuffer.ensureCapacity(triCount * 12);
-		normalBuffer.ensureCapacity(triCount * 12);
 
 		final int[] vertexX = model.getVerticesX();
 		final int[] vertexY = model.getVerticesY();
@@ -559,6 +470,10 @@ public class SceneUploader
 		int len = 0;
 		for (int tri = 0; tri < triCount; tri++)
 		{
+			Vertex v0;
+			Vertex v1;
+			Vertex v2;
+
 			int color1 = color1s[tri];
 			int color2 = color2s[tri];
 			int color3 = color3s[tri];
@@ -569,21 +484,9 @@ public class SceneUploader
 			}
 			else if (color3 == -2) // Model should be skipped. Pad buffer.
 			{
-				vertexBuffer.put(0, 0, 0, 0);
-				vertexBuffer.put(0, 0, 0, 0);
-				vertexBuffer.put(0, 0, 0, 0);
-
-				normalBuffer.put(0,0,0,0);
-				normalBuffer.put(0,0,0,0);
-				normalBuffer.put(0,0,0,0);
-
-				if (faceTextures != null)
-				{
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-				}
-
+				Vertex empty = Vertex.GetEmptyVertex();
+				Triangle t = new Triangle(empty, empty, empty);
+				mesh.AddTriangle(t);
 				len += 3;
 				continue;
 			}
@@ -601,26 +504,22 @@ public class SceneUploader
 
 			int packAlphaPriority = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
 
-			int v0 = indices1[tri];
-			int v1 = indices2[tri];
-			int v2 = indices3[tri];
+			int i0 = indices1[tri];
+			int i1 = indices2[tri];
+			int i2 = indices3[tri];
+			v0 = new Vertex(vertexX[i0], vertexY[i0], vertexZ[i0]);
+			v1 = new Vertex(vertexX[i1], vertexY[i1], vertexZ[i1]);
+			v2 = new Vertex(vertexX[i2], vertexY[i2], vertexZ[i2]);
 
-			vertexBuffer.put(vertexX[v0], vertexY[v0], vertexZ[v0], packAlphaPriority | color1);
-			vertexBuffer.put(vertexX[v1], vertexY[v1], vertexZ[v1], packAlphaPriority | color2);
-			vertexBuffer.put(vertexX[v2], vertexY[v2], vertexZ[v2], packAlphaPriority | color3);
+			v0.SetColor(packAlphaPriority | color1);
+			v1.SetColor(packAlphaPriority | color2);
+			v2.SetColor(packAlphaPriority | color3);
 
-			// The model does have normals
-			if (normalX != null)
+			if (normalX != null) // The model does have normals
 			{
-				normalBuffer.put(normalX[v0], normalY[v0], normalZ[v0], useFlatNormals);
-				normalBuffer.put(normalX[v1], normalY[v1], normalZ[v1], useFlatNormals);
-				normalBuffer.put(normalX[v2], normalY[v2], normalZ[v2], useFlatNormals);
-			}
-			else // The model does not have normals.
-			{
-				normalBuffer.put(0, 0, 0, useFlatNormals);
-				normalBuffer.put(0, 0, 0, useFlatNormals);
-				normalBuffer.put(0, 0, 0, useFlatNormals);
+				v0.SetNormal(new Vector4(normalX[i0], normalY[i0], normalZ[i0], useFlatNormals));
+				v1.SetNormal(new Vector4(normalX[i1], normalY[i1], normalZ[i1], useFlatNormals));
+				v2.SetNormal(new Vector4(normalX[i2], normalY[i2], normalZ[i2], useFlatNormals));
 			}
 
 			if (faceTextures != null)
@@ -638,23 +537,20 @@ public class SceneUploader
 					}
 					else
 					{
-						texA = v0;
-						texB = v1;
-						texC = v2;
+						texA = i0;
+						texB = i1;
+						texC = i2;
 					}
 
 					int texture = faceTextures[tri] + 1;
-					uvBuffer.put(texture, vertexX[texA], vertexY[texA], vertexZ[texA]);
-					uvBuffer.put(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
-					uvBuffer.put(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
-				}
-				else
-				{
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
+					v0.SetUv(texture, vertexX[texA], vertexY[texA], vertexZ[texA]);
+					v1.SetUv(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
+					v2.SetUv(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
 				}
 			}
+
+			Triangle t = new Triangle(v0, v1, v2);
+			mesh.AddTriangle(t);
 
 			len += 3;
 		}
