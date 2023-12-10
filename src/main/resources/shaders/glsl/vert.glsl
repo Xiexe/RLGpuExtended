@@ -39,39 +39,39 @@ out float gFogAmount;
 #include "/shaders/glsl/hsl_to_rgb.glsl"
 
 float fogFactorLinear(const float dist, const float start, const float end) {
-  return 1.0 - clamp((dist - start) / (end - start), 0.0, 1.0);
+    return 1.0 - clamp((dist - start) / (end - start), 0.0, 1.0);
 }
 
 void main() {
-  ivec3 vertex = vPos.xyz;
-  vec3 position = vec3(vPos.xyz);
-  int ahsl = vPos.w;
-  int hsl = ahsl & 0xffff;
-  float a = float(ahsl >> 24 & 0xff) / 255.f;
+    ivec3 vertex = vPos.xyz;
+    vec3 position = vec3(vPos.xyz);
+    int ahsl = vPos.w;
+    int hsl = ahsl & 0xffff;
+    float a = float(ahsl >> 24 & 0xff) / 255.f;
 
-  vec3 rgb = hslToRgb(hsl);
+    vec3 rgb = hslToRgb(hsl);
 
-  gVertex = vertex;
-  gNormal = vNorm;
-  gPosition = position;
-  gColor = vec4(rgb, 1.f - a);
-  gHsl = float(hsl);
-  gTextureId = int(vUv.x);  // the texture id + 1;
-  gTexPos = vUv.yzw;
+    gVertex = vertex;
+    gNormal = vNorm;
+    gPosition = position;
+    gColor = vec4(rgb, 1.f - a);
+    gHsl = float(hsl);
+    gTextureId = int(vUv.x);  // the texture id + 1;
+    gTexPos = vUv.yzw;
 
-  // the client draws one less tile to the north and east than it does to the south
-  // and west, so subtract a tiles width from the north and east edges.
-  int fogWest = max(FOG_SCENE_EDGE_MIN, int(cameraX) - drawDistance);
-  int fogEast = min(FOG_SCENE_EDGE_MAX, int(cameraX) + drawDistance - TILE_SIZE);
-  int fogSouth = max(FOG_SCENE_EDGE_MIN, int(cameraZ) - drawDistance);
-  int fogNorth = min(FOG_SCENE_EDGE_MAX, int(cameraZ) + drawDistance - TILE_SIZE);
+    // the client draws one less tile to the north and east than it does to the south
+    // and west, so subtract a tiles width from the north and east edges.
+    int fogWest = max(FOG_SCENE_EDGE_MIN, int(cameraX) - drawDistance);
+    int fogEast = min(FOG_SCENE_EDGE_MAX, int(cameraX) + drawDistance - TILE_SIZE);
+    int fogSouth = max(FOG_SCENE_EDGE_MIN, int(cameraZ) - drawDistance);
+    int fogNorth = min(FOG_SCENE_EDGE_MAX, int(cameraZ) + drawDistance - TILE_SIZE);
 
-  // Calculate distance from the scene edge
-  int xDist = min(vertex.x - fogWest, fogEast - vertex.x);
-  int zDist = min(vertex.z - fogSouth, fogNorth - vertex.z);
-  float nearestEdgeDistance = min(xDist, zDist);
-  float secondNearestEdgeDistance = max(xDist, zDist);
-  float fogDistance = nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE * max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));
+    // Calculate distance from the scene edge
+    int xDist = min(vertex.x - fogWest, fogEast - vertex.x);
+    int zDist = min(vertex.z - fogSouth, fogNorth - vertex.z);
+    float nearestEdgeDistance = min(xDist, zDist);
+    float secondNearestEdgeDistance = max(xDist, zDist);
+    float fogDistance = nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE * max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));
 
-  gFogAmount = fogFactorLinear(fogDistance, 0, 10 * TILE_SIZE);
+    gFogAmount = fogFactorLinear(fogDistance, 0, 10 * TILE_SIZE);
 }

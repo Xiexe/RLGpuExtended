@@ -6,6 +6,8 @@
 
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
+//#define LINE_DEBUG
+//layout(line_strip, max_vertices = 4) out;
 //layout(points, max_vertices = 3) out;
 
 layout(std140) uniform uniforms {
@@ -74,7 +76,7 @@ void main() {
 
   for (int i = 0; i < 3; ++i) {
     vec4 normal = gNormal[i];
-    if(gNormal[i].w >= 1)
+    if(gNormal[i].w == 1)
     {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
@@ -90,6 +92,12 @@ void main() {
     gl_Position = projectionMatrix * vec4(gVertex[i], 1);
     EmitVertex();
   }
+
+#ifdef LINE_DEBUG
+  fPosition = gPosition[0];
+  gl_Position = projectionMatrix * vec4(gVertex[0], 1);
+  EmitVertex();
+#endif
 
   EndPrimitive();
 }

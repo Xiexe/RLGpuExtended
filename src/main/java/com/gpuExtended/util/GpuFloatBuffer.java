@@ -9,7 +9,7 @@ public class GpuFloatBuffer
 {
 	private FloatBuffer buffer = allocateDirect(65536);
 
-	void put(float s, float t, float p, float q)
+	public void put(float s, float t, float p, float q)
 	{
 		buffer.put(s).put(t).put(p).put(q);
 	}
@@ -24,7 +24,7 @@ public class GpuFloatBuffer
 		buffer.clear();
 	}
 
-	void ensureCapacity(int size)
+	public void ensureCapacity(int size)
 	{
 		int capacity = buffer.capacity();
 		final int position = buffer.position();

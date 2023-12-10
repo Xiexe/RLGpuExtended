@@ -19,6 +19,7 @@ public class Uniforms
     public int TexTargetDimensions;
     public int UiAlphaOverlay;
     public int Textures;
+    public int TileHeightMap;
     public int TextureAnimations;
     public int BlockSmall;
     public int BlockLarge;
@@ -49,7 +50,7 @@ public class Uniforms
         LightDirection = glGetUniformLocation(shader, "lightDirection");
         LightColor = glGetUniformLocation(shader, "lightColor");
         AmbientColor = glGetUniformLocation(shader, "ambientColor");
-
+        TileHeightMap = glGetUniformLocation(shader, "tileHeightMap");
 
         Tex = glGetUniformLocation(uiShader, "tex");
         TexSamplingMode = glGetUniformLocation(uiShader, "samplingMode");

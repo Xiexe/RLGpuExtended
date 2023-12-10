@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.rendering.Color;
+import com.gpuExtended.rendering.Mesh;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Environment;
 import com.gpuExtended.scene.Light;
@@ -192,6 +193,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private final GLBuffer tmpModelBufferLarge = new GLBuffer("model buffer large");
 	private final GLBuffer tmpModelBufferSmall = new GLBuffer("model buffer small");
 	private final GLBuffer tmpModelBufferUnordered = new GLBuffer("model buffer unordered");
+
+	private Mesh dynamicMesh = new Mesh();
 
 
 	private int textureArrayId;
@@ -975,7 +978,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void dispatchModelSortingComputeShader(int computeShader, int models, GLBuffer modelBuffer)
 	{
 		glUseProgram(computeShader);
-
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, modelBuffer.glBufferId); // modelbuffer_in
 
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderVertexBuffer.glBufferId); // vertex out
@@ -1758,27 +1760,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
 
-			boolean hasUv = model.getFaceTextures() != null;
-
-			int len = sceneUploader.pushModel(model, vertexBuffer, uvBuffer, normalBuffer, 0);
+			int len = sceneUploader.PushDynamicMesh(model, vertexBuffer, uvBuffer, normalBuffer);
 
 			GpuIntBuffer b = bufferForTriangles(len / 3);
 
 			b.ensureCapacity(8);
 			IntBuffer buffer = b.getBuffer();
 			buffer.put(tempOffset);
-			buffer.put(hasUv ? tempUvOffset : -1);
+			buffer.put(tempUvOffset);
 			buffer.put(len / 3);
 			buffer.put(targetBufferOffset);
 			buffer.put((model.getRadius() << 12) | orientation);
 			buffer.put(x + client.getCameraX2()).put(y + client.getCameraY2()).put(z + client.getCameraZ2());
 
 			tempOffset += len;
-			if (hasUv)
-			{
-				tempUvOffset += len;
-			}
-
+			tempUvOffset += len;
 			targetBufferOffset += len;
 		}
 	}

@@ -18,7 +18,7 @@ void PopulateSurfaceColor(inout Surface s)
 void PopulateSurfaceNormal(inout Surface s, vec4 normal)
 {
     normal.y = -normal.y; // runescape uses -y as up by default. Lets make that more sane.
-    s.normal = normal;
+    s.normal = normalize(normal);
 }
 
 void PostProcessImage(inout vec3 image, int colorBlindMode)
