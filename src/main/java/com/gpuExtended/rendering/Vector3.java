@@ -12,6 +12,10 @@ public class Vector3
         this.y = y;
         this.z = z;
     }
+    public static Vector3 Zero()
+    {
+        return new Vector3(0,0,0);
+    }
 
     public Vector3 Normalize()
     {
@@ -49,6 +53,10 @@ public class Vector3
             (v1.y + v2.y) / 2,
             (v1.z + v2.z) / 2
         );
+    }
+
+    public float Dot(Vector3 other) {
+        return this.x * other.x + this.y * other.y + this.z * other.z;
     }
 
     @Override
