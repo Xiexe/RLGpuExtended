@@ -23,4 +23,19 @@ public class Vector4
             1.0f
         );
     }
+
+    public Vector4 Blend(Vector4 other) {
+        return new Vector4(
+            (this.x + other.x) / 2,
+            (this.y + other.y) / 2,
+            (this.z + other.z) / 2,
+                this.w
+        );
+    }
+
+    public Vector4 Normalize()
+    {
+        float length = (float) Math.sqrt(x*x + y*y + z*z);
+        return new Vector4(x / length, y / length, z / length, this.w);
+    }
 }

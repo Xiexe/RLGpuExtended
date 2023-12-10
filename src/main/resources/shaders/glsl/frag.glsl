@@ -34,19 +34,15 @@ void main() {
     PopulateSurfaceColor(s);
     PopulateSurfaceNormal(s, fNormal);
 
-    float ndl = max(dot(s.normal.xyz, lightDirection), 0);
+    float ndl = max(dot(s.normal.xyz, vec3(1, 1, 0)), 0);
     vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
 
     float distFog = distance(fPosition, fCamPos) / drawDistance;
     distFog = smoothstep(1 - (float(fogDepth) / 100), 1, distFog);
     distFog = max(distFog, fFogAmount);
 
-    float heightFog = distance(fPosition / 20000, vec3(fPosition.x, 0, fPosition.z));
-    //heightFog = smoothstep(1 - (float(5) / 100), 1, heightFog);
-//    heightFog = max(distFog, fFogAmount);
-
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
-    finalColor = s.normal.xyz;
+    finalColor = vec3(fNormal.x / drawDistance);
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

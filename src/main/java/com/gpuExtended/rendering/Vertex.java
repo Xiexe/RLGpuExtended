@@ -2,8 +2,8 @@ package com.gpuExtended.rendering;
 
 public class Vertex
 {
-    public Vector3 localPosition;
-    public Vector3 worldPosition;
+    public Vector3 position;
+    public Vector3 wPosition;
     public Vector4 normal = new Vector4(0,0,0,0);
     public Vector4 uv = new Vector4(0,0,0,0);
     public int color;
@@ -18,18 +18,7 @@ public class Vertex
 
     public Vertex(int x, int y, int z)
     {
-        this.localPosition = new Vector3(x, y, z);
-    }
-
-    public Vertex(float x, float y, float z)
-    {
-        this.localPosition = new Vector3(x, y, z);
-    }
-
-    public void SetWorldPosition()
-    {
-        float divisor = 10f;
-        this.worldPosition = new Vector3(localPosition.x / divisor , localPosition.y / divisor,  localPosition.z / divisor);
+        this.position = new Vector3((float)x, (float)y, (float)z);
     }
 
     public void SetColor(int color)
@@ -44,13 +33,19 @@ public class Vertex
 
     public void SetNormal(Vector4 normal)
     {
-        this.normal = normal;
+        this.normal = new Vector4(normal.x, normal.y, normal.z, normal.w);
+    }
+
+    public void Blend(Vertex other)
+    {
+        this.color = (this.color + other.color) / 2;
+        this.normal = normal.Blend(other.normal);
     }
 
     boolean IsSamePosition(Vertex other, double tolerance)
     {
-        return Math.abs(this.worldPosition.x - other.worldPosition.x) < tolerance &&
-               Math.abs(this.worldPosition.y - other.worldPosition.y) < tolerance &&
-               Math.abs(this.worldPosition.z - other.worldPosition.z) < tolerance;
+        return Math.abs(this.position.x - other.position.x) < tolerance &&
+               Math.abs(this.position.y - other.position.y) < tolerance &&
+               Math.abs(this.position.z - other.position.z) < tolerance;
     }
 }

@@ -50,4 +50,36 @@ public class Vector3
             (v1.z + v2.z) / 2
         );
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof Vector3)) {
+            return false;
+        }
+        Vector3 vector = (Vector3) obj;
+        return Float.compare(vector.x, x) == 0 &&
+               Float.compare(vector.y, y) == 0 &&
+               Float.compare(vector.z, z) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + Float.hashCode(x);
+        result = 31 * result + Float.hashCode(y);
+        result = 31 * result + Float.hashCode(z);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Vector3{" +
+                       x +
+                ", " + y +
+                ", " + z +
+                '}';
+    }
 }

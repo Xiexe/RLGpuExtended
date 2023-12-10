@@ -1,8 +1,5 @@
 package com.gpuExtended.rendering;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Triangle
 {
     public Vertex v0, v1, v2;
@@ -16,21 +13,22 @@ public class Triangle
         this.v2 = v2;
     }
 
-    public Vector4 GetNormal()
+    public Vector4 CalculateNormal()
     {
-        Vector3 edge1 = new Vector3(v1.localPosition.x - v0.localPosition.x, v1.localPosition.y - v0.localPosition.y, v1.localPosition.z - v0.localPosition.z);
-        Vector3 edge2 = new Vector3(v2.localPosition.x - v0.localPosition.x, v2.localPosition.y - v0.localPosition.y, v2.localPosition.z - v0.localPosition.z);
+        Vector3 edge1 = new Vector3(v1.position.x - v0.position.x, v1.position.y - v0.position.y, v1.position.z - v0.position.z);
+        Vector3 edge2 = new Vector3(v2.position.x - v0.position.x, v2.position.y - v0.position.y, v2.position.z - v0.position.z);
         Vector3 norm = Vector3.Cross(edge1, edge2).Normalize();
 
         SetNormal(new Vector4(norm.x, norm.y, norm.z, 0));
         return normal;
     }
 
+    // TODO:: Use clone to make vertex normals..?
     public void SetNormal(Vector4 normal)
     {
-        this.normal = normal;
-        this.v0.normal = normal;
-        this.v1.normal = normal;
-        this.v2.normal = normal;
+        this.normal    = new Vector4(normal.x, normal.y, normal.z, normal.w);
+        this.v0.normal = new Vector4(normal.x, normal.y, normal.z, normal.w);
+        this.v1.normal = new Vector4(normal.x, normal.y, normal.z, normal.w);
+        this.v2.normal = new Vector4(normal.x, normal.y, normal.z, normal.w);
     }
 }

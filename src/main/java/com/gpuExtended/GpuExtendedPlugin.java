@@ -978,7 +978,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void dispatchModelSortingComputeShader(int computeShader, int models, GLBuffer modelBuffer)
 	{
 		glUseProgram(computeShader);
-
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, modelBuffer.glBufferId); // modelbuffer_in
 
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderVertexBuffer.glBufferId); // vertex out
@@ -1761,9 +1760,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
 
-			dynamicMesh.Clear();
-			int len = sceneUploader.AddGenericMesh(model, dynamicMesh, 0);
-			dynamicMesh.PushToBuffers(vertexBuffer, uvBuffer, normalBuffer);
+			int len = sceneUploader.PushDynamicMesh(model, vertexBuffer, uvBuffer, normalBuffer);
 
 			GpuIntBuffer b = bufferForTriangles(len / 3);
 
