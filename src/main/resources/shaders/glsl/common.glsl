@@ -14,6 +14,15 @@ ivec4 rotate(ivec4 vertex, int orientation) {
   return ivec4(x, vertex.y, z, vertex.w);
 }
 
+vec4 rotate(vec4 vertex, int orientation) {
+  float rad = orientation * UNIT;
+  float s = sin(rad);
+  float c = cos(rad);
+  float x = vertex.z * s + vertex.x * c;
+  float z = vertex.z * c - vertex.x * s;
+  return vec4(x, vertex.y, z, vertex.w);
+}
+
 vec3 rotatef(vec3 vertex, int orientation) {
   float rad = orientation * UNIT;
   float s = sin(rad);

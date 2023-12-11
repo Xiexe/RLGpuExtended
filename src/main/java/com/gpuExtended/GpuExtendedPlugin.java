@@ -296,6 +296,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environment.ambientColor = new Color(0.5f,0.4f,0.4f);
 				environment.fogColor = new Color(1,0.8f,0.8f);
 				environment.AddDirectionalLight(new Vector4(0.5, 0.75, 0.5, 0), new Color(1, 1, 1), 1);
+				environment.ReloadLights();
 
 				if(Instance == null)
 				{
@@ -1760,6 +1761,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
 
+			boolean hasUv = model.getFaceTextures() != null;
 			int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
 
 			GpuIntBuffer b = bufferForTriangles(len / 3);
@@ -1767,15 +1769,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			b.ensureCapacity(8);
 			IntBuffer buffer = b.getBuffer();
 			buffer.put(tempOffset);
-			buffer.put(tempUvOffset);
+			buffer.put(hasUv ? tempUvOffset : -1);
 			buffer.put(len / 3);
 			buffer.put(targetBufferOffset);
 			buffer.put((model.getRadius() << 12) | orientation);
 			buffer.put(x + client.getCameraX2()).put(y + client.getCameraY2()).put(z + client.getCameraZ2());
 
 			tempOffset += len;
-			tempUvOffset += len;
 			targetBufferOffset += len;
+			if(hasUv) {
+				tempUvOffset += len;
+			}
 		}
 	}
 

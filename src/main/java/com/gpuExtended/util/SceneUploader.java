@@ -3,6 +3,8 @@ package com.gpuExtended.util;
 
 import com.google.common.base.Stopwatch;
 import java.io.IOException;
+import java.nio.FloatBuffer;
+import java.util.Collection;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -79,14 +81,18 @@ public class SceneUploader
 
 		PrepareScene(scene);
 		stopwatch.stop();
-		log.debug("Scene preparation time: {}", stopwatch);
+		log.debug("Scene Preparation time: {}", stopwatch);
 
 		stopwatch = Stopwatch.createStarted();
 		PopulateSceneGeometry(scene, vertexBuffer, uvBuffer, normalBuffer);
 		stopwatch.stop();
 		log.debug("Scene Generate Meshes: {}", stopwatch);
 
-		log.debug("Push Mesh Buffers: {}", stopwatch);
+		stopwatch = Stopwatch.createStarted();
+		ComputeSmoothNormals(terrainSharedVertexMap, normalBuffer);
+		stopwatch.stop();
+		log.debug("Generate Terrain Normals: {}", stopwatch);
+
 		stopwatchEntire.stop();
 		log.debug("Scene Upload Total Time: {}", stopwatchEntire);
 	}
@@ -131,12 +137,13 @@ public class SceneUploader
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
 
-			int len = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
-
-			//TODO:: Refactor this to be in the method.
-			sceneTilePaint.setBufferLen(len);
-			offset += len;
-			uvoffset += len;
+			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			sceneTilePaint.setBufferLen(vertexCount);
+			offset += vertexCount;
+			if (sceneTilePaint.getTexture() != -1)
+			{
+				uvoffset += vertexCount;
+			}
 		}
 
 		SceneTileModel sceneTileModel = tile.getSceneTileModel();
@@ -152,12 +159,13 @@ public class SceneUploader
 				sceneTileModel.setUvBufferOffset(-1);
 			}
 
-			int len = PushTerrainDetailedTile(sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), 0, 0);
-
-			//TODO:: Refactor this to be in the method.
-			sceneTileModel.setBufferLen(len);
-			offset += len;
-			uvoffset += len;
+			int vertexCount = PushTerrainDetailedTile(sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), 0, 0);
+			sceneTileModel.setBufferLen(vertexCount);
+			offset += vertexCount;
+			if (sceneTileModel.getTriangleTextureId() != null)
+			{
+				uvoffset += vertexCount;
+			}
 		}
 
 		WallObject wallObject = tile.getWallObject();
@@ -244,17 +252,18 @@ public class SceneUploader
 		uniqueModels++;
 
 		Point tilePoint = tile.getSceneLocation();
-		int len = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, staticSharedVertexMap);
-		offset += len * 3;
-		if (model.getFaceTextures() != null) {
-			uvoffset += len * 3;
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, staticSharedVertexMap);
+		offset += vertexCount;
+		if (model.getFaceTextures() != null)
+		{
+			uvoffset += vertexCount;
 		}
 	}
 
 	public int PushDynamicModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
-		int triCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0,false, dynamicSharedVertexMap);
-		return triCount * 3;
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0,false, dynamicSharedVertexMap);
+		return vertexCount;
 	}
 
 	// Map Tiles
@@ -329,34 +338,32 @@ public class SceneUploader
 			uvBuffer.put(tex, vertexCx, vertexCz, vertexCy);
 			uvBuffer.put(tex, vertexBx, vertexBz, vertexBy);
 		}
-		else
-		{
-			uvBuffer.put(0,0,0,0);
-			uvBuffer.put(0,0,0,0);
-			uvBuffer.put(0,0,0,0);
-			uvBuffer.put(0,0,0,0);
-		}
-
-		int currentNormalBufferOffset = GetCurrentBufferArrayOffset(normalBuffer);
-		Vector3 normA = CalculateBaseNormal(vertexAx, vertexAz, vertexAy, vertexBx, vertexBz, vertexBy, vertexCx, vertexCz, vertexCy);
-		Vector3 normB = CalculateBaseNormal(vertexDx, vertexDz, vertexDy, vertexCx, vertexCz, vertexCy, vertexBx, vertexBz, vertexBy);
-		normalBuffer.put(normA.x, normA.y, normA.z, 1);
-		normalBuffer.put(normA.x, normA.y, normA.z, 1);
-		normalBuffer.put(normA.x, normA.y, normA.z, 1);
-
-		normalBuffer.put(normB.x, normB.y, normB.z, 1);
-		normalBuffer.put(normB.x, normB.y, normB.z, 1);
-		normalBuffer.put(normB.x, normB.y, normB.z, 1);
 
 		int tx = tileX * Perspective.LOCAL_TILE_SIZE;
 		int ty = tileY * Perspective.LOCAL_TILE_SIZE;
-		terrainSharedVertexMap.put(new Vector3(vertexAx + tx, vertexAz, vertexAy + ty), currentNormalBufferOffset + 0*4);
-		terrainSharedVertexMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), currentNormalBufferOffset + 1*4);
-		terrainSharedVertexMap.put(new Vector3(vertexCx + tx, vertexCz, vertexCy + ty), currentNormalBufferOffset + 2*4);
 
-		terrainSharedVertexMap.put(new Vector3(vertexDx + tx, vertexDz, vertexDy + ty), currentNormalBufferOffset + 3*4);
-		terrainSharedVertexMap.put(new Vector3(vertexCx + tx, vertexCz, vertexCy + ty), currentNormalBufferOffset + 4*4);
-		terrainSharedVertexMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), currentNormalBufferOffset + 5*4);
+		Vector3 normA = CalculateBaseNormal(vertexAx, vertexAz, vertexAy, vertexBx, vertexBz, vertexBy, vertexCx, vertexCz, vertexCy);
+		Vector3 normB = CalculateBaseNormal(vertexDx, vertexDz, vertexDy, vertexCx, vertexCz, vertexCy, vertexBx, vertexBz, vertexBy);
+
+		int startOfTileBufferIndex = normalBuffer.getBuffer().position();
+		normalBuffer.put(normA.x, normA.y, normA.z, 0);
+		normalBuffer.put(normA.x, normA.y, normA.z, 0);
+		normalBuffer.put(normA.x, normA.y, normA.z, 0);
+
+		normalBuffer.put(normB.x, normB.y, normB.z, 0);
+		normalBuffer.put(normB.x, normB.y, normB.z, 0);
+		normalBuffer.put(normB.x, normB.y, normB.z, 0);
+
+		terrainSharedVertexMap.put(new Vector3(vertexAx + tx, vertexAz, vertexAy + ty), startOfTileBufferIndex + 0*4);
+		terrainSharedVertexMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), startOfTileBufferIndex + 1*4);
+		terrainSharedVertexMap.put(new Vector3(vertexCx + tx, vertexCz, vertexCy + ty), startOfTileBufferIndex + 2*4);
+
+		terrainSharedVertexMap.put(new Vector3(vertexDx + tx, vertexDz, vertexDy + ty), startOfTileBufferIndex + 3*4);
+		terrainSharedVertexMap.put(new Vector3(vertexCx + tx, vertexCz, vertexCy + ty), startOfTileBufferIndex + 4*4);
+		terrainSharedVertexMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), startOfTileBufferIndex + 5*4);
+
+		// 0    3    6    11   15   19   | 23   27   31   35   39   43
+		// xyzw xyzw xyzw xyzw xyzw xyzw | xyzw xyzw xyzw xyzw xyzw xyzw
 
 		return 6;
 	}
@@ -386,7 +393,7 @@ public class SceneUploader
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
 
-		int len = 0;
+		int vertexCount = 0;
 		for (int i = 0; i < faceCount; ++i)
 		{
 			final int triangleA = faceX[i];
@@ -428,30 +435,30 @@ public class SceneUploader
 					uvBuffer.put(tex, offsetX + 128, vertexYB, offsetZ);
 					uvBuffer.put(tex, offsetX, vertexYC, offsetZ + 128);
 				}
-			}
-			else
-			{
-				uvBuffer.put(0,0,0,0);
-				uvBuffer.put(0,0,0,0);
-				uvBuffer.put(0,0,0,0);
+				else
+				{
+					uvBuffer.put(0, 0, 0, 0f);
+					uvBuffer.put(0, 0, 0, 0f);
+					uvBuffer.put(0, 0, 0, 0f);
+				}
 			}
 
-			int currentNormalBufferOffset = GetCurrentBufferArrayOffset(normalBuffer);
+			int startOfTileBufferIndex = normalBuffer.getBuffer().position();
 			Vector3 norm = CalculateBaseNormal(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, vertexXB + offsetX, vertexYB, vertexZB + offsetZ, vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
-			normalBuffer.put(norm.x, norm.y, norm.z, 1);
-			normalBuffer.put(norm.x, norm.y, norm.z, 1);
-			normalBuffer.put(norm.x, norm.y, norm.z, 1);
+			normalBuffer.put(norm.x, norm.y, norm.z, 0);
+			normalBuffer.put(norm.x, norm.y, norm.z, 0);
+			normalBuffer.put(norm.x, norm.y, norm.z, 0);
 
 			int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
 			int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-			terrainSharedVertexMap.put(new Vector3(vertexXA + tx, vertexYA, vertexZA + tz), currentNormalBufferOffset + 0*4);
-			terrainSharedVertexMap.put(new Vector3(vertexXB + tx, vertexYB, vertexZB + tz), currentNormalBufferOffset + 1*4);
-			terrainSharedVertexMap.put(new Vector3(vertexXC + tx, vertexYC, vertexZC + tz), currentNormalBufferOffset + 2*4);
+			terrainSharedVertexMap.put(new Vector3(vertexXA + tx, vertexYA, vertexZA + tz), startOfTileBufferIndex + 0*4);
+			terrainSharedVertexMap.put(new Vector3(vertexXB + tx, vertexYB, vertexZB + tz), startOfTileBufferIndex + 1*4);
+			terrainSharedVertexMap.put(new Vector3(vertexXC + tx, vertexYC, vertexZC + tz), startOfTileBufferIndex + 2*4);
 
-			len += 3;
+			vertexCount += 3;
 		}
 
-		return len;
+		return vertexCount;
 	}
 
 	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileX, int tileY, boolean recomputeNormals, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
@@ -491,6 +498,7 @@ public class SceneUploader
 		final byte overrideSat = model.getOverrideSaturation();
 		final byte overrideLum = model.getOverrideLuminance();
 
+		int vertexCount = 0;
 		for (int tri = 0; tri < triCount; tri++)
 		{
 			int color1 = color1s[tri];
@@ -506,14 +514,18 @@ public class SceneUploader
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
 
-				uvBuffer.put(0, 0, 0, 0);
-				uvBuffer.put(0, 0, 0, 0);
-				uvBuffer.put(0, 0, 0, 0);
+				if (faceTextures != null)
+				{
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+				}
 
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
+				vertexCount += 3;
 				continue;
 			}
 
@@ -564,21 +576,21 @@ public class SceneUploader
 					uvBuffer.put(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
 					uvBuffer.put(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
 				}
-			}
-			else
-			{
-				uvBuffer.put(0, 0, 0, 0);
-				uvBuffer.put(0, 0, 0, 0);
-				uvBuffer.put(0, 0, 0, 0);
+				else
+				{
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+				}
 			}
 
-			int currentNormalBufferOffset = GetCurrentBufferArrayOffset(normalBuffer);
+			int currentNormalBufferOffset = normalBuffer.getBuffer().position() / (triCount * 3);
 			if(recomputeNormals)
 			{
 				Vector3 triangleNormal = CalculateBaseNormal(vertexX[i0],  vertexY[i0], vertexZ[i0], vertexX[i1],  vertexY[i1], vertexZ[i1], vertexX[i2],  vertexY[i2], vertexZ[i2]);
-				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 1);
-				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 1);
-				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 1);
+				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 0);
+				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 0);
+				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 0);
 
 				int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
 				int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
@@ -602,9 +614,11 @@ public class SceneUploader
 					normalBuffer.put(0, 0, 0, 0);
 				}
 			}
+
+			vertexCount += 3;
 		}
 
-		return triCount;
+		return vertexCount;
 	}
 
 	public Vector3 CalculateBaseNormal(float p0x, float p0y, float p0z, float p1x, float p1y, float p1z, float p2x, float p2y, float p2z)
@@ -616,29 +630,42 @@ public class SceneUploader
 		return norm;
 	}
 
-	public void ComputeSmoothNormals(ArrayListMultimap<Vector3, Integer> sharedVertexPositionMap)
+	public void ComputeSmoothNormals(ArrayListMultimap<Vector3, Integer> sharedVertexPositionMap, GpuFloatBuffer normalBuffer)
 	{
-//		for (Collection<Vertex> sharedVerts : sharedVertexPositionMap.asMap().values())
-//		{
-//			if (sharedVerts.isEmpty()) continue;
-//
-//			Vector3 avgNormal = new Vector3(0, 0, 0);
-//			for (Vertex vertex : sharedVerts)
-//			{
-//				avgNormal.x += vertex.normal.x;
-//				avgNormal.y += vertex.normal.y;
-//				avgNormal.z += vertex.normal.z;
-//			}
-//
-//			avgNormal.x /= sharedVerts.size();
-//			avgNormal.y /= sharedVerts.size();
-//			avgNormal.z /= sharedVerts.size();
-//
-//			for (Vertex vertex : sharedVerts)
-//			{
-//				vertex.SetNormal(new Vector3(avgNormal.x, avgNormal.y, avgNormal.z));
-//			}
-//		}
+		FloatBuffer buffer = normalBuffer.getBuffer();
+		for (Collection<Integer> sharedVerts : sharedVertexPositionMap.asMap().values())
+		{   // look at the world position
+
+			float avgNormalX = 0;
+			float avgNormalY = 0;
+			float avgNormalZ = 0;
+
+			// loop the verts that share that position
+			for (Integer indexToVertexAtLocation : sharedVerts)
+			{
+				int index = indexToVertexAtLocation;
+				float normalx = buffer.get(index + 0);
+				float normaly = buffer.get(index + 1);
+				float normalz = buffer.get(index + 2);
+
+				avgNormalX += normalx;
+				avgNormalY += normaly;
+				avgNormalZ += normalz;
+			}
+
+			avgNormalX /= sharedVerts.size();
+			avgNormalY /= sharedVerts.size();
+			avgNormalZ /= sharedVerts.size();
+
+			// loop the verts that share that position
+			for (Integer vertexStartBufferIndex : sharedVerts)
+			{
+				int index = vertexStartBufferIndex;
+				buffer.put(index + 0, avgNormalX);
+				buffer.put(index + 1, avgNormalY);
+				buffer.put(index + 2, avgNormalZ);
+			}
+		}
 	}
 
 	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
@@ -738,21 +765,5 @@ public class SceneUploader
 				}
 			}
 		}
-	}
-
-	private int GetCurrentBufferArrayOffset(GpuIntBuffer buffer)
-	{
-		if(!buffer.getBuffer().hasArray())
-			return 0;
-		else
-			return buffer.getBuffer().arrayOffset();
-	}
-
-	private int GetCurrentBufferArrayOffset(GpuFloatBuffer buffer)
-	{
-		if(!buffer.getBuffer().hasArray())
-			return 0;
-		else
-			return buffer.getBuffer().arrayOffset();
 	}
 }

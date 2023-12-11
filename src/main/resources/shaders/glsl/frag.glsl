@@ -46,7 +46,8 @@ void main() {
 
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
 //    s.albedo.rgb = mix(s.albedo.rgb, vec3(heightFog)*vec3(0.1, 0.25, 0.1) , heightFog);
-    //finalColor = s.normal.xyz;
+//    finalColor = s.normal.xyz;
+//    finalColor = s.albedo.rgb;
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

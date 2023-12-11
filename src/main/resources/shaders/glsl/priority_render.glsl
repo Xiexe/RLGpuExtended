@@ -209,6 +209,38 @@ ivec4 hillskew_vertex(ivec4 v, int hillskew, int y, int plane) {
   }
 }
 
+void undoVanillaShading(inout ivec4 vertex, vec3 unrotatedNormal) {
+  const vec3 LIGHT_DIR_MODEL = vec3(0.57735026, 0.57735026, 0.57735026);
+  // subtracts the X lowest lightness levels from the formula.
+  // helps keep darker colors appropriately dark
+  const int IGNORE_LOW_LIGHTNESS = 3;
+  // multiplier applied to vertex' lightness value.
+  // results in greater lightening of lighter colors
+  const float LIGHTNESS_MULTIPLIER = 3.f;
+  // the minimum amount by which each color will be lightened
+  const int BASE_LIGHTEN = 10;
+
+  int hsl = vertex.w;
+  int saturation = hsl >> 7 & 0x7;
+  int lightness = hsl & 0x7F;
+  float vanillaLightDotNormals = dot(LIGHT_DIR_MODEL, unrotatedNormal);
+  if (vanillaLightDotNormals > 0) {
+    vanillaLightDotNormals /= length(unrotatedNormal);
+    float lighten = max(0, lightness - IGNORE_LOW_LIGHTNESS);
+    lightness += int((lighten * LIGHTNESS_MULTIPLIER + BASE_LIGHTEN - lightness) * vanillaLightDotNormals);
+  }
+  int maxLightness;
+  #if LEGACY_GREY_COLORS
+    maxLightness = 55;
+  #else
+    maxLightness = int(127 - 72 * pow(saturation / 7., .05));
+  #endif
+    lightness = min(lightness, maxLightness);
+  hsl &= ~0x7F;
+  hsl |= lightness;
+  vertex.w = hsl;
+}
+
 void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDistance, ivec4 thisrvA, ivec4 thisrvB, ivec4 thisrvC) {
   int size = minfo.size;
 
@@ -236,6 +268,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
 
     // position into scene
     ivec4 pos = ivec4(minfo.x, minfo.y, minfo.z, 0);
+
     thisrvA += pos;
     thisrvB += pos;
     thisrvC += pos;
@@ -251,6 +284,36 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vout[outOffset + myOffset * 3] = thisrvA;
     vout[outOffset + myOffset * 3 + 1] = thisrvB;
     vout[outOffset + myOffset * 3 + 2] = thisrvC;
+
+    vec4 normA, normB, normC;
+
+    // Grab vertex normals from the correct buffer
+    if (flags < 0)
+    {
+      normA = normal[offset + localId * 3    ];
+      normB = normal[offset + localId * 3 + 1];
+      normC = normal[offset + localId * 3 + 2];
+    }
+    else
+    {
+      normA = tempnormal[offset + localId * 3    ];
+      normB = tempnormal[offset + localId * 3 + 1];
+      normC = tempnormal[offset + localId * 3 + 2];
+    }
+
+    normA = vec4(normalize(normA.xyz), normA.w);
+    normB = vec4(normalize(normB.xyz), normB.w);
+    normC = vec4(normalize(normC.xyz), normC.w);
+
+    vec4 normrvA, normrvB, normrvC;
+
+    normrvA = rotate2(normA, orientation);
+    normrvB = rotate2(normB, orientation);
+    normrvC = rotate2(normC, orientation);
+
+    normalout[outOffset + myOffset * 3]     = normrvA;
+    normalout[outOffset + myOffset * 3 + 1] = normrvB;
+    normalout[outOffset + myOffset * 3 + 2] = normrvC;
 
     if (toffset < 0)
     {
@@ -278,35 +341,5 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       uvout[outOffset + myOffset * 3 + 1] = vec4(texB.x, rotatef(texB.yzw, orientation) + pos.xyz);
       uvout[outOffset + myOffset * 3 + 2] = vec4(texC.x, rotatef(texC.yzw, orientation) + pos.xyz);
     }
-
-    vec4 normA, normB, normC;
-
-    // Grab vertex normals from the correct buffer
-    if (flags < 0)
-    {
-        normA = normal[offset + localId * 3    ];
-        normB = normal[offset + localId * 3 + 1];
-        normC = normal[offset + localId * 3 + 2];
-    }
-    else
-    {
-        normA = tempnormal[offset + localId * 3    ];
-        normB = tempnormal[offset + localId * 3 + 1];
-        normC = tempnormal[offset + localId * 3 + 2];
-    }
-
-    normA = vec4(normalize(normA.xyz), normA.w);
-    normB = vec4(normalize(normB.xyz), normB.w);
-    normC = vec4(normalize(normC.xyz), normC.w);
-
-    vec4 normrvA, normrvB, normrvC;
-
-    normrvA = rotate2(normA, orientation);
-    normrvB = rotate2(normB, orientation);
-    normrvC = rotate2(normC, orientation);
-
-    normalout[outOffset + myOffset * 3]     = normrvA;
-    normalout[outOffset + myOffset * 3 + 1] = normrvB;
-    normalout[outOffset + myOffset * 3 + 2] = normrvC;
   }
 }
