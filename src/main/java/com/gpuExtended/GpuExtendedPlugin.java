@@ -202,9 +202,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private final GLBuffer uniformBuffer = new GLBuffer("uniform buffer");
 
-	private GpuIntBuffer vertexBuffer;
-	private GpuFloatBuffer uvBuffer;
-	private GpuFloatBuffer normalBuffer;
+	public GpuIntBuffer vertexBuffer;
+	public GpuFloatBuffer uvBuffer;
+	public GpuFloatBuffer normalBuffer;
 
 	private GpuIntBuffer modelBufferUnordered;
 	private GpuIntBuffer modelBufferSmall;
@@ -1501,7 +1501,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		GpuFloatBuffer uvBuffer = new GpuFloatBuffer();
 		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
 
-		sceneUploader.upload(scene, vertexBuffer, uvBuffer, normalBuffer);
+		sceneUploader.UploadScene(scene, vertexBuffer, uvBuffer, normalBuffer);
 
 		vertexBuffer.flip();
 		uvBuffer.flip();
@@ -1760,7 +1760,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
 
-			int len = sceneUploader.PushDynamicMesh(model, vertexBuffer, uvBuffer, normalBuffer);
+			int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
 
 			GpuIntBuffer b = bufferForTriangles(len / 3);
 

@@ -42,31 +42,6 @@ public class Mesh
     }
 
     // TODO:: blend color
-    public void ComputeSmoothNormals()
-    {
-        for (Collection<Vertex> sharedVerts : sharedVertexPositionMap.asMap().values())
-        {
-            if (sharedVerts.isEmpty()) continue;
-
-            Vector3 avgNormal = new Vector3(0, 0, 0);
-            for (Vertex vertex : sharedVerts)
-            {
-                avgNormal.x += vertex.normal.x;
-                avgNormal.y += vertex.normal.y;
-                avgNormal.z += vertex.normal.z;
-            }
-
-            avgNormal.x /= sharedVerts.size();
-            avgNormal.y /= sharedVerts.size();
-            avgNormal.z /= sharedVerts.size();
-
-            for (Vertex vertex : sharedVerts)
-            {
-                vertex.SetNormal(new Vector3(avgNormal.x, avgNormal.y, avgNormal.z));
-            }
-        }
-    }
-
     public void PushToBuffers(GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
     {
         vertexBuffer.ensureCapacity(this.triangles.size() * 12);
