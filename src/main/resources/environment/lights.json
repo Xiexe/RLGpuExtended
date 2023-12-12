@@ -1,13 +1,25 @@
 {
-  "test" : {
-    "type": 1,
-    "color": {"r": 1, "g": 1, "b": 1},
-    "intensity": 1,
-    "radius": 10,
+  "TORCHES" : {
+    "type": 2,
+    "color": {
+      "r": 1,
+      "g": 0.52,
+      "b": 0
+    },
+    "position": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "intensity": 0.5,
+    "radius": 2,
     "animation": 1,
-    "models": [],
-    "tiles": [
-      [3124, 3164, 0]
-    ]
+    "decorations": [
+      196,
+      197
+    ],
+    "gameObjects": [],
+    "projectiles": [],
+    "tiles": []
   }
 }

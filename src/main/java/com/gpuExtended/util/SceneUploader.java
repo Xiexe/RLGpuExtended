@@ -12,6 +12,7 @@ import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.rendering.*;
+import com.gpuExtended.scene.Environment;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -28,6 +29,7 @@ import net.runelite.api.SceneTilePaint;
 import net.runelite.api.Tile;
 import net.runelite.api.WallObject;
 import com.gpuExtended.regions.Regions;
+import net.runelite.api.coords.WorldPoint;
 
 @Singleton
 @Slf4j
@@ -71,10 +73,12 @@ public class SceneUploader
 		offset = 0;
 		uvoffset = 0;
 		uniqueModels = 0;
+
 		terrainSharedVertexMap = ArrayListMultimap.create();
 		staticSharedVertexMap = ArrayListMultimap.create();
 		dynamicSharedVertexMap = ArrayListMultimap.create();
 
+		GpuExtendedPlugin.Instance.environment.ClearLightBuffer();
 		vertexBuffer.clear();
 		normalBuffer.clear();
 		uvBuffer.clear();
@@ -113,11 +117,22 @@ public class SceneUploader
 				}
 			}
 		}
+
+		GpuExtendedPlugin.Instance.environment.UpdateLightBuffer();
 	}
 
 	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
+		Environment env = GpuExtendedPlugin.Instance.environment;
+		WorldPoint worldLocation = tile.getWorldLocation();
 		Point tilePoint = tile.getSceneLocation();
+//		int[] location = new int[] { worldLocation.getX(), worldLocation.getY(), worldLocation.getPlane() };
+//		if(env.tileLights.containsKey(location))
+//		{
+//			env.PushLightToBuffer(env.tileLights.get(location), worldLocation.getX(), 0, worldLocation.getY(), worldLocation.getPlane());
+//			System.out.println("Found light and world location!");
+//		}
+
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
 		{   // draw the tile underneath the bridge.
@@ -208,7 +223,22 @@ public class SceneUploader
 			{
 				PushStaticModel((Model) renderable2, tile, vertexBuffer, uvBuffer, normalBuffer);
 			}
+
+			int decorativeObjectId = decorativeObject.getId();
+			if(env.decorationLights.containsKey(decorativeObjectId))
+			{
+				System.out.println("Placing light for Decoration ID : " + decorativeObjectId + " | World Location: " + worldLocation.getX() + ", " + worldLocation.getPlane() + ", " + worldLocation.getY() + " | Model Z: " + decorativeObject.getZ());
+				env.PushLightToBuffer(
+					env.decorationLights.get(decorativeObjectId),
+					worldLocation.getX(),
+					decorativeObject.getZ(),
+					worldLocation.getY(),
+					worldLocation.getPlane(),
+					decorativeObject.getConfig()
+				);
+			}
 		}
+
 
 		GameObject[] gameObjects = tile.getGameObjects();
 		for (GameObject gameObject : gameObjects)
@@ -222,6 +252,11 @@ public class SceneUploader
 			if (renderable instanceof Model)
 			{
 				PushStaticModel((Model) gameObject.getRenderable(), tile, vertexBuffer, uvBuffer, normalBuffer);
+			}
+
+			if(env.gameObjectLights.containsKey(gameObject.getId()))
+			{
+				System.out.println("Found Game Object that should have a light!");
 			}
 		}
 	}
@@ -252,7 +287,7 @@ public class SceneUploader
 		uniqueModels++;
 
 		Point tilePoint = tile.getSceneLocation();
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, staticSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, true, staticSharedVertexMap);
 		offset += vertexCount;
 		if (model.getFaceTextures() != null)
 		{
@@ -262,7 +297,7 @@ public class SceneUploader
 
 	public int PushDynamicModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0,false, dynamicSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0,false, false, dynamicSharedVertexMap);
 		return vertexCount;
 	}
 
@@ -461,7 +496,7 @@ public class SceneUploader
 		return vertexCount;
 	}
 
-	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileX, int tileY, boolean recomputeNormals, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
+	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileX, int tileY, boolean recomputeNormals, boolean forceFlatNormals, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
 	{
 		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
 		vertexBuffer.ensureCapacity(triCount * 12);
@@ -603,9 +638,9 @@ public class SceneUploader
 				// Push Normal Directions
 				if (normalX != null)
 				{
-					normalBuffer.put(normalX[i0],  normalY[i0], normalZ[i0], 0);
-					normalBuffer.put(normalX[i1],  normalY[i1], normalZ[i1], 0);
-					normalBuffer.put(normalX[i2],  normalY[i2], normalZ[i2], 0);
+					normalBuffer.put(normalX[i0],  normalY[i0], normalZ[i0], forceFlatNormals ? 1:0);
+					normalBuffer.put(normalX[i1],  normalY[i1], normalZ[i1], forceFlatNormals ? 1:0);
+					normalBuffer.put(normalX[i2],  normalY[i2], normalZ[i2], forceFlatNormals ? 1:0);
 				}
 				else
 				{
@@ -764,6 +799,20 @@ public class SceneUploader
 					}
 				}
 			}
+		}
+	}
+
+	public static int getBakedOrientation(int config) {
+		switch (config >> 6 & 3) {
+			case 0: // Rotated 180 degrees
+				return 1024;
+			case 1: // Rotated 90 degrees counter-clockwise
+				return 1536;
+			case 2: // Not rotated
+			default:
+				return 0;
+			case 3: // Rotated 90 degrees clockwise
+				return 512;
 		}
 	}
 }

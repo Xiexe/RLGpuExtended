@@ -42,10 +42,12 @@ public class Light
     public LightAnimation animation;
 
     public Color color = new Color(1,1,1);
-    public Vector3 position = new Vector3(0,0,0);
+    public Vector3 position = new Vector3(0,0,0); // used for offsets
     public Vector3 direction = new Vector3(0,0,0);
     public float intensity = 1;
     public float radius = 2;
     public int[][] tiles = new int[0][0];
-    public int[] models = new int[0];
+    public int[] decorations = new int[0];
+    public int[] gameObjects = new int[0];
+    public int[] projectiles = new int[0];
 }

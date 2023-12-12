@@ -30,6 +30,8 @@ public class Uniforms
     public int LightColor;
     public int AmbientColor;
     public int BlockLights;
+    public int SceneOffsetX;
+    public int SceneOffsetZ;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -49,6 +51,8 @@ public class Uniforms
         LightDirection = glGetUniformLocation(shader, "lightDirection");
         LightColor = glGetUniformLocation(shader, "lightColor");
         AmbientColor = glGetUniformLocation(shader, "ambientColor");
+        SceneOffsetX = glGetUniformLocation(shader, "sceneOffsetX");
+        SceneOffsetZ = glGetUniformLocation(shader, "sceneOffsetZ");
 
         BlockMain = glGetUniformBlockIndex(shader, "uniforms");
         BlockLights = glGetUniformBlockIndex(shader, "lightUniforms");

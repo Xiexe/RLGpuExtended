@@ -159,7 +159,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
 
 	private Uniforms uniforms;
-	private Environment environment;
+	public Environment environment;
 
 	private int glProgram;
 	private int glComputeProgram;
@@ -299,6 +299,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environment.ambientColor = new Color(0.5f,0.4f,0.4f);
 				environment.fogColor = new Color(1,0.8f,0.8f);
 				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
+				environment.ReloadLights();
 
 				if(Instance == null)
 				{
@@ -1269,6 +1270,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glUniform1i(uniforms.ExpandedMapLoadingChunks, client.getExpandedMapLoading());
 
 			glUniform3f(uniforms.AmbientColor, environment.ambientColor.r, environment.ambientColor.g, environment.ambientColor.b);
+			glUniform1i(uniforms.SceneOffsetX, client.getScene().getBaseX());
+			glUniform1i(uniforms.SceneOffsetZ, client.getScene().getBaseY());
 //
 //			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
 //			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
@@ -1519,11 +1522,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
 
 		sceneUploader.UploadScene(scene, vertexBuffer, uvBuffer, normalBuffer);
-		try {
-			environment.ReloadLights(scene);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
 
 		vertexBuffer.flip();
 		uvBuffer.flip();
