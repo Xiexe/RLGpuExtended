@@ -19,78 +19,92 @@ public class FileWatcher implements Runnable
         HotReload
     }
 
-    private Path srcPath; // src / main / resources / shaders
-    private Path buildPath; // build / resources / main / shaders
+    private ArrayList<Path> srcPaths = new ArrayList<>(); // src / main / resources /
+    private ArrayList<Path> buildPaths = new ArrayList<>(); // build / resources / main /
 
     private final Map<Path, Long> lastModifiedTimes = new HashMap<>();
     private final long debounceMillis = 500;
 
-    public FileWatcher(String path) {
-        URL url = FileWatcher.class.getClassLoader().getResource("shaders/glsl/");
-        File shaderDir = null;
-        try
-        {
-            shaderDir = new File(url.toURI());
-        }
-        catch (URISyntaxException e)
-        {
-            shaderDir = new File(url.getPath());
-        }
+    private ArrayList<String> pathsToWatch = new ArrayList<>();
 
-        buildPath = Paths.get(shaderDir.getAbsolutePath());
-        srcPath = Paths.get(shaderDir.getAbsolutePath().replace("build\\resources\\main", "src\\main\\resources"));
+    public FileWatcher()
+    {
+        pathsToWatch.add("shaders/glsl");
+        pathsToWatch.add("environment");
 
-        System.out.println("Src Path: " + srcPath);
-        System.out.println("Build Path: " + buildPath);
+        for (String path : pathsToWatch)
+        {
+            URL url = FileWatcher.class.getClassLoader().getResource(path);
+            File pathDir = null;
+            try
+            {
+                pathDir = new File(url.toURI());
+            }
+            catch (URISyntaxException e)
+            {
+                pathDir = new File(url.getPath());
+            }
+
+            buildPaths.add(Paths.get(pathDir.getAbsolutePath()));
+            srcPaths.add(Paths.get(pathDir.getAbsolutePath().replace("build\\resources\\main", "src\\main\\resources")));
+        }
     }
 
     @Override
     public void run() {
-        try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
-            srcPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
+        try (WatchService watchService = FileSystems.getDefault().newWatchService())
+        {
+            for(int i = 0; i < srcPaths.size(); i++)
+            {
+                Path srcPath = srcPaths.get(i);
+                Path buildPath = buildPaths.get(i);
 
-            HashSet<String> changedFiles = new HashSet<String>();
-            while (!Thread.currentThread().isInterrupted()) {
-                WatchKey key;
-                try {
-                    key = watchService.take();
-                } catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt(); // restore interrupted status
-                    break;
-                }
+                srcPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
+                while (!Thread.currentThread().isInterrupted()) {
+                    WatchKey key;
+                    try {
+                        key = watchService.take();
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt(); // restore interrupted status
+                        break;
+                    }
 
-                Thread.sleep(debounceMillis);
+                    Thread.sleep(debounceMillis);
 
-                for (WatchEvent<?> event : key.pollEvents()) {
-                    WatchEvent.Kind<?> kind = event.kind();
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        WatchEvent.Kind<?> kind = event.kind();
 
-                    if(event.context().toString().endsWith("~"))
-                        continue;
+                        if(event.context().toString().endsWith("~"))
+                            continue;
 
-                    if (event.kind() == OVERFLOW)
-                        continue;
+                        if (event.kind() == OVERFLOW)
+                            continue;
 
-                    Path sourceFile = Path.of(srcPath + "\\" + event.context());
-                    Path destFile = Path.of(buildPath + "\\" + event.context());
+                        Path sourceFile = Path.of(srcPath + "\\" + event.context());
+                        Path destFile = Path.of(buildPath + "\\" + event.context());
 
-                    if (kind == StandardWatchEventKinds.ENTRY_MODIFY)
-                    {
-                        long currentTime = System.currentTimeMillis();
-                        Long lastModifiedTime = lastModifiedTimes.get(sourceFile);
+                        if (kind == StandardWatchEventKinds.ENTRY_MODIFY)
+                        {
+                            long currentTime = System.currentTimeMillis();
+                            Long lastModifiedTime = lastModifiedTimes.get(sourceFile);
 
-                        if (lastModifiedTime == null || (currentTime - lastModifiedTime) > debounceMillis) {
-                            lastModifiedTimes.put(sourceFile, currentTime);
-                            System.out.println("File Changed: " + event.context());
-                            Files.copy(sourceFile, destFile, StandardCopyOption.REPLACE_EXISTING);
-                            GpuExtendedPlugin.Instance.Reload(ReloadType.Full);
-                            break;
+                            if (lastModifiedTime == null || (currentTime - lastModifiedTime) > debounceMillis) {
+                                lastModifiedTimes.put(sourceFile, currentTime);
+                                String fileName = event.context().toString();
+
+                                System.out.println("File Changed: " + fileName);
+                                Files.copy(sourceFile, destFile, StandardCopyOption.REPLACE_EXISTING);
+
+                                GpuExtendedPlugin.Instance.Reload(ReloadType.Full);
+                                break;
+                            }
                         }
                     }
-                }
 
-                boolean valid = key.reset();
-                if (!valid) {
-                    break;
+                    boolean valid = key.reset();
+                    if (!valid) {
+                        break;
+                    }
                 }
             }
         } catch (IOException e) {

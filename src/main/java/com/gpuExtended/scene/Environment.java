@@ -57,8 +57,6 @@ public class Environment
                     projectileLights.put(projectileId, light);
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 

@@ -286,6 +286,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			try
 			{
+				if(Instance == null)
+				{
+					Instance = this;
+					Thread fileWatcherThread = new Thread(new FileWatcher());
+					fileWatcherThread.start();
+				}
+
 				client.setDrawCallbacks(this);
 				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
 				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
@@ -300,13 +307,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environment.fogColor = new Color(1,0.8f,0.8f);
 				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
 				environment.ReloadLights();
-
-				if(Instance == null)
-				{
-					Instance = this;
-					Thread fileWatcherThread = new Thread(new FileWatcher("shaders/glsl/"));
-					fileWatcherThread.start();
-				}
 
 				fboSceneHandle = rboSceneHandle = -1; // AA FBO
 				targetBufferOffset = 0;

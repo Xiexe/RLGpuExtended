@@ -62,7 +62,7 @@ void main() {
     heightFog = smoothstep(0.3, -0.1, heightFog);
 
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
-    finalColor = vec3(0,0,0);
+    //finalColor = vec3(0,0,0);
 //    s.albedo.rgb = mix(s.albedo.rgb, vec3(heightFog)*vec3(0.1, 0.25, 0.1) , heightFog);
 
     for(int i = 0; i < LIGHT_COUNT; i++)
@@ -73,35 +73,18 @@ void main() {
 
         light.pos.x = ((light.pos.x - sceneOffsetX) + 0.5f) * TILE_SIZE;
         light.pos.z = ((light.pos.z - sceneOffsetZ) + 0.5f) * TILE_SIZE;
-        light.pos.y = light.pos.y - light.pos.w;
-        light.pos.y -= 180;
+        light.pos.y = light.pos.y - (TILE_SIZE * 1.5);
 
-        switch (light.color.w >> 6 & 3)
-        {
-            case 0: // Rotated 180 degrees
-            break;
-
-            case 1: // Rotated 90 degrees counter-clockwise
-            break;
-
-            case 2: // Not rotated
-            break;
-
-            case 3: // Rotated 90 degrees clockwise
-            break;
-        }
--
-        vec3 direction = (fPosition.xyz - light.pos.xyz);
-        float dist = length(direction) / TILE_SIZE;
+        vec3 dir = light.pos.xyz - fPosition.xyz;
+        float dist = length(dir) / TILE_SIZE;
         if(dist < light.radius)
         {
-            direction = normalize(direction);
-            direction.x = -direction.x;
-            direction.z = -direction.z;
+            dir = normalize(dir);
+            dir.y = -dir.y;
 
             float atten = LinearExponentialAttenuation(dist, light.radius);
-            float ndl = max(dot(s.normal.xyz, direction / dist), 0);
-            finalColor += light.color.rgb * ndl * atten;
+            float ndl = max(dot(s.normal.xyz, dir / dist), 0);
+            finalColor += s.albedo.rgb * light.color.rgb * ndl * atten;
         }
     }
 
