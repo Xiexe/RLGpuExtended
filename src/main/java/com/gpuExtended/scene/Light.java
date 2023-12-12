@@ -1,5 +1,6 @@
 package com.gpuExtended.scene;
 
+import com.google.gson.annotations.SerializedName;
 import com.gpuExtended.rendering.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,18 +15,37 @@ public class Light
 {
     public enum LightType
     {
+        @SerializedName("0")
+        None,
+        @SerializedName("1")
         Directional,
+        @SerializedName("2")
         Point,
-        Spot
+        @SerializedName("3")
+        Spot;
     }
 
-    public LightType type;
-    public Color color;
-    public Vector4 position;
-    public Vector4 direction;
-    public float intensity;
-    public float radius;
-    public int[][] tiles;
-    public int[] models;
-    public String animation;
+    public enum LightAnimation
+    {
+        @SerializedName("0")
+        None,
+        @SerializedName("1")
+        Flicker,
+        @SerializedName("2")
+        Pulse;
+    }
+
+    @SerializedName("type")
+    public LightType type = LightType.None;
+
+    @SerializedName("animation")
+    public LightAnimation animation;
+
+    public Color color = new Color(1,1,1);
+    public Vector3 position = new Vector3(0,0,0);
+    public Vector3 direction = new Vector3(0,0,0);
+    public float intensity = 1;
+    public float radius = 2;
+    public int[][] tiles = new int[0][0];
+    public int[] models = new int[0];
 }

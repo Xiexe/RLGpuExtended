@@ -10,6 +10,7 @@ import java.awt.Image;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -23,6 +24,7 @@ import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.rendering.Color;
 import com.gpuExtended.rendering.Mesh;
+import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Environment;
 import com.gpuExtended.scene.Light;
@@ -43,6 +45,7 @@ import net.runelite.api.SceneTileModel;
 import net.runelite.api.SceneTilePaint;
 import net.runelite.api.Texture;
 import net.runelite.api.TextureProvider;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
@@ -295,8 +298,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environment = new Environment();
 				environment.ambientColor = new Color(0.5f,0.4f,0.4f);
 				environment.fogColor = new Color(1,0.8f,0.8f);
-				environment.AddDirectionalLight(new Vector4(0.5, 0.75, 0.5, 0), new Color(1, 1, 1), 1);
-				environment.ReloadLights();
+				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
 
 				if(Instance == null)
 				{
@@ -391,6 +393,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initShaders();
 				initInterfaceTexture();
 				initUniformBuffer();
+				initLightBuffer();
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -761,6 +764,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		destroyGlBuffer(renderVertexBuffer);
 		destroyGlBuffer(renderUvBuffer);
 		destroyGlBuffer(renderNormalBuffer);
+
+		destroyGlBuffer(environment.renderLightBuffer);
 	}
 
 	private void destroyGlBuffer(GLBuffer glBuffer)
@@ -815,6 +820,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		uniformBuf.flip();
 
 		updateBuffer(uniformBuffer, GL_UNIFORM_BUFFER, uniformBuf, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	private void initLightBuffer()
+	{
+		initGlBuffer(environment.renderLightBuffer);
+		updateBuffer(environment.renderLightBuffer, GL_UNIFORM_BUFFER, environment.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
@@ -957,6 +969,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
 			GL_STREAM_DRAW,
 			CL12.CL_MEM_WRITE_ONLY);
+
+		updateBuffer(environment.renderLightBuffer, GL_UNIFORM_BUFFER, environment.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 
 		// TODO:: make OpenCL work. This is for Mac.
 
@@ -1255,10 +1269,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glUniform1i(uniforms.ExpandedMapLoadingChunks, client.getExpandedMapLoading());
 
 			glUniform3f(uniforms.AmbientColor, environment.ambientColor.r, environment.ambientColor.g, environment.ambientColor.b);
-
-			Light directionalLight = environment.directionalLights.get(0);
-			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
-			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
+//
+//			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
+//			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
 
 			// Brightness happens to also be stored in the texture provider, so we use that
 			glUniform1f(uniforms.Brightness, (float) textureProvider.getBrightness());
@@ -1282,6 +1295,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			// Bind uniforms
 			glUniformBlockBinding(glProgram, uniforms.BlockMain, 0);
 			glUniform1i(uniforms.Textures, 1); // texture sampler array is bound to texture1
+
+			glUniformBlockBinding(glProgram, uniforms.BlockLights, 0);
+			glBindBufferBase(GL_UNIFORM_BUFFER, 0, environment.renderLightBuffer.glBufferId);
 
 			// We just allow the GL to do face culling. Note this requires the priority renderer
 			// to have logic to disregard culled faces in the priority depth testing.
@@ -1503,6 +1519,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
 
 		sceneUploader.UploadScene(scene, vertexBuffer, uvBuffer, normalBuffer);
+		try {
+			environment.ReloadLights(scene);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 
 		vertexBuffer.flip();
 		uvBuffer.flip();

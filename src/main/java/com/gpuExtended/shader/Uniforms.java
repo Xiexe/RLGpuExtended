@@ -19,7 +19,6 @@ public class Uniforms
     public int TexTargetDimensions;
     public int UiAlphaOverlay;
     public int Textures;
-    public int TileHeightMap;
     public int TextureAnimations;
     public int BlockSmall;
     public int BlockLarge;
@@ -30,6 +29,7 @@ public class Uniforms
     public int LightDirection;
     public int LightColor;
     public int AmbientColor;
+    public int BlockLights;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -43,14 +43,15 @@ public class Uniforms
         ColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
         TextureLightMode = glGetUniformLocation(shader, "textureLightMode");
         Tick = glGetUniformLocation(shader, "tick");
-        BlockMain = glGetUniformBlockIndex(shader, "uniforms");
         Textures = glGetUniformLocation(shader, "textures");
         TextureAnimations = glGetUniformLocation(shader, "textureAnimations");
 
         LightDirection = glGetUniformLocation(shader, "lightDirection");
         LightColor = glGetUniformLocation(shader, "lightColor");
         AmbientColor = glGetUniformLocation(shader, "ambientColor");
-        TileHeightMap = glGetUniformLocation(shader, "tileHeightMap");
+
+        BlockMain = glGetUniformBlockIndex(shader, "uniforms");
+        BlockLights = glGetUniformBlockIndex(shader, "lightUniforms");
 
         Tex = glGetUniformLocation(uiShader, "tex");
         TexSamplingMode = glGetUniformLocation(uiShader, "samplingMode");

@@ -23,9 +23,10 @@ in float fFogAmount;
 
 out vec4 FragColor;
 
-#include "/shaders/glsl/constants.glsl"
 #include "/shaders/glsl/hsl_to_rgb.glsl"
 #include "/shaders/glsl/colorblind.glsl"
+
+#include "/shaders/glsl/constants.glsl"
 #include "/shaders/glsl/structs.glsl"
 #include "/shaders/glsl/helpers.glsl"
 
@@ -46,8 +47,20 @@ void main() {
 
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
 //    s.albedo.rgb = mix(s.albedo.rgb, vec3(heightFog)*vec3(0.1, 0.25, 0.1) , heightFog);
-//    finalColor = s.normal.xyz;
+    //finalColor = s.normal.xyz;
 //    finalColor = s.albedo.rgb;
+
+    Light light = LightsArray[0];
+    vec3 toLight = (fPosition.xyz - light.pos.xyz);
+    finalColor = toLight;//vec3(toLight.x, toLight.y, toLight.z);
+//    for(int i = 0; i < LIGHT_COUNT; i++)
+//    {
+//        Light light = LightsArray[i];
+//        if(light.type == LIGHT_TYPE_INVALID) break;
+//
+//        float distToLight = distance(fPosition.xyz, light.pos.xyz);
+//
+//    }
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);
