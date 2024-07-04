@@ -19,7 +19,6 @@ layout(std140) uniform uniforms {
   float cameraX;
   float cameraY;
   float cameraZ;
-  ivec2 sinCosTable[2048];
 };
 
 #include "/shaders/glsl/uv.glsl"

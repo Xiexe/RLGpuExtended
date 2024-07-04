@@ -16,9 +16,6 @@ uniform int drawDistance;
 uniform int sceneOffsetX;
 uniform int sceneOffsetZ;
 
-uniform float time;
-uniform float deltaTime;
-
 in vec4 fColor;
 in vec4 fNormal;
 noperspective centroid in float fHsl;
@@ -49,11 +46,6 @@ float LinearExponentialAttenuation(float dist, float maxDistance) {
     return linearAttenuation * exponentialAttenuation;
 }
 
-float hash(vec2 uv)
-{
-    return fract(sin(7.289 * uv.x + 11.23 * uv.y) * 23758.5453);
-}
-
 void main() {
     Surface s;
     PopulateSurfaceColor(s);
@@ -70,54 +62,31 @@ void main() {
     heightFog = smoothstep(0.3, -0.1, heightFog);
 
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, distFog);
-    s.albedo.rgb = mix(s.albedo.rgb, vec3(heightFog) * vec3(0.1, 0.25, 0.1) , heightFog);
+    //finalColor = vec3(0,0,0);
+//    s.albedo.rgb = mix(s.albedo.rgb, vec3(heightFog)*vec3(0.1, 0.25, 0.1) , heightFog);
 
-    finalColor.rgb = s.normal.rgb;
+    for(int i = 0; i < LIGHT_COUNT; i++)
+    {
+        Light light = LightsArray[i];
+        if(light.type == LIGHT_TYPE_INVALID) break;
+        light.radius += 2; // just a magic number to make radius match tile widths
 
-//    vec3 additiveLightColors = vec3(0);
-//    for(int i = 0; i < LIGHT_COUNT; i++)
-//    {
-//        Light light = LightsArray[i];
-//        if(light.type == LIGHT_TYPE_INVALID) break;
-//        light.pos.x = ((light.pos.x - sceneOffsetX) + 0.5f) * TILE_SIZE;
-//        light.pos.z = ((light.pos.z - sceneOffsetZ) + 0.5f) * TILE_SIZE;
-//        light.pos.y = light.pos.y - (TILE_SIZE * 1.5);
-//
-//        vec3 dir = light.pos.xyz - fPosition.xyz;
-//        float dist = length(dir) / TILE_SIZE;
-//        if(dist < light.radius)
-//        {
-//            dir = normalize(dir);
-//            dir.y = -dir.y;
-//
-//            float atten = LinearExponentialAttenuation(dist, light.radius);
-//            float ndl = max(dot(s.normal.xyz, dir / dist), 0);
-//
-//            additiveLightColors += light.color.rgb * light.intensity * ndl * atten;
-//
-//            /*
-//            if(light.animation != LIGHT_ANIM_NONE)
-//            {
-//                float hashXY = hash(vec2(light.pos.x, light.pos.z));
-//                float hashHZ = hash(vec2(light.pos.y, light.pos.y));
-//                float offset = (hashXY + hashHZ) * 1000;
-//
-//                switch(light.animation)
-//                {
-//                    case LIGHT_ANIM_FLICKER:
-//                    float flicker = sin((time / 100) - offset) * 0.5 + 0.5;
-//                    additiveLightColors *= flicker;
-//                    break;
-//
-//                    case LIGHT_ANIM_PULSE:
-//                    float pulse = sin((time / 100) - offset) * 0.5 + 0.5;
-//                    additiveLightColors *= pulse;
-//                    break;
-//                }
-//            }
-//            */
-//        }
-//    }
+        light.pos.x = ((light.pos.x - sceneOffsetX) + 0.5f) * TILE_SIZE;
+        light.pos.z = ((light.pos.z - sceneOffsetZ) + 0.5f) * TILE_SIZE;
+        light.pos.y = light.pos.y - (TILE_SIZE * 1.5);
+
+        vec3 dir = light.pos.xyz - fPosition.xyz;
+        float dist = length(dir) / TILE_SIZE;
+        if(dist < light.radius)
+        {
+            dir = normalize(dir);
+            dir.y = -dir.y;
+
+            float atten = LinearExponentialAttenuation(dist, light.radius);
+            float ndl = max(dot(s.normal.xyz, dir / dist), 0);
+            finalColor += s.albedo.rgb * light.color.rgb * ndl * atten;
+        }
+    }
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

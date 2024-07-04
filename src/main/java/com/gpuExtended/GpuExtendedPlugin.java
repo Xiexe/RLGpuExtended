@@ -694,15 +694,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, renderVertexBuffer.glBufferId);
-		glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, 0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 16, 0);
 
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, renderUvBuffer.glBufferId);
-		glVertexAttribPointer(1, 4, GL_FLOAT, false, 0, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, renderVertexBuffer.glBufferId);
+		glVertexAttribIPointer(1, 1, GL_INT, 16, 12);
 
 		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER, renderNormalBuffer.glBufferId);
+		glBindBuffer(GL_ARRAY_BUFFER, renderUvBuffer.glBufferId);
 		glVertexAttribPointer(2, 4, GL_FLOAT, false, 0, 0);
+
+		glEnableVertexAttribArray(3);
+		glBindBuffer(GL_ARRAY_BUFFER, renderNormalBuffer.glBufferId);
+		glVertexAttribPointer(3, 4, GL_FLOAT, false, 0, 0);
 
 		// Create temp VAO
 		vaoTemp = glGenVertexArrays();
@@ -710,15 +714,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, tmpVertexBuffer.glBufferId);
-		glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, 0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 16, 0);
 
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, tmpUvBuffer.glBufferId);
-		glVertexAttribPointer(1, 4, GL_FLOAT, false, 0, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, tmpVertexBuffer.glBufferId);
+		glVertexAttribIPointer(1, 1, GL_INT, 16, 12);
 
 		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER, tmpNormalBuffer.glBufferId);
+		glBindBuffer(GL_ARRAY_BUFFER, tmpUvBuffer.glBufferId);
 		glVertexAttribPointer(2, 4, GL_FLOAT, false, 0, 0);
+
+		glEnableVertexAttribArray(3);
+		glBindBuffer(GL_ARRAY_BUFFER, tmpNormalBuffer.glBufferId);
+		glVertexAttribPointer(3, 4, GL_FLOAT, false, 0, 0);
 
 		// Create UI VAO
 		vaoUiHandle = glGenVertexArrays();
@@ -1759,16 +1767,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			assert model == renderable;
 
-			if(!CheckModelIsVisible(model, projection, x, y, z))
+			model.calculateBoundsCylinder();
+
+			if (projection instanceof IntProjection)
 			{
-				return;
+				IntProjection p = (IntProjection) projection;
+				if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
+				{
+					return;
+				}
 			}
 
 			client.checkClickbox(projection, model, orientation, x, y, z, hash);
-
 			int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 			int uvOffset = offsetModel.getUvBufferOffset();
-			int plane = (int) ((hash >> 49) & 3);
+			int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
 			boolean hillskew = offsetModel != model;
 
 			GpuIntBuffer b = bufferForTriangles(tc);
@@ -1794,9 +1807,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				renderable.setModelHeight(model.getModelHeight());
 			}
 
-			if(!CheckModelIsVisible(model, projection, x, y, z))
+			model.calculateBoundsCylinder();
+
+			if (projection instanceof IntProjection)
 			{
-				return;
+				IntProjection p = (IntProjection) projection;
+				if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
+				{
+					return;
+				}
 			}
 
 			client.checkClickbox(projection, model, orientation, x, y, z, hash);

@@ -7,9 +7,10 @@
 #define FOG_CORNER_ROUNDING 1.5
 #define FOG_CORNER_ROUNDING_SQUARED (FOG_CORNER_ROUNDING * FOG_CORNER_ROUNDING)
 
-layout(location = 0) in vec4 vPos;
-layout(location = 1) in vec4 vUv;
-layout(location = 2) in vec4 vNorm;
+layout(location = 0) in vec3 vPos;
+layout(location = 1) in int vHsl;
+layout(location = 2) in vec4 vUv;
+layout(location = 3) in vec4 vNorm;
 
 layout(std140) uniform uniforms {
   float cameraYaw;
@@ -20,7 +21,6 @@ layout(std140) uniform uniforms {
   float cameraX;
   float cameraY;
   float cameraZ;
-  ivec2 sinCosTable[2048];
 };
 
 uniform float brightness;
@@ -43,17 +43,14 @@ float fogFactorLinear(const float dist, const float start, const float end) {
 }
 
 void main() {
-    vec3 vertex = vPos.xyz;
-    vec3 position = vec3(vPos.xyz);
-    int ahsl = int(vPos.w);
-    int hsl = ahsl & 0xffff;
-    float a = float(ahsl >> 24 & 0xff) / 255.f;
+    int hsl = vHsl & 0xffff;
+    float a = float(vHsl >> 24 & 0xff) / 255.f;
 
     vec3 rgb = hslToRgb(hsl);
 
-    gVertex = vertex;
+    gVertex = vPos;
     gNormal = vNorm;
-    gPosition = position;
+    gPosition = vPos;
     gColor = vec4(rgb, 1.f - a);
     gHsl = float(hsl);
     gTextureId = int(vUv.x);  // the texture id + 1;
@@ -67,8 +64,8 @@ void main() {
     int fogNorth = min(FOG_SCENE_EDGE_MAX, int(cameraZ) + drawDistance - TILE_SIZE);
 
     // Calculate distance from the scene edge
-    float xDist = min(vertex.x - fogWest, fogEast - vertex.x);
-    float zDist = min(vertex.z - fogSouth, fogNorth - vertex.z);
+    float xDist = min(vPos.x - fogWest, fogEast - vPos.x);
+    float zDist = min(vPos.z - fogSouth, fogNorth - vPos.z);
     float nearestEdgeDistance = min(xDist, zDist);
     float secondNearestEdgeDistance = max(xDist, zDist);
     float fogDistance = nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE * max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));

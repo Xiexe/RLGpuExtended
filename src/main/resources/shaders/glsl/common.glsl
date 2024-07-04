@@ -21,30 +21,28 @@ vec4 rotate_vertex(vec4 vertex, int orientation) {
 }
 
 vec4 rotate2(vec4 vertex, int orientation) {
-  ivec4 iVertex = ivec4(vertex * 1000);
+  vec4 iVertex = vec4(vertex * 1000);
   vertex = rotate_vertex(iVertex, orientation) / 1000.0;
   return vertex;
 }
+
 /*
  * Calculate the distance to a vertex given the camera angle
  */
-float distance(vec4 vertex, float cameraYaw, float cameraPitch) {
+float distance(vec3 vertex, float cameraYaw, float cameraPitch) {
   float yawSin = sin(cameraYaw);
   float yawCos = cos(cameraYaw);
-
   float pitchSin = sin(cameraPitch);
   float pitchCos = cos(cameraPitch);
-
   float j = vertex.z * yawCos - vertex.x * yawSin;
   float l = vertex.y * pitchSin + j * pitchCos;
-
   return l;
 }
 
 /*
  * Calculate the distance to a face
  */
-int face_distance(vec4 vA, vec4 vB, vec4 vC, float cameraYaw, float cameraPitch) {
+int face_distance(vec3 vA, vec3 vB, vec3 vC, float cameraYaw, float cameraPitch) {
   float dvA = distance(vA, cameraYaw, cameraPitch);
   float dvB = distance(vB, cameraYaw, cameraPitch);
   float dvC = distance(vC, cameraYaw, cameraPitch);
@@ -58,7 +56,6 @@ int face_distance(vec4 vA, vec4 vB, vec4 vC, float cameraYaw, float cameraPitch)
 bool face_visible(vec3 vA, vec3 vB, vec3 vC, ivec4 position) {
   // Move model to scene location, and account for camera offset
   vec3 cameraPos = vec3(cameraX, cameraY, cameraZ);
-
   vec3 lA = vA + position.xyz - cameraPos;
   vec3 lB = vB + position.xyz - cameraPos;
   vec3 lC = vC + position.xyz - cameraPos;

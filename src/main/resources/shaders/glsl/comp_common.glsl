@@ -12,7 +12,6 @@ layout(std140) uniform uniforms {
   float cameraX;
   float cameraY;
   float cameraZ;
-  ivec2 sinCosTable[2048];
 };
 
 struct modelinfo {
@@ -26,7 +25,7 @@ struct modelinfo {
   int z;        // scene position z
 };
 
-struct vert {
+struct Vertex {
   vec3 pos;
   int ahsl;
 };
@@ -37,15 +36,15 @@ layout(std430, binding = 0) readonly buffer modelbuffer_in {
 
 // position data
 layout(std430, binding = 1) writeonly buffer vertex_out {
-  vert vout[];
+  Vertex vout[];
 };
 
 layout(std430, binding = 2) readonly buffer vertexbuffer_in {
-  vert vb[];
+  Vertex vb[];
 };
 
 layout(std430, binding = 3) readonly buffer tempvertexbuffer_in {
-  vert tempvb[];
+  Vertex tempvb[];
 };
 
 // uv data
