@@ -694,7 +694,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, renderVertexBuffer.glBufferId);
-		glVertexAttribIPointer(0, 4, GL_INT, 0, 0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, 0);
 
 		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, renderUvBuffer.glBufferId);
@@ -710,7 +710,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, tmpVertexBuffer.glBufferId);
-		glVertexAttribIPointer(0, 4, GL_INT, 0, 0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, 0);
 
 		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, tmpUvBuffer.glBufferId);
@@ -851,19 +851,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initUniformBuffer()
 	{
 		initGlBuffer(uniformBuffer);
-
-		IntBuffer uniformBuf = GpuIntBuffer.allocateDirect(8 + 2048 * 4);
-		uniformBuf.put(new int[8]); // uniform block
-		final int[] pad = new int[2];
-		for (int i = 0; i < 2048; i++)
-		{
-			uniformBuf.put(Perspective.SINE[i]);
-			uniformBuf.put(Perspective.COSINE[i]);
-			uniformBuf.put(pad); // ivec2 alignment in std140 is 16 bytes
-		}
-		uniformBuf.flip();
-
-		updateBuffer(uniformBuffer, GL_UNIFORM_BUFFER, uniformBuf, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+		updateBuffer(uniformBuffer, GL_UNIFORM_BUFFER, 8 * Integer.BYTES, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
@@ -957,8 +945,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			.put(Float.floatToIntBits((float) cameraZ));
 		uniformBuf.flip();
 
-		glBindBuffer(GL_UNIFORM_BUFFER, uniformBuffer.glBufferId);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, uniformBuf);
+		updateBuffer(uniformBuffer, GL_UNIFORM_BUFFER, uniformBuf, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer.glBufferId);
