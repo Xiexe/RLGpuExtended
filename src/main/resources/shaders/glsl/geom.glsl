@@ -28,7 +28,7 @@ uniform vec2 textureAnimations[128];
 uniform int tick;
 uniform mat4 projectionMatrix;
 
-in ivec3 gVertex[3];
+in vec3 gVertex[3];
 in vec3 gPosition[3];
 in vec4 gNormal[3];
 in vec4 gColor[3];

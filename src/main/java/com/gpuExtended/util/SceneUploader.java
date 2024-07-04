@@ -503,9 +503,9 @@ public class SceneUploader
 		normalBuffer.ensureCapacity(triCount * 12);
 		uvBuffer.ensureCapacity(triCount * 12);
 
-		final int[] vertexX = model.getVerticesX();
-		final int[] vertexY = model.getVerticesY();
-		final int[] vertexZ = model.getVerticesZ();
+		final float[] vertexX = model.getVerticesX();
+		final float[] vertexY = model.getVerticesY();
+		final float[] vertexZ = model.getVerticesZ();
 
 		final int[] normalX = model.getVertexNormalsX();
 		final int[] normalY = model.getVertexNormalsY();

@@ -4,7 +4,8 @@ void PopulateSurfaceColor(inout Surface s)
 
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
-        vec4 textureColor = texture(textures, vec3(fUv, float(textureIdx)));
+        vec3 textureUv = vec3(fUv, float(textureIdx));
+        vec4 textureColor = vec4(1,1,1,1);//texture(textures, textureUv);
         color = textureColor;
     } else {
         // pick interpolated hsl or rgb depending on smooth banding setting

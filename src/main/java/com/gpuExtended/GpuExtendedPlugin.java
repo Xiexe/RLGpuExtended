@@ -20,31 +20,8 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
-import com.gpuExtended.opengl.GLBuffer;
-import com.gpuExtended.opengl.OpenCLManager;
-import com.gpuExtended.rendering.Color;
-import com.gpuExtended.rendering.Mesh;
-import com.gpuExtended.rendering.Vector3;
-import com.gpuExtended.rendering.Vector4;
-import com.gpuExtended.scene.Environment;
-import com.gpuExtended.scene.Light;
-import com.gpuExtended.shader.Shader;
-import com.gpuExtended.shader.ShaderException;
-import com.gpuExtended.shader.Uniforms;
-import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.BufferProvider;
-import net.runelite.api.Client;
-import net.runelite.api.Constants;
-import net.runelite.api.GameState;
-import net.runelite.api.Model;
-import net.runelite.api.Perspective;
-import net.runelite.api.Renderable;
-import net.runelite.api.Scene;
-import net.runelite.api.SceneTileModel;
-import net.runelite.api.SceneTilePaint;
-import net.runelite.api.Texture;
-import net.runelite.api.TextureProvider;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.hooks.DrawCallbacks;
@@ -56,9 +33,10 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
-import com.gpuExtended.config.AntiAliasingMode;
-import com.gpuExtended.config.UIScalingMode;
-import com.gpuExtended.shader.template.Template;
+
+
+
+import net.runelite.client.plugins.gpu.GpuPlugin;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.OSType;
@@ -72,6 +50,23 @@ import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
 
+import com.gpuExtended.config.AntiAliasingMode;
+import com.gpuExtended.config.UIScalingMode;
+import com.gpuExtended.shader.template.Template;
+import com.gpuExtended.opengl.GLBuffer;
+import com.gpuExtended.opengl.OpenCLManager;
+import com.gpuExtended.rendering.Color;
+import com.gpuExtended.rendering.Mesh;
+import com.gpuExtended.rendering.Vector3;
+import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.scene.Environment;
+import com.gpuExtended.scene.Light;
+import com.gpuExtended.shader.Shader;
+import com.gpuExtended.shader.ShaderException;
+import com.gpuExtended.shader.Uniforms;
+import com.gpuExtended.util.*;
+
+import static com.gpuExtended.util.ResourcePath.path;
 import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
@@ -157,6 +152,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	static final Shader UI_PROGRAM = new Shader()
 		.add(GL_VERTEX_SHADER, "vertui.glsl")
 		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
+
+	private static final ResourcePath SHADER_PATH = Props
+			.getPathOrDefault("shader-path", () -> path(GpuExtendedPlugin.class));
 
 	private Uniforms uniforms;
 	public Environment environment;
@@ -262,22 +260,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GpuFloatBuffer nextSceneTexBuffer;
 	private GpuFloatBuffer nextSceneNormalBuffer;
 
-	public void Reload(FileWatcher.ReloadType reloadType) throws ShaderException {
-		switch (reloadType) {
-			case Full:
-			{
-				shutDown();
-				startUp();
-				break;
-			}
-
-			case HotReload:
-			{
-
-				break;
-			}
-		}
-	}
+	private long Time;
+	private long DeltaTime;
+	private long StartTime;
 
 	@Override
 	protected void startUp()
@@ -286,11 +271,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			try
 			{
+				StartTime = System.currentTimeMillis();
+
 				if(Instance == null)
 				{
 					Instance = this;
-					Thread fileWatcherThread = new Thread(new FileWatcher());
-					fileWatcherThread.start();
 				}
 
 				client.setDrawCallbacks(this);
@@ -418,23 +403,28 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			{
 				log.error("Error starting GPU plugin", e);
 
-				SwingUtilities.invokeLater(() ->
-				{
-					try
-					{
-						pluginManager.setPluginEnabled(this, false);
-						pluginManager.stopPlugin(this);
-					}
-					catch (PluginInstantiationException ex)
-					{
-						log.error("error stopping plugin", ex);
-					}
-				});
-
-				shutDown();
+				stopPlugin();
 			}
 			return true;
 		});
+	}
+
+	private void stopPlugin()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			try
+			{
+				pluginManager.setPluginEnabled(this, false);
+				pluginManager.stopPlugin(this);
+			}
+			catch (PluginInstantiationException ex)
+			{
+				log.error("Error stopping plugin:", ex);
+			}
+		});
+
+		shutDown();
 	}
 
 	@Override
@@ -571,21 +561,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private Template createTemplate(int threadCount, int facesPerThread)
 	{
 		String versionHeader = OSType.getOSType() == OSType.Linux ? LINUX_VERSION_HEADER : WINDOWS_VERSION_HEADER;
-		Template template = new Template();
-		template.add(key ->
-		{
-			if ("version_header".equals(key))
-			{
-				return versionHeader;
-			}
-			if ("thread_config".equals(key))
-			{
-				return "#define THREAD_COUNT " + threadCount + "\n" +
-					"#define FACES_PER_THREAD " + facesPerThread + "\n";
-			}
-			return null;
-		});
-		template.addInclude(GpuExtendedPlugin.class);
+		Template template = new Template()
+			.addInclude("VERSION_HEADER", versionHeader)
+			.define("THREAD_COUNT", threadCount)
+			.define("FACES_PER_THREAD", facesPerThread)
+			.addIncludePath(SHADER_PATH);
+
 		return template;
 	}
 
@@ -597,6 +578,66 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		catch (ShaderException ex)
 		{
 			throw new RuntimeException(ex);
+		}
+	}
+
+	public void initShaderHotswapping() {
+		SHADER_PATH.watch("\\.(glsl|cl)$", path -> {
+			log.info("Recompiling shaders: {}", path);
+			clientThread.invoke(() -> {
+				try {
+					waitUntilIdle();
+					recompileShaders();
+				} catch (ShaderException | IOException ex) {
+					log.error("Error while recompiling shaders:", ex);
+					stopPlugin();
+				}
+			});
+		});
+	}
+
+	private void waitUntilIdle() {
+		if (computeMode == ComputeMode.OPENCL)
+			openCLManager.finish();
+		glFinish();
+	}
+
+	public void recompileShaders() throws ShaderException, IOException {
+		// Avoid recompiling if we haven't already compiled once
+		if (glProgram == 0)
+			return;
+
+		destroyShaders();
+		compileShaders();
+	}
+
+	private void destroyShaders() {
+		if (glProgram != 0)
+			glDeleteProgram(glProgram);
+		glProgram = 0;
+
+		if (glUiProgram != 0)
+			glDeleteProgram(glUiProgram);
+		glUiProgram = 0;
+
+		// TODO:: Add shadow Program here.
+
+		if (computeMode == ComputeMode.OPENGL) {
+			if (glComputeProgram != 0)
+				glDeleteProgram(glComputeProgram);
+			glComputeProgram = 0;
+
+			if (glSmallComputeProgram != 0)
+				glDeleteProgram(glSmallComputeProgram);
+			glSmallComputeProgram = 0;
+
+			if (glUnorderedComputeProgram != 0)
+				glDeleteProgram(glUnorderedComputeProgram);
+			glUnorderedComputeProgram = 0;
+		}
+		else
+		{
+			openCLManager.destroyPrograms();
 		}
 	}
 
@@ -627,6 +668,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void shutdownProgram()
 	{
+		FileWatcher.destroy();
+
 		glDeleteProgram(glProgram);
 		glProgram = -1;
 
@@ -1044,60 +1087,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 //		}
 	}
 
-	@Override
-	public void drawScenePaint(int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z,
-		SceneTilePaint paint, int tileZ, int tileX, int tileY,
-		int zoom, int centerX, int centerY)
-	{
-		if (paint.getBufferLen() > 0)
-		{
-			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-			final int localY = 0;
-			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
-
-			GpuIntBuffer b = modelBufferUnordered;
-			++unorderedModels;
-
-			b.ensureCapacity(8);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(paint.getBufferOffset());
-			buffer.put(paint.getUvBufferOffset());
-			buffer.put(2);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER);
-			buffer.put(localX).put(localY).put(localZ);
-
-			targetBufferOffset += 2 * 3;
-		}
-	}
-
-	@Override
-	public void drawSceneModel(int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z,
-		SceneTileModel model, int tileZ, int tileX, int tileY,
-		int zoom, int centerX, int centerY)
-	{
-		if (model.getBufferLen() > 0)
-		{
-			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-			final int localY = 0;
-			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
-
-			GpuIntBuffer b = modelBufferUnordered;
-			++unorderedModels;
-
-			b.ensureCapacity(8);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(model.getBufferOffset());
-			buffer.put(model.getUvBufferOffset());
-			buffer.put(model.getBufferLen() / 3);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER);
-			buffer.put(localX).put(localY).put(localZ);
-
-			targetBufferOffset += model.getBufferLen();
-		}
-	}
-
 	private void prepareInterfaceTexture(int canvasWidth, int canvasHeight)
 	{
 		if (canvasWidth != lastCanvasWidth || canvasHeight != lastCanvasHeight)
@@ -1128,6 +1117,56 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, 0);
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	@Override
+	public void drawScenePaint(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY)
+	{
+		if (paint.getBufferLen() > 0)
+		{
+			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
+			final int localY = 0;
+			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
+
+			GpuIntBuffer b = modelBufferUnordered;
+			++unorderedModels;
+
+			b.ensureCapacity(8);
+			IntBuffer buffer = b.getBuffer();
+			buffer.put(paint.getBufferOffset());
+			buffer.put(paint.getUvBufferOffset());
+			buffer.put(2);
+			buffer.put(targetBufferOffset);
+			buffer.put(FLAG_SCENE_BUFFER);
+			buffer.put(localX).put(localY).put(localZ);
+
+			targetBufferOffset += 2 * 3;
+		}
+	}
+
+	@Override
+	public void drawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY)
+	{
+		if (model.getBufferLen() > 0)
+		{
+			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
+			final int localY = 0;
+			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
+
+			GpuIntBuffer b = modelBufferUnordered;
+			++unorderedModels;
+
+			b.ensureCapacity(8);
+			IntBuffer buffer = b.getBuffer();
+			buffer.put(model.getBufferOffset());
+			buffer.put(model.getUvBufferOffset());
+			buffer.put(model.getBufferLen() / 3);
+			buffer.put(targetBufferOffset);
+			buffer.put(FLAG_SCENE_BUFFER);
+			buffer.put(localX).put(localY).put(localZ);
+
+			targetBufferOffset += model.getBufferLen();
+		}
 	}
 
 	// MAIN DRAW
@@ -1207,6 +1246,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// Draw 3d scene
 		if (gameState.getState() >= GameState.LOADING.getState())
 		{
+			long currentTime = System.currentTimeMillis();
+			DeltaTime = currentTime - Time;
+			Time = currentTime - StartTime;
+
 			final TextureProvider textureProvider = client.getTextureProvider();
 			if (textureArrayId == -1)
 			{
@@ -1273,6 +1316,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glUniform1i(uniforms.SceneOffsetX, client.getScene().getBaseX());
 			glUniform1i(uniforms.SceneOffsetZ, client.getScene().getBaseY());
 //
+			glUniform1f(uniforms.Time, Time);
+			glUniform1f(uniforms.DeltaTime, DeltaTime);
 //			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
 //			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
 
@@ -1698,20 +1743,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	/**
 	 * Draw a renderable in the scene
-	 *
-	 * @param renderable
-	 * @param orientation
-	 * @param pitchSin
-	 * @param pitchCos
-	 * @param yawSin
-	 * @param yawCos
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @param hash
 	 */
 	@Override
-	public void draw(Renderable renderable, int orientation, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z, long hash)
+	public void draw(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
 		Model model, offsetModel;
 		if (renderable instanceof Model)
@@ -1738,12 +1772,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			assert model == renderable;
 
-			if (!isVisible(model, pitchSin, pitchCos, yawSin, yawCos, x, y, z))
+			if(!CheckModelIsVisible(model, projection, x, y, z))
 			{
 				return;
 			}
 
-			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
+			client.checkClickbox(projection, model, orientation, x, y, z, hash);
 
 			int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 			int uvOffset = offsetModel.getUvBufferOffset();
@@ -1758,8 +1792,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			buffer.put(uvOffset);
 			buffer.put(tc);
 			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER | (hillskew ? (1 << 26) : 0) | (plane << 24) | (model.getRadius() << 12) | orientation);
-			buffer.put(x + client.getCameraX2()).put(y + client.getCameraY2()).put(z + client.getCameraZ2());
+			buffer.put(FLAG_SCENE_BUFFER | (hillskew ? (1 << 26) : 0) | (plane << 24) | orientation);
+			buffer.put(x).put(y).put(z);
 
 			targetBufferOffset += tc * 3;
 		}
@@ -1773,12 +1807,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				renderable.setModelHeight(model.getModelHeight());
 			}
 
-			if (!isVisible(model, pitchSin, pitchCos, yawSin, yawCos, x, y, z))
+			if(!CheckModelIsVisible(model, projection, x, y, z))
 			{
 				return;
 			}
 
-			client.checkClickbox(model, orientation, pitchSin, pitchCos, yawSin, yawCos, x, y, z, hash);
+			client.checkClickbox(projection, model, orientation, x, y, z, hash);
 
 			boolean hasUv = model.getFaceTextures() != null;
 			int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
@@ -1791,8 +1825,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			buffer.put(hasUv ? tempUvOffset : -1);
 			buffer.put(len / 3);
 			buffer.put(targetBufferOffset);
-			buffer.put((model.getRadius() << 12) | orientation);
-			buffer.put(x + client.getCameraX2()).put(y + client.getCameraY2()).put(z + client.getCameraZ2());
+			buffer.put(orientation);
+			buffer.put(x).put(y).put(z);
 
 			tempOffset += len;
 			targetBufferOffset += len;
@@ -1800,6 +1834,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				tempUvOffset += len;
 			}
 		}
+	}
+
+	private boolean CheckModelIsVisible( Model model, Projection projection, int x, int y, int z )
+	{
+		model.calculateBoundsCylinder();
+		if (projection instanceof IntProjection)
+		{
+			IntProjection p = (IntProjection) projection;
+			return isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ());
+		}
+		return true;
 	}
 
 	/**

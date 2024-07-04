@@ -7,7 +7,7 @@
 #define FOG_CORNER_ROUNDING 1.5
 #define FOG_CORNER_ROUNDING_SQUARED (FOG_CORNER_ROUNDING * FOG_CORNER_ROUNDING)
 
-layout(location = 0) in ivec4 vPos;
+layout(location = 0) in vec4 vPos;
 layout(location = 1) in vec4 vUv;
 layout(location = 2) in vec4 vNorm;
 
@@ -27,7 +27,7 @@ uniform float brightness;
 uniform int drawDistance;
 uniform int expandedMapLoadingChunks;
 
-out ivec3 gVertex;
+out vec3 gVertex;
 out vec3 gPosition;
 out vec4 gNormal;
 out vec4 gColor;
@@ -43,9 +43,9 @@ float fogFactorLinear(const float dist, const float start, const float end) {
 }
 
 void main() {
-    ivec3 vertex = vPos.xyz;
+    vec3 vertex = vPos.xyz;
     vec3 position = vec3(vPos.xyz);
-    int ahsl = vPos.w;
+    int ahsl = int(vPos.w);
     int hsl = ahsl & 0xffff;
     float a = float(ahsl >> 24 & 0xff) / 255.f;
 
@@ -67,8 +67,8 @@ void main() {
     int fogNorth = min(FOG_SCENE_EDGE_MAX, int(cameraZ) + drawDistance - TILE_SIZE);
 
     // Calculate distance from the scene edge
-    int xDist = min(vertex.x - fogWest, fogEast - vertex.x);
-    int zDist = min(vertex.z - fogSouth, fogNorth - vertex.z);
+    float xDist = min(vertex.x - fogWest, fogEast - vertex.x);
+    float zDist = min(vertex.z - fogSouth, fogNorth - vertex.z);
     float nearestEdgeDistance = min(xDist, zDist);
     float secondNearestEdgeDistance = max(xDist, zDist);
     float fogDistance = nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE * max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));

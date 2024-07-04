@@ -26,21 +26,26 @@ struct modelinfo {
   int z;        // scene position z
 };
 
+struct vert {
+  vec3 pos;
+  int ahsl;
+};
+
 layout(std430, binding = 0) readonly buffer modelbuffer_in {
   modelinfo ol[];
 };
 
 // position data
 layout(std430, binding = 1) writeonly buffer vertex_out {
-  ivec4 vout[];
+  vert vout[];
 };
 
 layout(std430, binding = 2) readonly buffer vertexbuffer_in {
-  ivec4 vb[];
+  vert vb[];
 };
 
 layout(std430, binding = 3) readonly buffer tempvertexbuffer_in {
-  ivec4 tempvb[];
+  vert tempvb[];
 };
 
 // uv data

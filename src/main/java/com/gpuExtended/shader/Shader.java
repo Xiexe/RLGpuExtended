@@ -26,6 +26,8 @@
 package com.gpuExtended.shader;
 
 import com.google.common.annotations.VisibleForTesting;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -46,7 +48,7 @@ public class Shader
 		private final int type;
 
 		@Getter
-		private final String filename;
+		public final String filename;
 	}
 
 	public Shader add(int type, String name)
@@ -73,6 +75,8 @@ public class Shader
 				}
 
 				String source = template.load(unit.filename);
+				System.out.println(unit.filename + "source: \n" + source);
+
 				GL43C.glShaderSource(shader, source);
 				GL43C.glCompileShader(shader);
 
@@ -80,7 +84,7 @@ public class Shader
 				{
 					String err = GL43C.glGetShaderInfoLog(shader);
 					GL43C.glDeleteShader(shader);
-					throw new ShaderException(err);
+					throw ShaderException.CompileError(err, template, unit);
 				}
 				GL43C.glAttachShader(program, shader);
 				shaders[i++] = shader;
@@ -103,8 +107,9 @@ public class Shader
 			}
 
 			ok = true;
-		}
-		finally
+		} catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally
 		{
 			while (i > 0)
 			{
@@ -118,6 +123,7 @@ public class Shader
 				GL43C.glDeleteProgram(program);
 			}
 		}
+
 		return program;
 	}
 }

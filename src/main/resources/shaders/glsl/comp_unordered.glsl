@@ -1,6 +1,6 @@
 
 
-#include version_header
+#include "VERSION_HEADER"
 
 #include "/shaders/glsl/comp_common.glsl"
 
@@ -22,7 +22,7 @@ void main() {
   }
 
   uint ssboOffset = localId;
-  ivec4 thisA, thisB, thisC;
+  vert thisA, thisB, thisC;
   vec4 normA, normB, normC;
 
   // Grab triangle vertices and normals from the correct buffer
@@ -45,13 +45,13 @@ void main() {
   }
 
   uint myOffset = localId;
-  ivec4 pos = ivec4(minfo.x, minfo.y, minfo.z, 0);
-  ivec4 texPos = pos.wxyz;
+  vec3 pos = vec3(minfo.x, minfo.y, minfo.z);
+  ivec4 texPos = ivec4(0, pos);
 
   // position vertices in scene and write to out buffer
-  vout[outOffset + myOffset * 3]          = pos + thisA;
-  vout[outOffset + myOffset * 3 + 1]      = pos + thisB;
-  vout[outOffset + myOffset * 3 + 2]      = pos + thisC;
+  vout[outOffset + myOffset * 3] = vert(thisA.pos, thisA.ahsl);
+  vout[outOffset + myOffset * 3 + 1] = vert(thisB.pos, thisB.ahsl);
+  vout[outOffset + myOffset * 3 + 2] = vert(thisC.pos, thisC.ahsl);
 
   normalout[outOffset + myOffset * 3]     = normA;
   normalout[outOffset + myOffset * 3 + 1] = normB;

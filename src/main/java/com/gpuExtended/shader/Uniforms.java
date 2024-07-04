@@ -32,6 +32,8 @@ public class Uniforms
     public int BlockLights;
     public int SceneOffsetX;
     public int SceneOffsetZ;
+    public int Time;
+    public int DeltaTime;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -53,6 +55,8 @@ public class Uniforms
         AmbientColor = glGetUniformLocation(shader, "ambientColor");
         SceneOffsetX = glGetUniformLocation(shader, "sceneOffsetX");
         SceneOffsetZ = glGetUniformLocation(shader, "sceneOffsetZ");
+        Time = glGetUniformLocation(shader, "time");
+        DeltaTime = glGetUniformLocation(shader, "deltaTime");
 
         BlockMain = glGetUniformBlockIndex(shader, "uniforms");
         BlockLights = glGetUniformBlockIndex(shader, "lightUniforms");
