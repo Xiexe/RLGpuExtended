@@ -12,7 +12,7 @@ import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.rendering.*;
-import com.gpuExtended.scene.Environment;
+import com.gpuExtended.scene.EnvironmentManager;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -78,7 +78,7 @@ public class SceneUploader
 		staticSharedVertexMap = ArrayListMultimap.create();
 		dynamicSharedVertexMap = ArrayListMultimap.create();
 
-		GpuExtendedPlugin.Instance.environment.ClearLightBuffer();
+		GpuExtendedPlugin.Instance.environmentManager.ClearLightBuffer();
 		vertexBuffer.clear();
 		normalBuffer.clear();
 		uvBuffer.clear();
@@ -118,12 +118,12 @@ public class SceneUploader
 			}
 		}
 
-		GpuExtendedPlugin.Instance.environment.UpdateLightBuffer();
+		GpuExtendedPlugin.Instance.environmentManager.UpdateLightBuffer();
 	}
 
 	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
-		Environment env = GpuExtendedPlugin.Instance.environment;
+		EnvironmentManager env = GpuExtendedPlugin.Instance.environmentManager;
 		WorldPoint worldLocation = tile.getWorldLocation();
 		Point tilePoint = tile.getSceneLocation();
 //		int[] location = new int[] { worldLocation.getX(), worldLocation.getY(), worldLocation.getPlane() };
@@ -634,19 +634,9 @@ public class SceneUploader
 			}
 			else
 			{
-				// Push Normal Directions
-				if (normalX != null)
-				{
-					normalBuffer.put(normalX[i0],  normalY[i0], normalZ[i0], forceFlatNormals ? 1:0);
-					normalBuffer.put(normalX[i1],  normalY[i1], normalZ[i1], forceFlatNormals ? 1:0);
-					normalBuffer.put(normalX[i2],  normalY[i2], normalZ[i2], forceFlatNormals ? 1:0);
-				}
-				else
-				{
-					normalBuffer.put(0, 0, 0, 0);
-					normalBuffer.put(0, 0, 0, 0);
-					normalBuffer.put(0, 0, 0, 0);
-				}
+				normalBuffer.put(normalX[i0],  normalY[i0], normalZ[i0], forceFlatNormals ? 1:0);
+				normalBuffer.put(normalX[i1],  normalY[i1], normalZ[i1], forceFlatNormals ? 1:0);
+				normalBuffer.put(normalX[i2],  normalY[i2], normalZ[i2], forceFlatNormals ? 1:0);
 			}
 
 			vertexCount += 3;

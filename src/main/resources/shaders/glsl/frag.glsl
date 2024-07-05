@@ -35,17 +35,12 @@ void main() {
     PopulateSurfaceNormal(s, fNormal);
 
     float ndl = max(dot(s.normal.xyz, vec3(1, 1, 0)), 0);
-    vec3 litFragment = s.albedo.rgb;// * (ndl * lightColor + ambientColor);
+    vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
 
-    float fog = 0.0;
-
-//    float heightFog = (-fPosition.y / 2000);
-//    heightFog = smoothstep(0.3, -0.1, heightFog);
-
-    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fFogAmount);
+    float fog = fFogAmount;
+    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
     //finalColor = s.normal.rgb;
 
-    /*
     for(int i = 0; i < LIGHT_COUNT; i++)
     {
         Light light = LightsArray[i];
@@ -68,7 +63,7 @@ void main() {
             finalColor += s.albedo.rgb * light.color.rgb * ndl * atten;
         }
     }
-    */
+
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

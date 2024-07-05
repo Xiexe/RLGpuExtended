@@ -23,6 +23,14 @@ public class Color
         this.a = 1f;
     }
 
+    public Color(float rgb)
+    {
+        this.r = rgb;
+        this.g = rgb;
+        this.b = rgb;
+        this.a = 1f;
+    }
+
     public Color(int hsla)
     {
         int[] rgba = HslToRgba(hsla);

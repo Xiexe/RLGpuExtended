@@ -1,6 +1,7 @@
 package com.gpuExtended;
 
 import com.google.common.primitives.Ints;
+import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.Canvas;
 import java.awt.Dimension;
@@ -19,6 +20,8 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
+import com.gpuExtended.scene.Environment;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameStateChanged;
@@ -42,7 +45,6 @@ import org.lwjgl.opencl.CL10;
 import org.lwjgl.opencl.CL10GL;
 import org.lwjgl.opencl.CL12;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
@@ -53,9 +55,8 @@ import com.gpuExtended.config.UIScalingMode;
 import com.gpuExtended.shader.template.Template;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
-import com.gpuExtended.rendering.Color;
 import com.gpuExtended.rendering.Mesh;
-import com.gpuExtended.scene.Environment;
+import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.shader.Uniforms;
@@ -110,6 +111,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Inject
 	private GpuExtendedConfig config;
 
+	@Getter
+	private Gson gson;
+
 	@Inject
 	private TextureManager textureManager;
 
@@ -121,6 +125,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	@Inject
 	private PluginManager pluginManager;
+
+	private Uniforms uniforms;
+	public EnvironmentManager environmentManager;
 
 	public enum ComputeMode
 	{
@@ -165,8 +172,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private static final ResourcePath SHADER_PATH = Props
 			.getPathOrDefault("shader-path", () -> path("/shaders/")).chroot();
 
-	private Uniforms uniforms;
-	public Environment environment;
+
 
 	private int glProgram;
 	private int glComputeProgram;
@@ -297,11 +303,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				}
 
 				// TODO:: Temporary Scene Initializtion should be moved into a scene loader of some kind through json
-				environment = new Environment();
-				environment.ambientColor = new Color(0.5f,0.4f,0.4f);
-				environment.fogColor = new Color(1,0.8f,0.8f);
+				environmentManager = new EnvironmentManager();
+				environmentManager.Initialize();
+
 				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
-				environment.ReloadLights();
+				//environment.ReloadLights();
 
 				fboSceneHandle = rboSceneHandle = -1; // AA FBO
 				targetBufferOffset = 0;
@@ -803,7 +809,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		initGlBuffer(renderNormalBuffer);
 
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BUFFER_BINDING_ID, environment.renderLightBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BUFFER_BINDING_ID, environmentManager.renderLightBuffer.glBufferId);
 	}
 
 	private void initGlBuffer(GLBuffer glBuffer)
@@ -830,7 +836,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		destroyGlBuffer(renderNormalBuffer);
 
 		destroyGlBuffer(glCameraUniformBuffer);
-		destroyGlBuffer(environment.renderLightBuffer);
+		destroyGlBuffer(environmentManager.renderLightBuffer);
 
 		uniformBufferCamera = null;
 	}
@@ -881,8 +887,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void initLightBuffer()
 	{
-		initGlBuffer(environment.renderLightBuffer);
-		updateBuffer(environment.renderLightBuffer, GL_UNIFORM_BUFFER, environment.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+		initGlBuffer(environmentManager.renderLightBuffer);
+		updateBuffer(environmentManager.renderLightBuffer, GL_UNIFORM_BUFFER, environmentManager.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
@@ -1018,7 +1024,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			GL_STREAM_DRAW,
 			CL12.CL_MEM_WRITE_ONLY);
 
-		updateBuffer(environment.renderLightBuffer, GL_UNIFORM_BUFFER, environment.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+		updateBuffer(environmentManager.renderLightBuffer, GL_UNIFORM_BUFFER, environmentManager.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
 
 		// TODO:: make OpenCL work. This is for Mac.
 
@@ -1238,7 +1244,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		else if(gameState.getState() == GameState.LOGGED_IN.getState())
 		{
 			// SET SKYBOX COLOR
-			glClearColor(environment.fogColor.r, environment.fogColor.g, environment.fogColor.b, 1f);
+			glClearColor(environmentManager.currentEnvironment.FogColor.r, environmentManager.currentEnvironment.FogColor.g, environmentManager.currentEnvironment.FogColor.b, 1f);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1304,22 +1310,20 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			glUseProgram(glProgram);
 
-			final int drawDistance = getDrawDistance();
-			final int fogDepth = config.fogDepth();
-			glUniform3f(uniforms.FogColor, environment.fogColor.r, environment.fogColor.g, environment.fogColor.b);
-			glUniform1i(uniforms.FogDepth, fogDepth);
-			glUniform1i(uniforms.DrawDistance, drawDistance * Perspective.LOCAL_TILE_SIZE);
+			glUniform1i(uniforms.DrawDistance, getDrawDistance() * Perspective.LOCAL_TILE_SIZE);
 			glUniform1i(uniforms.ExpandedMapLoadingChunks, client.getExpandedMapLoading());
-
-			glUniform3f(uniforms.AmbientColor, environment.ambientColor.r, environment.ambientColor.g, environment.ambientColor.b);
 			glUniform1i(uniforms.SceneOffsetX, client.getScene().getBaseX());
 			glUniform1i(uniforms.SceneOffsetZ, client.getScene().getBaseY());
 
 			glUniform1f(uniforms.Time, Time);
 			glUniform1f(uniforms.DeltaTime, DeltaTime);
 
-//			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
-//			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
+			Environment env = environmentManager.currentEnvironment;
+	        glUniform3f(uniforms.LightDirection, env.LightDirection.x, env.LightDirection.y, env.LightDirection.z);
+			glUniform3f(uniforms.LightColor, env.LightColor.r, env.LightColor.g, env.LightColor.b);
+			glUniform3f(uniforms.AmbientColor, env.AmbientColor.r, env.AmbientColor.g, env.AmbientColor.b);
+			glUniform3f(uniforms.FogColor, env.FogColor.r, env.FogColor.g, env.FogColor.b);
+			glUniform1i(uniforms.FogDepth, env.FogDepth);
 
 			// Brightness happens to also be stored in the texture provider, so we use that
 			glUniform1f(uniforms.Brightness, (float) textureProvider.getBrightness());
