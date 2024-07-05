@@ -96,14 +96,13 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
   }
 
   if (localId < size) {
-    int radius = (flags >> 12) & 0xfff;
     int orientation = flags & 0x7ff;
 
     vec4 thisrvA = rotate_vertex(vec4(thisA.pos, 0), orientation);
     vec4 thisrvB = rotate_vertex(vec4(thisB.pos, 0), orientation);
     vec4 thisrvC = rotate_vertex(vec4(thisC.pos, 0), orientation);
 
-    int thisPriority = (thisA.ahsl >> 16) & 0xF;// all vertices on the face have the same priority
+    int thisPriority = (thisA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
     int thisDistance = face_distance(thisA.pos, thisB.pos, thisC.pos, cameraYaw, cameraPitch);
 
     o1.pos = thisrvA.xyz;
@@ -183,7 +182,7 @@ void insert_face(uint localId, modelinfo minfo, int adjPrio, int distance, int p
     // the furthest faces draw first, and have the highest value
     // if two faces have the same distance, the one with the
     // lower id draws first
-    renderPris[baseOff + prioIdx] = uint(distance << 16) | (~localId & 0xffffu);
+    renderPris[baseOff + prioIdx] = distance << 16 | int(~localId & 0xffffu);
   }
 }
 
@@ -198,8 +197,8 @@ vec4 hillskew_vertexf(vec4 v, int hillskew, int y, int plane) {
     float fz = v.z / 128;
     int sx = int(floor(fx));
     int sz = int(floor(fz));
-    float h1 = mix(tile_height(0, sx, sz), tile_height(0, sx + 1, sz), fract(fx));
-    float h2 = mix(tile_height(0, sx, sz + 1), tile_height(0, sx + 1, sz + 1), fract(fx));
+    float h1 = mix(tile_height(plane, sx, sz), tile_height(plane, sx + 1, sz), fract(fx));
+    float h2 = mix(tile_height(plane, sx, sz + 1), tile_height(plane, sx + 1, sz + 1), fract(fx));
     float h3 = mix(h1, h2, fract(fz));
     return vec4(v.x, v.y + h3 - y, v.z, v.w);
   } else {
@@ -251,7 +250,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     const int numOfPriority = totalMappedNum[thisPriority];
     const int start = priorityOffset;                // index of first face with this priority
     const int end = priorityOffset + numOfPriority;  // index of last face with this priority
-    const uint renderPriority = uint(thisDistance << 16) | (~localId & 0xffffu);
+    const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
     int myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
 
@@ -275,11 +274,6 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
     vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
 
-    // write to out buffer
-    vout[outOffset + myOffset * 3] = Vertex(vertA.xyz, thisrvA.ahsl);
-    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
-    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
-
     // Grab vertex normals from the correct buffer
     vec4 normA, normB, normC;
     if (flags < 0)
@@ -295,6 +289,16 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       normC = tempnormal[offset + localId * 3 + 2];
     }
 
+    // undo shading
+    undoVanillaShading(thisrvA.ahsl, normA.xyz);
+    undoVanillaShading(thisrvB.ahsl, normB.xyz);
+    undoVanillaShading(thisrvC.ahsl, normC.xyz);
+
+    // write to out buffer
+    vout[outOffset + myOffset * 3] = Vertex(vertA.xyz, thisrvA.ahsl);
+    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
+    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
+
     vec4 normrvA, normrvB, normrvC;
 
     normrvA = rotate2(normA, orientation);
@@ -305,11 +309,14 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     normalout[outOffset + myOffset * 3 + 1] = normrvB;
     normalout[outOffset + myOffset * 3 + 2] = normrvC;
 
-    if (toffset < 0) {
+    if (toffset < 0)
+    {
       uvout[outOffset + myOffset * 3] = vec4(0);
       uvout[outOffset + myOffset * 3 + 1] = vec4(0);
       uvout[outOffset + myOffset * 3 + 2] = vec4(0);
-    } else {
+    }
+    else
+    {
       vec4 texA, texB, texC;
 
       if (flags >= 0) {

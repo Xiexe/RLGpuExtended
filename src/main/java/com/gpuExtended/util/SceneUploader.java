@@ -575,16 +575,15 @@ public class SceneUploader
 				}
 			}
 
-			int packAlphaPriority = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
-
 			int i0 = indices1[tri];
 			int i1 = indices2[tri];
 			int i2 = indices3[tri];
 
-			// Push Vertex Positions
-			vertexBuffer.put(vertexX[i0],  vertexY[i0], vertexZ[i0], packAlphaPriority | color1);
-			vertexBuffer.put(vertexX[i1],  vertexY[i1], vertexZ[i1], packAlphaPriority | color2);
-			vertexBuffer.put(vertexX[i2],  vertexY[i2], vertexZ[i2], packAlphaPriority | color3);
+			int packedAlphaPriorityFlags = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
+
+			vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
+			vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
+			vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
 
 			if (faceTextures != null)
 			{
@@ -703,21 +702,6 @@ public class SceneUploader
 		}
 	}
 
-	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
-	{
-		int alpha = 0;
-		if (faceTransparencies != null && (faceTextures == null || faceTextures[face] == -1))
-		{
-			alpha = (faceTransparencies[face] & 0xFF) << 24;
-		}
-		int priority = 0;
-		if (facePriorities != null)
-		{
-			priority = (facePriorities[face] & 0xff) << 16;
-		}
-		return alpha | priority;
-	}
-
 	private static int interpolateHSL(int hsl, byte hue2, byte sat2, byte lum2, byte lerp)
 	{
 		int hue = hsl >> 10 & 63;
@@ -740,6 +724,21 @@ public class SceneUploader
 		}
 
 		return (hue << 10 | sat << 7 | lum) & 65535;
+	}
+
+	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
+	{
+		int alpha = 0;
+		if (faceTransparencies != null && (faceTextures == null || faceTextures[face] == -1))
+		{
+			alpha = (faceTransparencies[face] & 0xFF) << 24;
+		}
+		int priority = 0;
+		if (facePriorities != null)
+		{
+			priority = (facePriorities[face] & 0xff) << 16;
+		}
+		return alpha | priority;
 	}
 
 	// remove tiles from the scene that are outside the current region

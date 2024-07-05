@@ -1,4 +1,5 @@
-#version 330
+#version 420
+
 layout(location = 0) in vec3 vPos;
 layout(location = 1) in int vHsl;
 layout(location = 2) in vec4 vUv;
@@ -14,6 +15,7 @@ out vec3 gTexPos;
 out float gFogAmount;
 
 #include "/shaders/glsl/constants.glsl"
+#include "/shaders/glsl/structs.glsl"
 #include "/shaders/glsl/uniforms.glsl"
 #include "/shaders/glsl/hsl_to_rgb.glsl"
 

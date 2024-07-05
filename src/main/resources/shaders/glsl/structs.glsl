@@ -15,8 +15,3 @@ struct Surface
     vec4 albedo;
     vec4 normal;
 };
-
-layout(std140) uniform lightUniforms
-{
-    Light LightsArray[LIGHT_COUNT];
-};

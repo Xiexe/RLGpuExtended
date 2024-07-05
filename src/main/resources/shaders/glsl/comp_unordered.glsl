@@ -1,5 +1,6 @@
 #include "VERSION_HEADER"
 
+#include "/shaders/glsl/constants.glsl"
 #include "/shaders/glsl/comp_common.glsl"
 
 layout(local_size_x = 6) in;
@@ -46,14 +47,14 @@ void main() {
   vec3 pos = vec3(minfo.x, minfo.y, minfo.z);
   ivec4 texPos = ivec4(0, pos);
 
-  thisA.pos += pos;
-  thisB.pos += pos;
-  thisC.pos += pos;
+  vec3 vertA = thisA.pos + pos;
+  vec3 vertB = thisB.pos + pos;
+  vec3 vertC = thisC.pos + pos;
 
   // position vertices in scene and write to out buffer
-  vout[outOffset + myOffset * 3]          = thisA;
-  vout[outOffset + myOffset * 3 + 1]      = thisB;
-  vout[outOffset + myOffset * 3 + 2]      = thisC;
+  vout[outOffset + myOffset * 3]          = Vertex(vertA, thisA.ahsl);
+  vout[outOffset + myOffset * 3 + 1]      = Vertex(vertB, thisB.ahsl);
+  vout[outOffset + myOffset * 3 + 2]      = Vertex(vertC, thisC.ahsl);
 
   normalout[outOffset + myOffset * 3]     = normA;
   normalout[outOffset + myOffset * 3 + 1] = normB;

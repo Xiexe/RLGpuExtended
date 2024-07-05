@@ -1,9 +1,15 @@
-uniform vec3 cameraPosition;
-uniform float cameraYaw;
-uniform float cameraPitch;
-uniform int centerX;
-uniform int centerY;
-uniform int zoom;
+layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform cameraUniforms {
+    vec3 cameraPosition;
+    float cameraPitch;
+    float cameraYaw;
+    int zoom;
+    int centerX;
+    int centerY;
+};
+
+layout(std140, binding = LIGHT_BUFFER_BINDING_ID) uniform lightUniforms {
+    Light LightsArray[LIGHT_COUNT];
+};
 
 uniform sampler2DArray textures;
 uniform float brightness;

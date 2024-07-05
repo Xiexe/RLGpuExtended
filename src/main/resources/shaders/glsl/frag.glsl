@@ -1,5 +1,4 @@
-#version 330
-
+#version 420
 
 in vec4 fColor;
 in vec4 fNormal;
@@ -12,8 +11,8 @@ in float fFogAmount;
 out vec4 FragColor;
 
 #include "/shaders/glsl/constants.glsl"
-#include "/shaders/glsl/uniforms.glsl"
 #include "/shaders/glsl/structs.glsl"
+#include "/shaders/glsl/uniforms.glsl"
 #include "/shaders/glsl/hsl_to_rgb.glsl"
 #include "/shaders/glsl/colorblind.glsl"
 #include "/shaders/glsl/helpers.glsl"
@@ -36,7 +35,7 @@ void main() {
     PopulateSurfaceNormal(s, fNormal);
 
     float ndl = max(dot(s.normal.xyz, vec3(1, 1, 0)), 0);
-    vec3 litFragment = s.albedo.rgb * (ndl * lightColor + ambientColor);
+    vec3 litFragment = s.albedo.rgb;// * (ndl * lightColor + ambientColor);
 
     float fog = 0.0;
 
@@ -44,11 +43,8 @@ void main() {
 //    heightFog = smoothstep(0.3, -0.1, heightFog);
 
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fFogAmount);
+    finalColor = s.albedo.rgb;
 
-    //finalColor = vec3(0,0,0);
-//    s.albedo.rgb = mix(s.albedo.rgb, vec3(heightFog)*vec3(0.1, 0.25, 0.1) , heightFog);
-
-    /*
     for(int i = 0; i < LIGHT_COUNT; i++)
     {
         Light light = LightsArray[i];
@@ -71,7 +67,6 @@ void main() {
             finalColor += s.albedo.rgb * light.color.rgb * ndl * atten;
         }
     }
-    */
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

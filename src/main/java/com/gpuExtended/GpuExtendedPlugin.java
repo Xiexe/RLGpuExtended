@@ -37,6 +37,7 @@ import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.OSType;
 import net.runelite.rlawt.AWTContext;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.opencl.CL10GL;
 import org.lwjgl.opencl.CL12;
@@ -61,6 +62,7 @@ import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ResourcePath.path;
+import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
@@ -79,6 +81,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	static final int MAX_FOG_DEPTH = 100;
 	public static final int SCENE_OFFSET = (Constants.EXTENDED_SCENE_SIZE - Constants.SCENE_SIZE) / 2; // offset for sxy -> msxy
 	private static final int GROUND_MIN_Y = 350; // how far below the ground models extend
+
+	private int CAMERA_BUFFER_BINDING_ID = 0;
+	private int LIGHT_BUFFER_BINDING_ID = 1;
+	private int MODEL_BUFFER_IN_BINDING_ID = 2;
+	private int VERTEX_BUFFER_OUT_BINDING_ID = 3;
+	private int VERTEX_BUFFER_IN_BINDING_ID = 4;
+	private int TEMP_VERTEX_BUFFER_IN_BINDING_ID = 5;
+	private int TEXTURE_BUFFER_OUT_BINDING_ID = 6;
+	private int TEXTURE_BUFFER_IN_BINDING_ID = 7;
+	private int TEMP_TEXTURE_BUFFER_IN_BINDING_ID = 8;
+	private int NORMAL_BUFFER_OUT_BINDING_ID = 9;
+	private int NORMAL_BUFFER_IN_BINDING_ID = 10;
+	private int TEMP_NORMAL_BUFFER_IN_BINDING_ID = 11;
 
 	@Inject
 	private Client client;
@@ -195,7 +210,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int textureArrayId;
 	private int tileHeightTex;
 
-	private final GLBuffer uniformBuffer = new GLBuffer("uniform buffer");
+	private final GLBuffer glCameraUniformBuffer = new GLBuffer("camera uniform buffer");
+	private ByteBuffer uniformBufferCamera;
 
 	public GpuIntBuffer vertexBuffer;
 	public GpuFloatBuffer uvBuffer;
@@ -372,7 +388,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initVao();
 				initShaders();
 				initInterfaceTexture();
-				//initUniformBuffer();
+				initCameraUniformBuffer();
 				initLightBuffer();
 
 				// force rebuild of main buffer provider to enable alpha channel
@@ -444,8 +460,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					glDeleteTextures(tileHeightTex);
 					tileHeightTex = 0;
 				}
-
-				destroyGlBuffer(uniformBuffer);
 
 				shutdownInterfaceTexture();
 				shutdownProgram();
@@ -787,6 +801,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		initGlBuffer(renderVertexBuffer);
 		initGlBuffer(renderUvBuffer);
 		initGlBuffer(renderNormalBuffer);
+
+		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BUFFER_BINDING_ID, environment.renderLightBuffer.glBufferId);
 	}
 
 	private void initGlBuffer(GLBuffer glBuffer)
@@ -812,7 +829,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		destroyGlBuffer(renderUvBuffer);
 		destroyGlBuffer(renderNormalBuffer);
 
+		destroyGlBuffer(glCameraUniformBuffer);
 		destroyGlBuffer(environment.renderLightBuffer);
+
+		uniformBufferCamera = null;
 	}
 
 	private void destroyGlBuffer(GLBuffer glBuffer)
@@ -851,10 +871,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		interfaceTexture = -1;
 	}
 
-	private void initUniformBuffer()
+	private void initCameraUniformBuffer()
 	{
-		initGlBuffer(uniformBuffer);
-		updateBuffer(uniformBuffer, GL_UNIFORM_BUFFER, 8 * Integer.BYTES, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+		int size = 8 * Float.BYTES;
+		uniformBufferCamera = BufferUtils.createByteBuffer(size);
+		updateBuffer(glCameraUniformBuffer, GL_UNIFORM_BUFFER, size, GL_DYNAMIC_DRAW, CL_MEM_READ_ONLY);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
@@ -932,6 +953,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// viewport buffer.
 		targetBufferOffset = 0;
 
+		uniformBufferCamera
+				.clear()
+				.putFloat((float) cameraX)
+				.putFloat((float) cameraY)
+				.putFloat((float) cameraZ)
+				.putFloat((float) cameraYaw)
+				.putFloat((float) cameraPitch)
+				.putInt(client.getScale())
+				.putInt(client.getCenterX())
+				.putInt(client.getCenterY())
+				.flip();
+
+		glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uniformBufferCamera);
+
 		checkGLErrors();
 	}
 
@@ -986,11 +1022,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		// TODO:: make OpenCL work. This is for Mac.
 
-		/*
-		 * Compute is split into three separate programs: 'unordered', 'small', and 'large'
-		 * to save on GPU resources. Small will sort <= 512 faces, large will do <= 6144.
-		 */
-
 		// Bind UBO to compute programs
 		glUniformBlockBinding(glSmallComputeProgram, uniforms.BlockSmall, 0);
 		glUniformBlockBinding(glComputeProgram, uniforms.BlockLarge, 0);
@@ -1005,19 +1036,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void dispatchModelSortingComputeShader(int computeShader, int models, GLBuffer modelBuffer)
 	{
 		glUseProgram(computeShader);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, modelBuffer.glBufferId); // modelbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelBuffer.glBufferId); // modelbuffer_in
 
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderVertexBuffer.glBufferId); // vertex out
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, sceneVertexBuffer.glBufferId); // vertexbuffer_in
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, tmpVertexBuffer.glBufferId); // tempvertexbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_OUT_BINDING_ID, renderVertexBuffer.glBufferId); // vertex out
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_IN_BINDING_ID, sceneVertexBuffer.glBufferId); // vertexbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_VERTEX_BUFFER_IN_BINDING_ID, tmpVertexBuffer.glBufferId); // tempvertexbuffer_in
 
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, renderUvBuffer.glBufferId); // uv out
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sceneUvBuffer.glBufferId); // texturebuffer_in
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, tmpUvBuffer.glBufferId); // temptexturebuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_OUT_BINDING_ID, renderUvBuffer.glBufferId); // uv out
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_IN_BINDING_ID, sceneUvBuffer.glBufferId); // texturebuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_TEXTURE_BUFFER_IN_BINDING_ID, tmpUvBuffer.glBufferId); // temptexturebuffer_in
 
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, renderNormalBuffer.glBufferId); // normal_out
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, sceneNormalBuffer.glBufferId); // normalbuffer_in
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, tmpNormalBuffer.glBufferId); // tempnormalbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, NORMAL_BUFFER_OUT_BINDING_ID, renderNormalBuffer.glBufferId); // normal_out
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, NORMAL_BUFFER_IN_BINDING_ID, sceneNormalBuffer.glBufferId); // normalbuffer_in
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_NORMAL_BUFFER_IN_BINDING_ID, tmpNormalBuffer.glBufferId); // tempnormalbuffer_in
 
 		glDispatchCompute(models, 1, 1);
 	}
@@ -1316,11 +1347,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			Mat4.mul(projectionMatrix, Mat4.translate((float) -cameraX, (float) -cameraY, (float) -cameraZ));
 			glUniformMatrix4fv(uniforms.ProjectionMatrix, false, projectionMatrix);
 
-			//glUniformBlockBinding(glProgram, uniforms.BlockMain, 0);
+			glUniformBlockBinding(glProgram, uniforms.CameraUniformsBlock, 0);
+			glUniformBlockBinding(glProgram, uniforms.LightUniformsBlock, 0);
 			glUniform1i(uniforms.Textures, 1); // texture sampler array is bound to texture1
-
-			glUniformBlockBinding(glProgram, uniforms.BlockLights, 0);
-			glBindBufferBase(GL_UNIFORM_BUFFER, 0, environment.renderLightBuffer.glBufferId);
 
 			// We just allow the GL to do face culling. Note this requires the priority renderer
 			// to have logic to disregard culled faces in the priority depth testing.
@@ -1742,84 +1771,86 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			offsetModel = model;
 		}
 
-		// Model may be in the scene buffer
 		if (offsetModel.getSceneId() == sceneId)
 		{
-			assert model == renderable;
-
-			model.calculateBoundsCylinder();
-
-			if (projection instanceof IntProjection)
-			{
-				IntProjection p = (IntProjection) projection;
-				if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
-				{
-					return;
-				}
-			}
-
-			client.checkClickbox(projection, model, orientation, x, y, z, hash);
-			int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
-			int uvOffset = offsetModel.getUvBufferOffset();
-			int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-			boolean hillskew = offsetModel != model;
-
-			GpuIntBuffer b = bufferForTriangles(tc);
-
-			b.ensureCapacity(8);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(offsetModel.getBufferOffset());
-			buffer.put(uvOffset);
-			buffer.put(tc);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER | (hillskew ? (1 << 26) : 0) | (plane << 24) | orientation);
-			buffer.put(x).put(y).put(z);
-
-			targetBufferOffset += tc * 3;
+			DrawStaticModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
 		}
 		else
 		{
-			// Temporary model (animated or otherwise not a static Model on the scene)
+			DrawDynamicModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
+		}
+	}
 
-			// Apply height to renderable from the model
-			if (model != renderable)
+	private void DrawStaticModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
+	{
+		assert model == renderable;
+
+		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
+
+		int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
+		int uvOffset = offsetModel.getUvBufferOffset();
+		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
+		boolean hillskew = offsetModel != model;
+
+		GpuIntBuffer b = bufferForTriangles(tc);
+
+		b.ensureCapacity(8);
+		IntBuffer buffer = b.getBuffer();
+		buffer.put(offsetModel.getBufferOffset());
+		buffer.put(uvOffset);
+		buffer.put(tc);
+		buffer.put(targetBufferOffset);
+		buffer.put(FLAG_SCENE_BUFFER | (hillskew ? (1 << 26) : 0) | (plane << 24) | orientation);
+		buffer.put(x).put(y).put(z);
+
+		targetBufferOffset += tc * 3;
+	}
+
+	private void DrawDynamicModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
+	{
+		// Apply height to renderable from the model
+		if (model != renderable)
+		{
+			renderable.setModelHeight(model.getModelHeight());
+		}
+
+		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
+
+		boolean hasUv = model.getFaceTextures() != null;
+		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
+
+		GpuIntBuffer b = bufferForTriangles(len / 3);
+
+		b.ensureCapacity(8);
+		IntBuffer buffer = b.getBuffer();
+		buffer.put(tempOffset);
+		buffer.put(hasUv ? tempUvOffset : -1);
+		buffer.put(len / 3);
+		buffer.put(targetBufferOffset);
+		buffer.put(orientation);
+		buffer.put(x).put(y).put(z);
+
+		tempOffset += len;
+		targetBufferOffset += len;
+		if(hasUv) {
+			tempUvOffset += len;
+		}
+	}
+
+	private void CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash)
+	{
+		model.calculateBoundsCylinder();
+
+		if (projection instanceof IntProjection)
+		{
+			IntProjection p = (IntProjection) projection;
+			if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
 			{
-				renderable.setModelHeight(model.getModelHeight());
-			}
-
-			model.calculateBoundsCylinder();
-
-			if (projection instanceof IntProjection)
-			{
-				IntProjection p = (IntProjection) projection;
-				if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
-				{
-					return;
-				}
-			}
-
-			client.checkClickbox(projection, model, orientation, x, y, z, hash);
-
-			boolean hasUv = model.getFaceTextures() != null;
-			int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
-
-			GpuIntBuffer b = bufferForTriangles(len / 3);
-
-			b.ensureCapacity(8);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(tempOffset);
-			buffer.put(hasUv ? tempUvOffset : -1);
-			buffer.put(len / 3);
-			buffer.put(targetBufferOffset);
-			buffer.put(orientation);
-			buffer.put(x).put(y).put(z);
-
-			tempOffset += len;
-			targetBufferOffset += len;
-			if(hasUv) {
-				tempUvOffset += len;
+				return;
 			}
 		}
+
+		client.checkClickbox(projection, model, orientation, x, y, z, hash);
 	}
 
 	private boolean CheckModelIsVisible( Model model, Projection projection, int x, int y, int z )

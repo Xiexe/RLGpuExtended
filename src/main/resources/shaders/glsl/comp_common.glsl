@@ -1,19 +1,3 @@
-
-
-#define PI 3.1415926535897932384626433832795f
-#define UNIT PI / 1024.0f
-
-layout(std140) uniform uniforms {
-  float cameraYaw;
-  float cameraPitch;
-  int centerX;
-  int centerY;
-  int zoom;
-  float cameraX;
-  float cameraY;
-  float cameraZ;
-};
-
 struct modelinfo {
   int offset;   // offset into vertex buffer
   int toffset;  // offset into texture buffer
@@ -30,45 +14,54 @@ struct Vertex {
   int ahsl;
 };
 
-layout(std430, binding = 0) readonly buffer modelbuffer_in {
+layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform cameraUniforms {
+  vec3 cameraPosition;
+  float cameraPitch;
+  float cameraYaw;
+  int zoom;
+  int centerX;
+  int centerY;
+};
+
+layout(std430, binding = MODEL_BUFFER_IN_BINDING_ID) readonly buffer modelbuffer_in {
   modelinfo ol[];
 };
 
 // position data
-layout(std430, binding = 1) writeonly buffer vertex_out {
+layout(std430, binding = VERTEX_BUFFER_OUT_BINDING_ID) writeonly buffer vertex_out {
   Vertex vout[];
 };
 
-layout(std430, binding = 2) readonly buffer vertexbuffer_in {
+layout(std430, binding = VERTEX_BUFFER_IN_BINDING_ID) readonly buffer vertexbuffer_in {
   Vertex vb[];
 };
 
-layout(std430, binding = 3) readonly buffer tempvertexbuffer_in {
+layout(std430, binding = TEMP_VERTEX_BUFFER_IN_BINDING_ID) readonly buffer tempvertexbuffer_in {
   Vertex tempvb[];
 };
 
 // uv data
-layout(std430, binding = 4) writeonly buffer uv_out {
+layout(std430, binding = TEXTURE_BUFFER_OUT_BINDING_ID) writeonly buffer uv_out {
   vec4 uvout[];
 };
 
-layout(std430, binding = 5) readonly buffer texturebuffer_in {
+layout(std430, binding = TEXTURE_BUFFER_IN_BINDING_ID) readonly buffer texturebuffer_in {
   vec4 texb[];
 };
 
-layout(std430, binding = 6) readonly buffer temptexturebuffer_in {
+layout(std430, binding = TEMP_TEXTURE_BUFFER_IN_BINDING_ID) readonly buffer temptexturebuffer_in {
   vec4 temptexb[];
 };
 
 // normal data
-layout(std430, binding = 7) writeonly buffer normal_out {
+layout(std430, binding = NORMAL_BUFFER_OUT_BINDING_ID) writeonly buffer normal_out {
   vec4 normalout[];
 };
 
-layout(std430, binding = 8) readonly buffer normalbuffer_in {
+layout(std430, binding = NORMAL_BUFFER_IN_BINDING_ID) readonly buffer normalbuffer_in {
   vec4 normal[];
 };
 
-layout(std430, binding = 9) readonly buffer tempnormalbuffer_in {
+layout(std430, binding = TEMP_NORMAL_BUFFER_IN_BINDING_ID) readonly buffer tempnormalbuffer_in {
   vec4 tempnormal[];
 };

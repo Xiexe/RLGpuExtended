@@ -1,4 +1,4 @@
-#version 330
+#version 420
 
 // smallest unit of the texture which can be moved per tick. textures are all
 // 128x128px - so this is equivalent to +1px
@@ -11,8 +11,8 @@ layout(triangle_strip, max_vertices = 3) out;
 //layout(points, max_vertices = 3) out;
 
 #include "/shaders/glsl/constants.glsl"
-#include "/shaders/glsl/uniforms.glsl"
 #include "/shaders/glsl/structs.glsl"
+#include "/shaders/glsl/uniforms.glsl"
 #include "/shaders/glsl/uv.glsl"
 
 in vec3 gVertex[3];

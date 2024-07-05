@@ -29,7 +29,7 @@ public class Uniforms
     public int LightDirection;
     public int LightColor;
     public int AmbientColor;
-    public int BlockLights;
+
     public int SceneOffsetX;
     public int SceneOffsetZ;
     public int Time;
@@ -41,6 +41,9 @@ public class Uniforms
     public int Zoom;
     public int CenterX;
     public int CenterY;
+
+    public int LightUniformsBlock;
+    public int CameraUniformsBlock;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -72,8 +75,8 @@ public class Uniforms
         CenterX = glGetUniformLocation(shader, "centerX");
         CenterY = glGetUniformLocation(shader, "centerY");
 
-        //BlockMain = glGetUniformBlockIndex(shader, "uniforms");
-        BlockLights = glGetUniformBlockIndex(shader, "lightUniforms");
+        CameraUniformsBlock = glGetUniformBlockIndex(shader, "cameraUniforms");
+        LightUniformsBlock = glGetUniformBlockIndex(shader, "lightUniforms");
 
         Tex = glGetUniformLocation(uiShader, "tex");
         TexSamplingMode = glGetUniformLocation(uiShader, "samplingMode");
@@ -84,8 +87,8 @@ public class Uniforms
 
         if (computeMode == GpuExtendedPlugin.ComputeMode.OPENGL)
         {
-            BlockSmall = glGetUniformBlockIndex(smallComputeShader, "uniforms");
-            BlockLarge = glGetUniformBlockIndex(computeShader, "uniforms");
+            BlockSmall = glGetUniformBlockIndex(smallComputeShader, "cameraUniforms");
+            BlockLarge = glGetUniformBlockIndex(computeShader, "cameraUniforms");
         }
     }
 }
