@@ -41,6 +41,7 @@ import org.lwjgl.opencl.CL10;
 import org.lwjgl.opencl.CL10GL;
 import org.lwjgl.opencl.CL12;
 import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
@@ -371,7 +372,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initVao();
 				initShaders();
 				initInterfaceTexture();
-				initUniformBuffer();
+				//initUniformBuffer();
 				initLightBuffer();
 
 				// force rebuild of main buffer provider to enable alpha channel
@@ -931,28 +932,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// viewport buffer.
 		targetBufferOffset = 0;
 
-		// UBO. Only the first 32 bytes get modified here, the rest is the constant sin/cos table.
-		// We can reuse the vertex buffer since it isn't used yet.
-		vertexBuffer.clear();
-		vertexBuffer.ensureCapacity(32);
-		IntBuffer uniformBuf = vertexBuffer.getBuffer();
-		uniformBuf
-			.put(Float.floatToIntBits((float) cameraYaw))
-			.put(Float.floatToIntBits((float) cameraPitch))
-			.put(client.getCenterX())
-			.put(client.getCenterY())
-			.put(client.getScale())
-			.put(Float.floatToIntBits((float) cameraX))
-			.put(Float.floatToIntBits((float) cameraY))
-			.put(Float.floatToIntBits((float) cameraZ));
-		uniformBuf.flip();
-
-		updateBuffer(uniformBuffer, GL_UNIFORM_BUFFER, uniformBuf, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer.glBufferId);
-		uniformBuf.clear();
-
 		checkGLErrors();
 	}
 
@@ -1304,9 +1283,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glUniform3f(uniforms.AmbientColor, environment.ambientColor.r, environment.ambientColor.g, environment.ambientColor.b);
 			glUniform1i(uniforms.SceneOffsetX, client.getScene().getBaseX());
 			glUniform1i(uniforms.SceneOffsetZ, client.getScene().getBaseY());
-//
+
 			glUniform1f(uniforms.Time, Time);
 			glUniform1f(uniforms.DeltaTime, DeltaTime);
+
+			glUniform3f(uniforms.CameraPosition, (float) cameraX, (float) cameraY, (float) cameraZ);
+			glUniform1f(uniforms.CameraPitch, (float) cameraPitch);
+			glUniform1f(uniforms.CameraYaw, (float) cameraYaw);
+			glUniform1i(uniforms.Zoom, client.getScale());
+			glUniform1i(uniforms.CenterX, client.getCenterX());
+			glUniform1i(uniforms.CenterY, client.getCenterY());
+
 //			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
 //			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
 
@@ -1329,8 +1316,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			Mat4.mul(projectionMatrix, Mat4.translate((float) -cameraX, (float) -cameraY, (float) -cameraZ));
 			glUniformMatrix4fv(uniforms.ProjectionMatrix, false, projectionMatrix);
 
-			// Bind uniforms
-			glUniformBlockBinding(glProgram, uniforms.BlockMain, 0);
+			//glUniformBlockBinding(glProgram, uniforms.BlockMain, 0);
 			glUniform1i(uniforms.Textures, 1); // texture sampler array is bound to texture1
 
 			glUniformBlockBinding(glProgram, uniforms.BlockLights, 0);

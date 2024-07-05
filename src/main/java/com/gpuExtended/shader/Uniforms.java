@@ -22,7 +22,7 @@ public class Uniforms
     public int TextureAnimations;
     public int BlockSmall;
     public int BlockLarge;
-    public int BlockMain;
+    //public int BlockMain;
     public int SmoothBanding;
     public int TextureLightMode;
     public int Tick;
@@ -34,6 +34,13 @@ public class Uniforms
     public int SceneOffsetZ;
     public int Time;
     public int DeltaTime;
+
+    public int CameraPosition;
+    public int CameraPitch;
+    public int CameraYaw;
+    public int Zoom;
+    public int CenterX;
+    public int CenterY;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -58,7 +65,14 @@ public class Uniforms
         Time = glGetUniformLocation(shader, "time");
         DeltaTime = glGetUniformLocation(shader, "deltaTime");
 
-        BlockMain = glGetUniformBlockIndex(shader, "uniforms");
+        CameraPosition = glGetUniformLocation(shader, "cameraPosition");
+        CameraPitch = glGetUniformLocation(shader, "cameraPitch");
+        CameraYaw = glGetUniformLocation(shader, "cameraYaw");
+        Zoom = glGetUniformLocation(shader, "zoom");
+        CenterX = glGetUniformLocation(shader, "centerX");
+        CenterY = glGetUniformLocation(shader, "centerY");
+
+        //BlockMain = glGetUniformBlockIndex(shader, "uniforms");
         BlockLights = glGetUniformBlockIndex(shader, "lightUniforms");
 
         Tex = glGetUniformLocation(uiShader, "tex");

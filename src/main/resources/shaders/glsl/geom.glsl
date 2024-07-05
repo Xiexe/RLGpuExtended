@@ -10,22 +10,10 @@ layout(triangle_strip, max_vertices = 3) out;
 //layout(line_strip, max_vertices = 4) out;
 //layout(points, max_vertices = 3) out;
 
-layout(std140) uniform uniforms {
-  float cameraYaw;
-  float cameraPitch;
-  int centerX;
-  int centerY;
-  int zoom;
-  float cameraX;
-  float cameraY;
-  float cameraZ;
-};
-
+#include "/shaders/glsl/constants.glsl"
+#include "/shaders/glsl/uniforms.glsl"
+#include "/shaders/glsl/structs.glsl"
 #include "/shaders/glsl/uv.glsl"
-
-uniform vec2 textureAnimations[128];
-uniform int tick;
-uniform mat4 projectionMatrix;
 
 in vec3 gVertex[3];
 in vec3 gPosition[3];
@@ -34,8 +22,8 @@ in vec4 gColor[3];
 in float gHsl[3];
 in int gTextureId[3];
 in vec3 gTexPos[3];
-in float gFogAmount[3];
 in int gFarClip[3];
+in float gFogAmount[3];
 
 out vec4 fColor;
 out vec4 fNormal;
@@ -43,17 +31,15 @@ noperspective centroid out float fHsl;
 flat out int fTextureId;
 out vec2 fUv;
 out vec3 fPosition;
-out vec3 fCamPos;
 out float fFogAmount;
 
 void main() {
   int textureId = gTextureId[0];
   vec2 uv[3];
-  vec3 cameraPos = vec3(cameraX, cameraY, cameraZ);
 
   if (textureId > 0)
   {
-    compute_uv(cameraPos.xyz, gVertex[0], gVertex[1], gVertex[2], gTexPos[0], gTexPos[1], gTexPos[2], uv[0], uv[1], uv[2]);
+    compute_uv(cameraPosition.xyz, gVertex[0], gVertex[1], gVertex[2], gTexPos[0], gTexPos[1], gTexPos[2], uv[0], uv[1], uv[2]);
 
     vec2 textureAnim = textureAnimations[textureId - 1];
     for (int i = 0; i < 3; ++i) {
@@ -80,14 +66,13 @@ void main() {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
 
-    fCamPos = cameraPos;
     fPosition = gPosition[i];
     fColor = gColor[i];
+    fFogAmount = gFogAmount[i];
     fHsl = gHsl[i];
     fTextureId = gTextureId[i];
     fNormal = normal;
     fUv = uv[i];
-    fFogAmount = gFogAmount[i];
     gl_Position = projectionMatrix * vec4(gVertex[i], 1);
     EmitVertex();
   }

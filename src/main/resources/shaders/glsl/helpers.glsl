@@ -4,6 +4,7 @@ void PopulateSurfaceColor(inout Surface s)
 
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
+        // This error is fake.
         vec4 textureColor = texture(textures, vec3(fUv, float(textureIdx)));
         color = textureColor;
     } else {

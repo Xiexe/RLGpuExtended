@@ -1,3 +1,11 @@
+#define TILE_SIZE 128
+#define PLANE_HEIGHT 256
+
+#define FOG_SCENE_EDGE_MIN ((-expandedMapLoadingChunks * 8 + 1) * TILE_SIZE)
+#define FOG_SCENE_EDGE_MAX ((104 + expandedMapLoadingChunks * 8 - 1) * TILE_SIZE)
+#define FOG_CORNER_ROUNDING 1.5
+#define FOG_CORNER_ROUNDING_SQUARED (FOG_CORNER_ROUNDING * FOG_CORNER_ROUNDING)
+
 #define FIRE_CAPE 41
 #define INFERNAL_CAPE 60
 
