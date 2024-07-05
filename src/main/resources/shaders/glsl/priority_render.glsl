@@ -103,7 +103,7 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
     vec4 thisrvC = rotate_vertex(vec4(thisC.pos, 0), orientation);
 
     int thisPriority = (thisA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
-    int thisDistance = face_distance(thisA.pos, thisB.pos, thisC.pos, cameraYaw, cameraPitch);
+    int thisDistance = face_distance(thisrvA.xyz, thisrvB.xyz, thisrvC.xyz, cameraYaw, cameraPitch);
 
     o1.pos = thisrvA.xyz;
     o1.ahsl = thisA.ahsl;
@@ -117,9 +117,14 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
     prio = thisPriority;
     dis = thisDistance;
   } else {
-    o1 = Vertex(vec3(0), 0);
-    o2 = Vertex(vec3(0), 0);
-    o3 = Vertex(vec3(0), 0);
+    o1.pos = vec3(0);
+    o1.ahsl = 0;
+
+    o2.pos = vec3(0);
+    o2.ahsl = 0;
+
+    o3.pos = vec3(0);
+    o3.ahsl = 0;
     prio = 0;
     dis = 0;
   }
@@ -213,7 +218,7 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   const int IGNORE_LOW_LIGHTNESS = 3;
   // multiplier applied to vertex' lightness value.
   // results in greater lightening of lighter colors
-  const float LIGHTNESS_MULTIPLIER = 3.f;
+  const float LIGHTNESS_MULTIPLIER = 3;
   // the minimum amount by which each color will be lightened
   const int BASE_LIGHTEN = 10;
 
@@ -253,6 +258,8 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
     int myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
+    int plane = (flags >> 24) & 3;
+    int hillskew = (flags >> 26) & 1;
 
     // calculate position this face will be in
     for (int i = start; i < end; ++i) {
@@ -261,21 +268,12 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       }
     }
 
-    // position into scene
     vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
     vec4 vertA = vec4(thisrvA.pos, 0) + pos;
     vec4 vertB = vec4(thisrvB.pos, 0) + pos;
     vec4 vertC = vec4(thisrvC.pos, 0) + pos;
-
-    // apply hillskew
-    int plane = (flags >> 24) & 3;
-    int hillskew = (flags >> 26) & 1;
-    vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
-    vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
-    vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
-
-    // Grab vertex normals from the correct buffer
     vec4 normA, normB, normC;
+
     if (flags < 0)
     {
       normA = normal[offset + localId * 3    ];
@@ -289,25 +287,31 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       normC = tempnormal[offset + localId * 3 + 2];
     }
 
+    normA = rotate_vertex(normA, orientation);
+    normB = rotate_vertex(normB, orientation);
+    normC = rotate_vertex(normC, orientation);
+
+    // apply hillskew
+    vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
+    vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
+    vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
+    normA = hillskew_vertexf(normA, hillskew, minfo.y, plane);
+    normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
+    normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
+
     // undo shading
     undoVanillaShading(thisrvA.ahsl, normA.xyz);
     undoVanillaShading(thisrvB.ahsl, normB.xyz);
     undoVanillaShading(thisrvC.ahsl, normC.xyz);
 
+    normalout[outOffset + myOffset * 3]     = normA;
+    normalout[outOffset + myOffset * 3 + 1] = normB;
+    normalout[outOffset + myOffset * 3 + 2] = normC;
+
     // write to out buffer
     vout[outOffset + myOffset * 3] = Vertex(vertA.xyz, thisrvA.ahsl);
     vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
     vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
-
-    vec4 normrvA, normrvB, normrvC;
-
-    normrvA = rotate2(normA, orientation);
-    normrvB = rotate2(normB, orientation);
-    normrvC = rotate2(normC, orientation);
-
-    normalout[outOffset + myOffset * 3]     = normrvA;
-    normalout[outOffset + myOffset * 3 + 1] = normrvB;
-    normalout[outOffset + myOffset * 3 + 2] = normrvC;
 
     if (toffset < 0)
     {
@@ -329,7 +333,6 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
         texC = texb[toffset + localId * 3 + 2];
       }
 
-      int orientation = flags & 0x7ff;
       // swizzle from (tex,x,y,z) to (x,y,z,tex) for rotate and hillskew
       texA = texA.yzwx;
       texB = texB.yzwx;

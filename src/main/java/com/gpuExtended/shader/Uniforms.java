@@ -35,13 +35,6 @@ public class Uniforms
     public int Time;
     public int DeltaTime;
 
-    public int CameraPosition;
-    public int CameraPitch;
-    public int CameraYaw;
-    public int Zoom;
-    public int CenterX;
-    public int CenterY;
-
     public int LightUniformsBlock;
     public int CameraUniformsBlock;
 
@@ -67,13 +60,6 @@ public class Uniforms
         SceneOffsetZ = glGetUniformLocation(shader, "sceneOffsetZ");
         Time = glGetUniformLocation(shader, "time");
         DeltaTime = glGetUniformLocation(shader, "deltaTime");
-
-        CameraPosition = glGetUniformLocation(shader, "cameraPosition");
-        CameraPitch = glGetUniformLocation(shader, "cameraPitch");
-        CameraYaw = glGetUniformLocation(shader, "cameraYaw");
-        Zoom = glGetUniformLocation(shader, "zoom");
-        CenterX = glGetUniformLocation(shader, "centerX");
-        CenterY = glGetUniformLocation(shader, "centerY");
 
         CameraUniformsBlock = glGetUniformBlockIndex(shader, "cameraUniforms");
         LightUniformsBlock = glGetUniformBlockIndex(shader, "lightUniforms");

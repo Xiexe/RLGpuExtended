@@ -43,8 +43,9 @@ void main() {
 //    heightFog = smoothstep(0.3, -0.1, heightFog);
 
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fFogAmount);
-    finalColor = s.albedo.rgb;
+    //finalColor = s.normal.rgb;
 
+    /*
     for(int i = 0; i < LIGHT_COUNT; i++)
     {
         Light light = LightsArray[i];
@@ -67,6 +68,7 @@ void main() {
             finalColor += s.albedo.rgb * light.color.rgb * ndl * atten;
         }
     }
+    */
 
     PostProcessImage(finalColor, colorBlindMode);
     FragColor = vec4(finalColor, s.albedo.a);

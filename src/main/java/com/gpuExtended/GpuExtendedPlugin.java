@@ -958,8 +958,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				.putFloat((float) cameraX)
 				.putFloat((float) cameraY)
 				.putFloat((float) cameraZ)
-				.putFloat((float) cameraYaw)
 				.putFloat((float) cameraPitch)
+				.putFloat((float) cameraYaw)
 				.putInt(client.getScale())
 				.putInt(client.getCenterX())
 				.putInt(client.getCenterY())
@@ -1317,13 +1317,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			glUniform1f(uniforms.Time, Time);
 			glUniform1f(uniforms.DeltaTime, DeltaTime);
-
-			glUniform3f(uniforms.CameraPosition, (float) cameraX, (float) cameraY, (float) cameraZ);
-			glUniform1f(uniforms.CameraPitch, (float) cameraPitch);
-			glUniform1f(uniforms.CameraYaw, (float) cameraYaw);
-			glUniform1i(uniforms.Zoom, client.getScale());
-			glUniform1i(uniforms.CenterX, client.getCenterX());
-			glUniform1i(uniforms.CenterY, client.getCenterY());
 
 //			glUniform3f(uniforms.LightDirection, (float)directionalLight.direction.x, (float)directionalLight.direction.y, (float)directionalLight.direction.z);
 //			glUniform3f(uniforms.LightColor, directionalLight.color.r, directionalLight.color.g, directionalLight.color.b);
