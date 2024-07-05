@@ -2,6 +2,7 @@
 package com.gpuExtended.shader;
 
 import com.gpuExtended.shader.template.Template;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class ShaderException extends Exception
 {
 	private static final Pattern NVIDIA_ERROR_REGEX = Pattern.compile("^(\\d+)\\((\\d+)\\) : (.*)$", Pattern.MULTILINE);
@@ -50,7 +52,7 @@ public class ShaderException extends Exception
 			}
 			catch (Exception ex)
 			{
-				System.out.println("Error while parsing shader compilation error: " + ex);
+				log.error("Error while parsing shader compilation error: " + ex);
 			}
 
 			return new ShaderException(sb.toString());

@@ -33,8 +33,10 @@ import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import com.gpuExtended.shader.template.Template;
+import lombok.extern.slf4j.Slf4j;
 import org.lwjgl.opengl.GL43C;
 
+@Slf4j
 public class Shader
 {
 	@VisibleForTesting
@@ -75,8 +77,7 @@ public class Shader
 				}
 
 				String source = template.load(unit.filename);
-				System.out.println(unit.filename + "source: \n" + source);
-
+				log.debug("Compiling shader: {}", unit.filename);
 				GL43C.glShaderSource(shader, source);
 				GL43C.glCompileShader(shader);
 

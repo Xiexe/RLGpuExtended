@@ -227,7 +227,7 @@ public class SceneUploader
 			int decorativeObjectId = decorativeObject.getId();
 			if(env.decorationLights.containsKey(decorativeObjectId))
 			{
-				System.out.println("Placing light for Decoration ID : " + decorativeObjectId + " | World Location: " + worldLocation.getX() + ", " + worldLocation.getPlane() + ", " + worldLocation.getY() + " | Model Z: " + decorativeObject.getZ());
+				log.debug("Placing light for Decoration ID : " + decorativeObjectId + " | World Location: " + worldLocation.getX() + ", " + worldLocation.getPlane() + ", " + worldLocation.getY() + " | Model Z: " + decorativeObject.getZ());
 				env.PushLightToBuffer(
 					env.decorationLights.get(decorativeObjectId),
 					worldLocation.getX(),
@@ -256,7 +256,7 @@ public class SceneUploader
 
 			if(env.gameObjectLights.containsKey(gameObject.getId()))
 			{
-				System.out.println("Found Game Object that should have a light!");
+				log.debug("Found Game Object that should have a light!");
 			}
 		}
 	}

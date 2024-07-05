@@ -81,7 +81,7 @@ public class Template
 									.append("#line 1 ") // Mark the first line of the included file
 									.append(includeIndex)
 									.append("\n")
-									.append("// INCLUDED: " + includeFile)
+									.append("// include: " + includeFile)
 									.append("\n")
 									.append(includeContents)
 									.append("\n")
@@ -144,7 +144,8 @@ public class Template
 			}
 		}
 
-		return "// INCLUDE FILE WAS EMPTY OR NOT FOUND : " + path;
+		log.warn("FILE WAS EMPTY OR NOT FOUND : {}", path);
+		return "//" + path;
 	}
 
 	public String load(String filename) throws IOException
@@ -195,7 +196,6 @@ public class Template
 	public Template addInclude(String identifier, String value)
 	{
 		Template result = addIncludeLoader((key) -> {
-			System.out.println("key: " + key + " identifier: " + identifier + " value: " + value);
 			return key.equals(identifier) ? value : null;
 		});
 		return result;

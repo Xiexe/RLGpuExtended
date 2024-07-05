@@ -1,4 +1,3 @@
-
 package com.gpuExtended;
 
 import com.google.common.primitives.Ints;
@@ -22,7 +21,6 @@ import javax.swing.SwingUtilities;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
@@ -35,8 +33,6 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 
 
-
-import net.runelite.client.plugins.gpu.GpuPlugin;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.OSType;
@@ -57,10 +53,7 @@ import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.rendering.Color;
 import com.gpuExtended.rendering.Mesh;
-import com.gpuExtended.rendering.Vector3;
-import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Environment;
-import com.gpuExtended.scene.Light;
 import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.shader.Uniforms;
@@ -154,7 +147,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
 
 	private static final ResourcePath SHADER_PATH = Props
-			.getPathOrDefault("shader-path", () -> path(GpuExtendedPlugin.class));
+			.getPathOrDefault("shader-path", () -> path("/shaders/")).chroot();
 
 	private Uniforms uniforms;
 	public Environment environment;
@@ -565,7 +558,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			.addInclude("VERSION_HEADER", versionHeader)
 			.define("THREAD_COUNT", threadCount)
 			.define("FACES_PER_THREAD", facesPerThread)
-			.addIncludePath(SHADER_PATH);
+			.addIncludePath(GpuExtendedPlugin.class);
 
 		return template;
 	}
@@ -573,6 +566,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void initShaders() {
 		try
 		{
+			initShaderHotReloading();
 			compileShaders();
 		}
 		catch (ShaderException ex)
@@ -581,7 +575,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	public void initShaderHotswapping() {
+	public void initShaderHotReloading() {
 		SHADER_PATH.watch("\\.(glsl|cl)$", path -> {
 			log.info("Recompiling shaders: {}", path);
 			clientThread.invoke(() -> {
@@ -1970,40 +1964,40 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void checkGLErrors()
 	{
-		if (!log.isDebugEnabled())
-		{
-			return;
-		}
-
-		for (; ; )
-		{
-			int err = glGetError();
-			if (err == GL_NO_ERROR)
-			{
-				return;
-			}
-
-			String errStr;
-			switch (err)
-			{
-				case GL_INVALID_ENUM:
-					errStr = "INVALID_ENUM";
-					break;
-				case GL_INVALID_VALUE:
-					errStr = "INVALID_VALUE";
-					break;
-				case GL_INVALID_OPERATION:
-					errStr = "INVALID_OPERATION";
-					break;
-				case GL_INVALID_FRAMEBUFFER_OPERATION:
-					errStr = "INVALID_FRAMEBUFFER_OPERATION";
-					break;
-				default:
-					errStr = "" + err;
-					break;
-			}
-
-			log.debug("glGetError:", new Exception(errStr));
-		}
+//		if (!log.isDebugEnabled())
+//		{
+//			return;
+//		}
+//
+//		for (; ; )
+//		{
+//			int err = glGetError();
+//			if (err == GL_NO_ERROR)
+//			{
+//				return;
+//			}
+//
+//			String errStr;
+//			switch (err)
+//			{
+//				case GL_INVALID_ENUM:
+//					errStr = "INVALID_ENUM";
+//					break;
+//				case GL_INVALID_VALUE:
+//					errStr = "INVALID_VALUE";
+//					break;
+//				case GL_INVALID_OPERATION:
+//					errStr = "INVALID_OPERATION";
+//					break;
+//				case GL_INVALID_FRAMEBUFFER_OPERATION:
+//					errStr = "INVALID_FRAMEBUFFER_OPERATION";
+//					break;
+//				default:
+//					errStr = "" + err;
+//					break;
+//			}
+//
+//			log.debug("glGetError:", new Exception(errStr));
+//		}
 	}
 }
