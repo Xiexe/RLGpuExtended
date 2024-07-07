@@ -32,6 +32,10 @@ flat out int fTextureId;
 out vec2 fUv;
 out vec3 fPosition;
 out float fFogAmount;
+out float fPlane;
+out float fOnBridge;
+out float fIsRoof;
+out float fIsTerrain;
 
 void main() {
   int textureId = gTextureId[0];
@@ -61,11 +65,16 @@ void main() {
 
   for (int i = 0; i < 3; ++i) {
     vec4 normal = gNormal[i];
-    if(gNormal[i].w == 1 ||
-      (gNormal[i].x == 0 && gNormal[i].y == 0 && gNormal[i].z == 0))
+    // TODO:: Bitshift to get flat normals flag
+    if((gNormal[i].x == 0 && gNormal[i].y == 0 && gNormal[i].z == 0))
     {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
+
+    fPlane = (int(gNormal[0].w) >> 24) & 3;
+    fOnBridge = (int(gNormal[0].w) >> 27) & 1;
+    fIsRoof = (int(gNormal[0].w) >> 28) & 1;
+    fIsTerrain = (int(gNormal[0].w) >> 29) & 1;
 
     fPosition = gPosition[i];
     fColor = gColor[i];

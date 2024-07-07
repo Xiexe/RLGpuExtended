@@ -31,6 +31,9 @@ import net.runelite.api.WallObject;
 import com.gpuExtended.regions.Regions;
 import net.runelite.api.coords.WorldPoint;
 
+import static net.runelite.api.Constants.*;
+import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
+
 @Singleton
 @Slf4j
 public class SceneUploader
@@ -110,9 +113,10 @@ public class SceneUploader
 				for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y)
 				{
 					Tile tile = scene.getExtendedTiles()[z][x][y];
+					int settings = scene.getExtendedTileSettings()[z][x][y];
 					if (tile != null)
 					{
-						GenerateSceneGeometry(scene, tile, vertexBuffer, uvBuffer, normalBuffer);
+						GenerateSceneGeometry(scene, tile, vertexBuffer, uvBuffer, normalBuffer, settings);
 					}
 				}
 			}
@@ -121,22 +125,16 @@ public class SceneUploader
 		GpuExtendedPlugin.Instance.environmentManager.UpdateLightBuffer();
 	}
 
-	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int settings)
 	{
 		EnvironmentManager env = GpuExtendedPlugin.Instance.environmentManager;
 		WorldPoint worldLocation = tile.getWorldLocation();
 		Point tilePoint = tile.getSceneLocation();
-//		int[] location = new int[] { worldLocation.getX(), worldLocation.getY(), worldLocation.getPlane() };
-//		if(env.tileLights.containsKey(location))
-//		{
-//			env.PushLightToBuffer(env.tileLights.get(location), worldLocation.getX(), 0, worldLocation.getY(), worldLocation.getPlane());
-//			System.out.println("Found light and world location!");
-//		}
 
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
 		{   // draw the tile underneath the bridge.
-			GenerateSceneGeometry(scene, bridge, vertexBuffer, uvBuffer, normalBuffer);
+			GenerateSceneGeometry(scene, bridge, vertexBuffer, uvBuffer, normalBuffer, settings);
 		}
 
 		SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
@@ -152,7 +150,7 @@ public class SceneUploader
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
 
-			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0, settings);
 			sceneTilePaint.setBufferLen(vertexCount);
 			offset += vertexCount;
 			if (sceneTilePaint.getTexture() != -1)
@@ -174,7 +172,7 @@ public class SceneUploader
 				sceneTileModel.setUvBufferOffset(-1);
 			}
 
-			int vertexCount = PushTerrainDetailedTile(sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainDetailedTile(scene, sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0, settings);
 			sceneTileModel.setBufferLen(vertexCount);
 			offset += vertexCount;
 			if (sceneTileModel.getTriangleTextureId() != null)
@@ -297,14 +295,15 @@ public class SceneUploader
 
 	public int PushDynamicModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
 	{
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0,false, false, dynamicSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0, false, false, dynamicSharedVertexMap);
 		return vertexCount;
 	}
 
 	// Map Tiles
-	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
+	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileZ, int tileX, int tileY, int offsetX, int offsetY, int settings)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
+		boolean isUnderRoof = (settings & TILE_FLAG_UNDER_ROOF) != 0;
 
 		final int localX = offsetX;
 		final int localY = offsetY;
@@ -380,14 +379,16 @@ public class SceneUploader
 		Vector3 normA = CalculateBaseNormal(vertexAx, vertexAz, vertexAy, vertexBx, vertexBz, vertexBy, vertexCx, vertexCz, vertexCy);
 		Vector3 normB = CalculateBaseNormal(vertexDx, vertexDz, vertexDy, vertexCx, vertexCz, vertexCy, vertexBx, vertexBz, vertexBy);
 
+		// Pack plane and if its terrain into the flags
+		int flags = (tileZ << 24) | (isUnderRoof ? (1 << 28) : 0) | (1 << 29);
 		int startOfTileBufferIndex = normalBuffer.getBuffer().position();
-		normalBuffer.put(normA.x, normA.y, normA.z, 0);
-		normalBuffer.put(normA.x, normA.y, normA.z, 0);
-		normalBuffer.put(normA.x, normA.y, normA.z, 0);
+		normalBuffer.put(normA.x, normA.y, normA.z, flags);
+		normalBuffer.put(normA.x, normA.y, normA.z, flags);
+		normalBuffer.put(normA.x, normA.y, normA.z, flags);
 
-		normalBuffer.put(normB.x, normB.y, normB.z, 0);
-		normalBuffer.put(normB.x, normB.y, normB.z, 0);
-		normalBuffer.put(normB.x, normB.y, normB.z, 0);
+		normalBuffer.put(normB.x, normB.y, normB.z, flags);
+		normalBuffer.put(normB.x, normB.y, normB.z, flags);
+		normalBuffer.put(normB.x, normB.y, normB.z, flags);
 
 		terrainSharedVertexMap.put(new Vector3(vertexAx + tx, vertexAz, vertexAy + ty), startOfTileBufferIndex + 0*4);
 		terrainSharedVertexMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), startOfTileBufferIndex + 1*4);
@@ -404,8 +405,10 @@ public class SceneUploader
 	}
 
 	// Map tiles with extra geometry
-	public int PushTerrainDetailedTile(SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileX, int tileY, int offsetX, int offsetZ)
+	public int PushTerrainDetailedTile(Scene scene, SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileZ, int tileX, int tileY, int offsetX, int offsetZ, int settings)
 	{
+		boolean isUnderRoof = (settings & TILE_FLAG_UNDER_ROOF) != 0;
+
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
 		final int[] faceZ = sceneTileModel.getFaceZ();
@@ -478,11 +481,13 @@ public class SceneUploader
 				}
 			}
 
+			// Pack plane and if its terrain into the flags
+			int flags = (tileZ << 24) | (isUnderRoof ? (1 << 28) : 0) | (1 << 29);
 			int startOfTileBufferIndex = normalBuffer.getBuffer().position();
 			Vector3 norm = CalculateBaseNormal(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, vertexXB + offsetX, vertexYB, vertexZB + offsetZ, vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
-			normalBuffer.put(norm.x, norm.y, norm.z, 0);
-			normalBuffer.put(norm.x, norm.y, norm.z, 0);
-			normalBuffer.put(norm.x, norm.y, norm.z, 0);
+			normalBuffer.put(norm.x, norm.y, norm.z, flags);
+			normalBuffer.put(norm.x, norm.y, norm.z, flags);
+			normalBuffer.put(norm.x, norm.y, norm.z, flags);
 
 			int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
 			int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
@@ -635,9 +640,9 @@ public class SceneUploader
 			else
 			{
 				if(normalX != null) {
-					normalBuffer.put(normalX[i0], normalY[i0], normalZ[i0], forceFlatNormals ? 1 : 0);
-					normalBuffer.put(normalX[i1], normalY[i1], normalZ[i1], forceFlatNormals ? 1 : 0);
-					normalBuffer.put(normalX[i2], normalY[i2], normalZ[i2], forceFlatNormals ? 1 : 0);
+					normalBuffer.put(normalX[i0], normalY[i0], normalZ[i0], 0);
+					normalBuffer.put(normalX[i1], normalY[i1], normalZ[i1], 0);
+					normalBuffer.put(normalX[i2], normalY[i2], normalZ[i2], 0);
 				}
 				else
 				{

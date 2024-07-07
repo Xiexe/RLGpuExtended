@@ -22,7 +22,7 @@ public class Environment {
     public static Environment GetDefaultEnvironment() {
         Environment env = new Environment();
         env.Name = "Default";
-        env.LightDirection = new Vector3(0.9075712f, 2.1816616f, 0);
+        env.LightDirection = new Vector3(45, 200, 0); // 90 on X would be straight down from the top, 90 on Y points East
         env.LightColor = new Color(0.75f);
         env.AmbientColor = new Color(0.65f);
         env.FogColor = new Color(0, 0, 0);

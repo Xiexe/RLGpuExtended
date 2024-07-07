@@ -25,6 +25,7 @@
 #define FIRE_CAPE 41
 #define INFERNAL_CAPE 60
 
+#define MAX_Z_HEIGHT 4 // 4 tiles high
 #define MAX_SHADOW_DISTANCE 100 // 100 tiles.
 
 #define LIGHT_TYPE_INVALID 0

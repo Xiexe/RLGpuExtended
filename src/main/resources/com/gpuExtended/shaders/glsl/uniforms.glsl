@@ -30,5 +30,6 @@ uniform vec2 textureAnimations[128];
 uniform int tick;
 uniform int screenWidth;
 uniform int screenHeight;
+uniform vec3 playerPosition;
 uniform mat4 projectionMatrix;
 uniform mat4 lightProjectionMatrix;

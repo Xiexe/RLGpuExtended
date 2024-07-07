@@ -43,6 +43,7 @@ public class Uniforms
 
     public int LightProjectionMatrix;
     public int ShadowMap;
+    public int PlayerPosition;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -69,6 +70,8 @@ public class Uniforms
 
         ScreenWidth = glGetUniformLocation(shader, "screenWidth");
         ScreenHeight = glGetUniformLocation(shader, "screenHeight");
+
+        PlayerPosition = glGetUniformLocation(shader, "playerPosition");
 
         LightProjectionMatrix = glGetUniformLocation(shader, "lightProjectionMatrix");
         ShadowMap = glGetUniformLocation(shader, "shadowMap");

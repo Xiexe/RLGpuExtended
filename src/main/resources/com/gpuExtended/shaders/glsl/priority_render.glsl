@@ -260,6 +260,8 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     int orientation = flags & 0x7ff;
     int plane = (flags >> 24) & 3;
     int hillskew = (flags >> 26) & 1;
+    int isOnBridge = (flags >> 27) & 1;
+    int isRoofTile = (flags >> 28) & 1;
 
     // calculate position this face will be in
     for (int i = start; i < end; ++i) {
@@ -298,6 +300,10 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     normA = hillskew_vertexf(normA, hillskew, minfo.y, plane);
     normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
     normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
+
+    normA.w = flags;
+    normB.w = flags;
+    normC.w = flags;
 
     // undo shading
     undoVanillaShading(thisrvA.ahsl, normA.xyz);

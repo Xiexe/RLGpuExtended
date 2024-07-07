@@ -21,7 +21,6 @@ import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
 import com.gpuExtended.overlays.ShadowMapOverlay;
-import com.gpuExtended.rendering.FrameBufferObject;
 import com.gpuExtended.scene.Environment;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +56,6 @@ import com.gpuExtended.config.UIScalingMode;
 import com.gpuExtended.shader.template.Template;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
-import com.gpuExtended.rendering.Mesh;
 import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderException;
@@ -65,7 +63,7 @@ import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ResourcePath.path;
-import static net.runelite.api.Constants.SCENE_SIZE;
+import static net.runelite.api.Constants.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
@@ -84,7 +82,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private static final int DEFAULT_DISTANCE = 25;
 	static final int MAX_DISTANCE = 184;
 	static final int MAX_FOG_DEPTH = 100;
-	public static final int SCENE_OFFSET = (Constants.EXTENDED_SCENE_SIZE - Constants.SCENE_SIZE) / 2; // offset for sxy -> msxy
+	public static final int SCENE_OFFSET = (EXTENDED_SCENE_SIZE - Constants.SCENE_SIZE) / 2; // offset for sxy -> msxy
 	private static final int GROUND_MIN_Y = 350; // how far below the ground models extend
 
 	private int CAMERA_BUFFER_BINDING_ID = 0;
@@ -223,9 +221,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private final GLBuffer tmpModelBufferLarge = new GLBuffer("model buffer large");
 	private final GLBuffer tmpModelBufferSmall = new GLBuffer("model buffer small");
 	private final GLBuffer tmpModelBufferUnordered = new GLBuffer("model buffer unordered");
-
-	private Mesh dynamicMesh = new Mesh();
-
 
 	private int textureArrayId;
 	private int tileHeightTex;
@@ -1364,12 +1359,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 
 			// Shadow Distance here
-			float[] lightProjectionMatrix = Mat4.identity();
-			float[] lightViewMatrix = Mat4.rotateX((float) Math.PI + env.LightDirection.x);
-			Mat4.mul(lightViewMatrix, Mat4.rotateY((float) Math.PI + env.LightDirection.y));
+			float lightPitch = (float) Math.toRadians(env.LightDirection.x);
+			float lightYaw = (float) Math.toRadians(env.LightDirection.y);
 
-			final int camX = client.getOculusOrbFocalPointX();
-			final int camY = client.getOculusOrbFocalPointY();
+			float[] lightProjectionMatrix = Mat4.identity();
+			float[] lightViewMatrix = Mat4.rotateX((float) Math.PI + lightPitch);
+			Mat4.mul(lightViewMatrix, Mat4.rotateY((float) Math.PI + lightYaw));
+
+			final int camX = (int) client.getOculusOrbFocalPointX();
+			final int camY = (int) client.getOculusOrbFocalPointY();
 
 			final int drawDistanceSceneUnits = getDrawDistance() * LOCAL_TILE_SIZE / 2;
 			final int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
@@ -1389,6 +1387,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			Mat4.mul(lightProjectionMatrix, Mat4.ortho(width, height, near));
 			Mat4.mul(lightProjectionMatrix, lightViewMatrix);
 			Mat4.mul(lightProjectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
+
+			int playerX = client.getLocalPlayer().getLocalLocation().getSceneX();
+			int playerY = client.getLocalPlayer().getLocalLocation().getSceneY();
+			int playerZ = client.getPlane();
 
 			glBindVertexArray(vaoCompute);
 
@@ -1431,9 +1433,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				glUniform1f(uniforms.Time, Time);
 				glUniform1f(uniforms.DeltaTime, DeltaTime);
-				glUniform1i(uniforms.ScreenWidth, viewportWidth);
-				glUniform1i(uniforms.ScreenHeight, viewportHeight);
+				glUniform1i(uniforms.ScreenWidth, renderViewportWidth);
+				glUniform1i(uniforms.ScreenHeight, renderViewportHeight);
 
+				glUniform3f(uniforms.PlayerPosition, (float)client.getLocalPlayer().getLocalLocation().getX(), (float)client.getLocalPlayer().getLocalLocation().getY(), playerZ);
 				glUniformMatrix4fv(uniforms.LightProjectionMatrix, false, lightProjectionMatrix);
 				glUniform3f(uniforms.LightDirection, lightViewMatrix[2], -lightViewMatrix[6], lightViewMatrix[10]);
 				glUniform3f(uniforms.LightColor, env.LightColor.r, env.LightColor.g, env.LightColor.b);
@@ -1701,7 +1704,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			tileHeightTex = 0;
 		}
 
-		final int TILEHEIGHT_BUFFER_SIZE = Constants.MAX_Z * Constants.EXTENDED_SCENE_SIZE * Constants.EXTENDED_SCENE_SIZE * Short.BYTES;
+		final int TILEHEIGHT_BUFFER_SIZE = Constants.MAX_Z * EXTENDED_SCENE_SIZE * EXTENDED_SCENE_SIZE * Short.BYTES;
 		ShortBuffer tileBuffer = ByteBuffer
 			.allocateDirect(TILEHEIGHT_BUFFER_SIZE)
 			.order(ByteOrder.nativeOrder())
@@ -1710,9 +1713,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int[][][] tileHeights = scene.getTileHeights();
 		for (int z = 0; z < Constants.MAX_Z; ++z)
 		{
-			for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y)
+			for (int y = 0; y < EXTENDED_SCENE_SIZE; ++y)
 			{
-				for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x)
+				for (int x = 0; x < EXTENDED_SCENE_SIZE; ++x)
 				{
 					int h = tileHeights[z][x][y];
 					assert (h & 0b111) == 0;
@@ -1730,7 +1733,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_R16I,
-			Constants.EXTENDED_SCENE_SIZE, Constants.EXTENDED_SCENE_SIZE, Constants.MAX_Z,
+			EXTENDED_SCENE_SIZE, EXTENDED_SCENE_SIZE, Constants.MAX_Z,
 			0, GL_RED_INTEGER, GL_SHORT, tileBuffer);
 		glBindTexture(GL_TEXTURE_3D, 0);
 
@@ -1884,15 +1887,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		if (offsetModel.getSceneId() == sceneId)
 		{
-			DrawStaticModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
+			PackStaticModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
 		}
 		else
 		{
-			DrawDynamicModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
+			PackDynamicModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
 		}
 	}
 
-	private void DrawStaticModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
+	private void PackStaticModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
 		assert model == renderable;
 
@@ -1900,8 +1903,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 		int uvOffset = offsetModel.getUvBufferOffset();
-		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-		boolean hillskew = offsetModel != model;
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z);
 
 		GpuIntBuffer b = bufferForTriangles(tc);
 
@@ -1911,13 +1913,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		buffer.put(uvOffset);
 		buffer.put(tc);
 		buffer.put(targetBufferOffset);
-		buffer.put(FLAG_SCENE_BUFFER | (hillskew ? (1 << 26) : 0) | (plane << 24) | orientation);
+		buffer.put(FLAG_SCENE_BUFFER | flags);
 		buffer.put(x).put(y).put(z);
 
 		targetBufferOffset += tc * 3;
 	}
 
-	private void DrawDynamicModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
+	private void PackDynamicModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
 		// Apply height to renderable from the model
 		if (model != renderable)
@@ -1926,8 +1928,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z);
 		boolean hasUv = model.getFaceTextures() != null;
+
 		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
 
 		GpuIntBuffer b = bufferForTriangles(len / 3);
@@ -1938,7 +1941,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		buffer.put(hasUv ? tempUvOffset : -1);
 		buffer.put(len / 3);
 		buffer.put(targetBufferOffset);
-		buffer.put(orientation);
+		buffer.put(flags);
 		buffer.put(x).put(y).put(z);
 
 		tempOffset += len;
@@ -1946,6 +1949,52 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		if(hasUv) {
 			tempUvOffset += len;
 		}
+	}
+
+	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z)
+	{
+		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
+		boolean isBridge = false;
+		boolean isRoof = false;
+		boolean hillskew = offsetModel != model;
+
+		int tileExX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+		int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+		if (1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE-1 && 1 <= tileExY && tileExY < EXTENDED_SCENE_SIZE-1) {
+			Scene scene = client.getScene();
+			int tileHeight = scene.getTileHeights()[plane][tileExX][tileExY];
+			int belowTileHeight = scene.getTileHeights()[0][tileExX][tileExY];
+
+			int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
+			int nSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY + 1];
+			int sSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY - 1];
+			int eSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY];
+			int wSettings = scene.getExtendedTileSettings()[0][tileExX - 1][tileExY];
+
+			int neSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY + 1];
+			int seSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY - 1];
+			int nwSettings = scene.getExtendedTileSettings()[0][tileExX - 1][tileExY + 1];
+			int swSettings = scene.getExtendedTileSettings()[0][tileExX - 1][tileExY - 1];
+
+			boolean centerRoof = (currentTileSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+			boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+
+			isBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0;
+			isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof) && plane > client.getPlane() && !isBridge && tileHeight != belowTileHeight;
+		}
+
+		return  (plane << 24) 				|
+				(hillskew ? (1 << 26) : 0)  |
+				(isBridge ? (1<<27) : 0) 	|
+				(isRoof ? (1<<28) : 0) 		|
+				orientation;
 	}
 
 	private void CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash)

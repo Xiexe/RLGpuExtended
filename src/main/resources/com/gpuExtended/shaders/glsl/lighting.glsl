@@ -1,6 +1,6 @@
 const float bias = 0.00065;
-const float lightSize = 0.0001;
-const int shadowSamples = 64;
+const float lightSize = 0.00075;
+const int shadowSamples = 16;
 
 // Pre-defined set of sample points for blocker search and PCF
 const vec2 poissonDisk[64] = vec2[](
@@ -91,7 +91,7 @@ float PCSSShadows(vec4 projCoords, float fadeOut) {
 
     // Estimate penumbra size
     float penumbraSize = (currentDepth - blockerDepth) * lightSize / blockerDepth;
-    penumbraSize += 0.000005;
+    penumbraSize += 0.00001;
     penumbraSize *= shadowSamples;
     penumbraSize *= shadowRenderDistance;
 

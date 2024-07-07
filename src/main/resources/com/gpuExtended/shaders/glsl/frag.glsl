@@ -1,5 +1,7 @@
 #version 420
 
+
+
 in vec4 fColor;
 in vec4 fNormal;
 noperspective centroid in float fHsl;
@@ -7,6 +9,11 @@ flat in int fTextureId;
 in vec2 fUv;
 in vec3 fPosition;
 in float fFogAmount;
+
+in float fPlane;
+in float fOnBridge;
+in float fIsRoof;
+in float fIsTerrain;
 
 out vec4 FragColor;
 
@@ -17,6 +24,7 @@ out vec4 FragColor;
 #include "shaders/glsl/colorblind.glsl"
 #include "shaders/glsl/helpers.glsl"
 #include "shaders/glsl/lighting.glsl"
+
 
 float Dither8x8Bayer( int x, int y ) {
     const float dither[ 64 ] = {
@@ -41,10 +49,20 @@ float Dither(vec2 screenPos) {
     return dither;
 }
 
+void clip(float value) {
+    if(value < 0) discard;
+}
+
+bool approximatelyEqual(float a, float b, float epsilon) {
+    return abs(a - b) < epsilon;
+}
+
 void main() {
     Surface s;
     PopulateSurfaceColor(s);
     PopulateSurfaceNormal(s, fNormal);
+
+    vec2 resolution = vec2(float(screenWidth), float(screenHeight));
 
     float dither = Dither(gl_FragCoord.xy / 2);
     float shadowMap = GetShadowMap(fPosition);
@@ -55,6 +73,35 @@ void main() {
 
     float fog = fFogAmount;
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
+
+    vec3 playerPos = vec3(0,0,0);
+    playerPos.x = ((playerPosition.x - sceneOffsetX) + 0.5f) * TILE_SIZE;
+    playerPos.z = ((playerPosition.y - sceneOffsetZ) + 0.5f) * TILE_SIZE;
+    playerPos.y = playerPosition.z - (TILE_SIZE * 1.5);
+
+    float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
+    distanceToPlayer = smoothstep(1700, 1000, distanceToPlayer);
+
+    bool isOnBridge = fOnBridge > 0;
+    float realPlane = max(0, fPlane - (isOnBridge ? 1 : 0));
+
+    bool isOnSamePlane = approximatelyEqual(realPlane, playerPosition.z, 0.001);
+    bool isAbovePlayer = realPlane > playerPosition.z;
+    bool isUnderPlayer = realPlane < playerPosition.z;
+
+    bool isTerrainRoof = fIsRoof > 0 && fIsTerrain > 0 && !isOnSamePlane && !isUnderPlayer;
+    bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
+
+    //TODO:: check tiles around terrain roofs to see if they are roofs.
+    //finalColor = vec3(isNonTerrainRoof);
+
+    if(isTerrainRoof || isNonTerrainRoof)
+    {
+        //finalColor = vec3(.5,0,.5);
+        clip(dither - 0.001 - distanceToPlayer);
+    }
+
+    //finalColor = s.albedo.rgb * 0.1 + vec3(fNormal.w / 4);
     //finalColor = s.normal.rgb * 0.5 + 0.5;
     //finalColor = vec3(ndl * shadowMap);
     //finalColor = vec3(gl_FragCoord.x, gl_FragCoord.y, 0) / vec3(screenWidth, screenHeight, 1);
