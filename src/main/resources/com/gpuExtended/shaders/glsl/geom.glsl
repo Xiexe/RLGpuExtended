@@ -10,10 +10,10 @@ layout(triangle_strip, max_vertices = 3) out;
 //layout(line_strip, max_vertices = 4) out;
 //layout(points, max_vertices = 3) out;
 
-#include "/shaders/glsl/constants.glsl"
-#include "/shaders/glsl/structs.glsl"
-#include "/shaders/glsl/uniforms.glsl"
-#include "/shaders/glsl/uv.glsl"
+#include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/structs.glsl"
+#include "shaders/glsl/uniforms.glsl"
+#include "shaders/glsl/uv.glsl"
 
 in vec3 gVertex[3];
 in vec3 gPosition[3];
@@ -61,7 +61,8 @@ void main() {
 
   for (int i = 0; i < 3; ++i) {
     vec4 normal = gNormal[i];
-    if(gNormal[i].w == 1)
+    if(gNormal[i].w == 1 ||
+      (gNormal[i].x == 0 && gNormal[i].y == 0 && gNormal[i].z == 0))
     {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }

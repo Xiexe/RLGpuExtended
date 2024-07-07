@@ -1,7 +1,7 @@
 #include "VERSION_HEADER"
 
-#include "/shaders/glsl/constants.glsl"
-#include "/shaders/glsl/comp_common.glsl"
+#include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/comp_common.glsl"
 
 layout(local_size_x = 6) in;
 

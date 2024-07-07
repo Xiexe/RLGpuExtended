@@ -39,6 +39,8 @@ import org.lwjgl.opengl.GL43C;
 @Slf4j
 public class Shader
 {
+	private String shaderResourcePath;
+
 	@VisibleForTesting
 	final List<Unit> units = new ArrayList<>();
 
@@ -55,7 +57,7 @@ public class Shader
 
 	public Shader add(int type, String name)
 	{
-		units.add(new Unit(type, "/shaders/glsl/" + name));
+		units.add(new Unit(type, "shaders/glsl/" + name));
 		return this;
 	}
 
@@ -76,8 +78,9 @@ public class Shader
 					throw new ShaderException("Unable to create shader of type " + unit.type);
 				}
 
-				String source = template.load(unit.filename);
 				log.debug("Compiling shader: {}", unit.filename);
+				String source = template.load(unit.filename);
+
 				GL43C.glShaderSource(shader, source);
 				GL43C.glCompileShader(shader);
 

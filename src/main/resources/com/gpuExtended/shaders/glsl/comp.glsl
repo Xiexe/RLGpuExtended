@@ -10,13 +10,13 @@ shared int totalMappedNum[18];  // number of faces with a given adjusted priorit
 shared int min10;                                         // minimum distance to a face of priority 10
 shared int renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face id
 
-#include "/shaders/glsl/constants.glsl"
-#include "/shaders/glsl/comp_common.glsl"
+#include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/comp_common.glsl"
 
 layout(local_size_x = THREAD_COUNT) in;
 
-#include "/shaders/glsl/common.glsl"
-#include "/shaders/glsl/priority_render.glsl"
+#include "shaders/glsl/common.glsl"
+#include "shaders/glsl/priority_render.glsl"
 
 void main() {
   uint groupId = gl_WorkGroupID.x;

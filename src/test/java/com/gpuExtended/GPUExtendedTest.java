@@ -14,7 +14,7 @@ public class GPUExtendedTest
 	{
 		Props.DEVELOPMENT = true;
 		Props.set("resource-path", "src/main/resources");
-
+		ClassLoader.getSystemClassLoader().setDefaultAssertionStatus(true);
 		useLatestPluginHub();
 		ExternalPluginManager.loadBuiltin(GpuExtendedPlugin.class);
 		RuneLite.main(args);

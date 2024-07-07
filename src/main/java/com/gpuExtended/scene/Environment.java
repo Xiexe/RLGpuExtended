@@ -22,9 +22,9 @@ public class Environment {
     public static Environment GetDefaultEnvironment() {
         Environment env = new Environment();
         env.Name = "Default";
-        env.LightDirection = new Vector3(1, 1, 1);
-        env.LightColor = new Color(0.7f);
-        env.AmbientColor = new Color(0.3f);
+        env.LightDirection = new Vector3(0.9075712f, 2.1816616f, 0);
+        env.LightColor = new Color(0.75f);
+        env.AmbientColor = new Color(0.65f);
         env.FogColor = new Color(0, 0, 0);
         env.FogDepth = 25;
         return env;

@@ -55,7 +55,7 @@ public class SceneUploader
 		this.client = client;
 		this.gpuConfig = config;
 
-		try (var in = SceneUploader.class.getResourceAsStream("/regions/regions.txt"))
+		try (var in = SceneUploader.class.getResourceAsStream("/com/gpuExtended/regions/regions.txt"))
 		{
 			regions = new Regions(in, "regions.txt");
 		}
@@ -287,7 +287,7 @@ public class SceneUploader
 		uniqueModels++;
 
 		Point tilePoint = tile.getSceneLocation();
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, true, staticSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, false, staticSharedVertexMap);
 		offset += vertexCount;
 		if (model.getFaceTextures() != null)
 		{
@@ -634,9 +634,17 @@ public class SceneUploader
 			}
 			else
 			{
-				normalBuffer.put(normalX[i0],  normalY[i0], normalZ[i0], forceFlatNormals ? 1:0);
-				normalBuffer.put(normalX[i1],  normalY[i1], normalZ[i1], forceFlatNormals ? 1:0);
-				normalBuffer.put(normalX[i2],  normalY[i2], normalZ[i2], forceFlatNormals ? 1:0);
+				if(normalX != null) {
+					normalBuffer.put(normalX[i0], normalY[i0], normalZ[i0], forceFlatNormals ? 1 : 0);
+					normalBuffer.put(normalX[i1], normalY[i1], normalZ[i1], forceFlatNormals ? 1 : 0);
+					normalBuffer.put(normalX[i2], normalY[i2], normalZ[i2], forceFlatNormals ? 1 : 0);
+				}
+				else
+				{
+					normalBuffer.put(0, 0, 0, 0);
+					normalBuffer.put(0, 0, 0, 0);
+					normalBuffer.put(0, 0, 0, 0);
+				}
 			}
 
 			vertexCount += 3;

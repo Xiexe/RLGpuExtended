@@ -25,9 +25,9 @@
 
 #include FACE_COUNT
 
-#include "/shaders/compute/cl_types.cl"
-#include "/shaders/compute/common.cl"
-#include "/shaders/compute/priority_render.cl"
+#include "shaders/compute/cl_types.cl"
+#include "shaders/compute/common.cl"
+#include "shaders/compute/priority_render.cl"
 
 __kernel __attribute__((work_group_size_hint(256, 1, 1))) void computeLarge(__local struct shared_data *shared, __global const struct modelinfo *ol,
                                                                             __global const struct vert *vb, __global const struct vert *tempvb,

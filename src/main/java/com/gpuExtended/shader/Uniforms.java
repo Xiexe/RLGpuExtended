@@ -35,8 +35,14 @@ public class Uniforms
     public int Time;
     public int DeltaTime;
 
+    public int ScreenWidth;
+    public int ScreenHeight;
+
     public int LightUniformsBlock;
     public int CameraUniformsBlock;
+
+    public int LightProjectionMatrix;
+    public int ShadowMap;
 
     public void Initialize(GpuExtendedPlugin.ComputeMode computeMode, int shader, int uiShader, int computeShader, int smallComputeShader)
     {
@@ -60,6 +66,12 @@ public class Uniforms
         SceneOffsetZ = glGetUniformLocation(shader, "sceneOffsetZ");
         Time = glGetUniformLocation(shader, "time");
         DeltaTime = glGetUniformLocation(shader, "deltaTime");
+
+        ScreenWidth = glGetUniformLocation(shader, "screenWidth");
+        ScreenHeight = glGetUniformLocation(shader, "screenHeight");
+
+        LightProjectionMatrix = glGetUniformLocation(shader, "lightProjectionMatrix");
+        ShadowMap = glGetUniformLocation(shader, "shadowMap");
 
         CameraUniformsBlock = glGetUniformBlockIndex(shader, "cameraUniforms");
         LightUniformsBlock = glGetUniformBlockIndex(shader, "lightUniforms");

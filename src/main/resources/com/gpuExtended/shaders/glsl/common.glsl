@@ -1,6 +1,6 @@
 
 
-#include "/shaders/glsl/to_screen.glsl"
+#include "shaders/glsl/to_screen.glsl"
 
 /*
  * Rotate a vertex by a given orientation in JAU

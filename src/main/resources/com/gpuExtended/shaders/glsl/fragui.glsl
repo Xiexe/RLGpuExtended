@@ -13,10 +13,15 @@ uniform ivec2 targetDimensions;
 uniform int colorBlindMode;
 uniform vec4 alphaOverlay;
 
-#include "/scale/bicubic.glsl"
+#if SHADOW_MAP_OVERLAY
+uniform sampler2D shadowMap;
+uniform ivec4 shadowMapOverlayDimensions;
+#endif
 
-#include "/scale/xbr_lv2_frag.glsl"
-#include "/shaders/glsl/colorblind.glsl"
+#include "scale/bicubic.glsl"
+
+#include "scale/xbr_lv2_frag.glsl"
+#include "shaders/glsl/colorblind.glsl"
 
 in vec2 TexCoord;
 in XBRTable xbrTable;
@@ -28,6 +33,16 @@ vec4 alphaBlend(vec4 src, vec4 dst) {
 }
 
 void main() {
+  #if SHADOW_MAP_OVERLAY
+  {
+    vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
+    if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
+      FragColor = vec4(1);
+      return;
+    }
+  }
+  #endif
+
   vec4 c;
 
   if (samplingMode == SAMPLING_CATROM || samplingMode == SAMPLING_MITCHELL) {

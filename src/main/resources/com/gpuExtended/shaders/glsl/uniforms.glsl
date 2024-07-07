@@ -12,6 +12,7 @@ layout(std140, binding = LIGHT_BUFFER_BINDING_ID) uniform lightUniforms {
 };
 
 uniform sampler2DArray textures;
+uniform sampler2D shadowMap;
 uniform float brightness;
 uniform float smoothBanding;
 uniform int fogDepth;
@@ -27,4 +28,7 @@ uniform int sceneOffsetX;
 uniform int sceneOffsetZ;
 uniform vec2 textureAnimations[128];
 uniform int tick;
+uniform int screenWidth;
+uniform int screenHeight;
 uniform mat4 projectionMatrix;
+uniform mat4 lightProjectionMatrix;

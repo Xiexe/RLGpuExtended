@@ -103,6 +103,17 @@ public class Mat4
 			};
 	}
 
+	public static float[] ortho(float w, float h, float n)
+	{
+		return new float[]
+				{
+						2 / w, 0, 0, 0,
+						0, 2 / h, 0, 0,
+						0, 0, -2 / n, 0,
+						0, 0, 0, 1
+				};
+	}
+
 	public static void mul(final float[] a, final float[] b)
 	{
 		final float b00 = b[0 + 0 * 4];

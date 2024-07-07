@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "/shaders/compute/cl_types.cl"
+#include "shaders/compute/cl_types.cl"
 
 __kernel __attribute__((reqd_work_group_size(6, 1, 1))) void computeUnordered(__global const struct modelinfo *ol, __global const int4 *vb,
                                                                               __global const int4 *tempvb, __global const float4 *texb,

@@ -52,7 +52,7 @@ public class Template
 				int currentIndex = includeStack.peek();
 				String currentFile = includeList.get(currentIndex);
 
-				String includeFile = trimmed.substring(10); // remove #include " and "/
+				String includeFile = trimmed.substring(10); // remove `#include "`
 				includeFile = includeFile.substring(0, includeFile.length() - 1); // remove quotes at end of string
 
 				int includeIndex = includeList.size();
@@ -154,6 +154,7 @@ public class Template
 		includeList.add(filename);
 		includeStack.add(0);
 
+		log.debug("Loading: {}", filename);
 		switch (ResourcePath.path(filename).getExtension().toLowerCase())
 		{
 			case "glsl":
@@ -187,6 +188,7 @@ public class Template
 	{
 		return addIncludeLoader(path -> {
 			ResourcePath resolved = includePath.resolve(path);
+			log.info("Loading include: {}", resolved.toPath().toAbsolutePath());
 			if (resolved.exists())
 				return resolved.loadString();
 			return null;
