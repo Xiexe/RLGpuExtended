@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.awt.*;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

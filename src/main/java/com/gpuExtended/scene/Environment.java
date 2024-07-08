@@ -2,7 +2,7 @@ package com.gpuExtended.scene;
 
 import com.google.gson.annotations.JsonAdapter;
 import java.util.Objects;
-import com.gpuExtended.rendering.Color;
+import java.awt.Color;
 import com.gpuExtended.rendering.Vector3;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -11,7 +11,6 @@ import lombok.Setter;
 @Setter(value = AccessLevel.PRIVATE)
 @NoArgsConstructor
 public class Environment {
-
     public String   Name;
     public Vector3  LightDirection;
     public Color    LightColor;
@@ -23,10 +22,10 @@ public class Environment {
         Environment env = new Environment();
         env.Name = "Default";
         env.LightDirection = new Vector3(45, 200, 0); // 90 on X would be straight down from the top, 90 on Y points East
-        env.LightColor = new Color(0.75f);
-        env.AmbientColor = new Color(0.65f);
+        env.LightColor = new Color(0.75f, 0.75f, 0.75f, 1f);
+        env.AmbientColor = new Color(0.65f, 0.65f, 0.65f, 0.75f);
         env.FogColor = new Color(0, 0, 0);
-        env.FogDepth = 25;
+        env.FogDepth = 0;
         return env;
     }
 

@@ -306,9 +306,9 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     normC.w = flags;
 
     // undo shading
-    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-    undoVanillaShading(thisrvC.ahsl, normC.xyz);
+//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
+//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
+//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
 
     normalout[outOffset + myOffset * 3]     = normA;
     normalout[outOffset + myOffset * 3 + 1] = normB;

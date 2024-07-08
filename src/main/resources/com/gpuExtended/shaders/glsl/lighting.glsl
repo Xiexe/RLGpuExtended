@@ -1,42 +1,6 @@
-const float bias = 0.00065;
-const float lightSize = 0.00075;
-const int shadowSamples = 16;
-
-// Pre-defined set of sample points for blocker search and PCF
-const vec2 poissonDisk[64] = vec2[](
-    vec2(-0.499557, 0.035246), vec2(0.227272, -0.179687),
-    vec2(0.171875, 0.40625), vec2(-0.132812, -0.375),
-    vec2(0.453125, -0.007812), vec2(-0.367188, -0.296875),
-    vec2(-0.421875, 0.242188), vec2(0.375, 0.257812),
-    vec2(-0.25, -0.039062), vec2(0.296875, -0.40625),
-    vec2(-0.085938, 0.117188), vec2(0.140625, -0.4375),
-    vec2(-0.492188, -0.15625), vec2(0.226562, 0.132812),
-    vec2(-0.335938, 0.429688), vec2(0.46875, -0.210938),
-    vec2(0.078125, 0.046875), vec2(-0.210938, 0.085938),
-    vec2(0.054688, 0.273438), vec2(-0.257812, -0.132812),
-    vec2(0.320312, 0.40625), vec2(-0.492188, 0.382812),
-    vec2(-0.09375, -0.492188), vec2(0.375, 0.039062),
-    vec2(0.015625, -0.296875), vec2(-0.179688, 0.257812),
-    vec2(0.46875, -0.328125), vec2(-0.273438, -0.40625),
-    vec2(0.429688, 0.164062), vec2(-0.351562, 0.09375),
-    vec2(-0.101562, 0.492188), vec2(0.132812, -0.203125),
-    vec2(-0.445312, -0.46875), vec2(0.3125, -0.085938),
-    vec2(-0.117188, -0.273438), vec2(0.234375, 0.28125),
-    vec2(-0.023438, 0.445312), vec2(0.492188, -0.492188),
-    vec2(-0.210938, -0.484375), vec2(0.367188, -0.1875),
-    vec2(-0.4375, 0.03125), vec2(0.203125, -0.070312),
-    vec2(0.070312, 0.140625), vec2(-0.164062, -0.117188),
-    vec2(0.28125, -0.3125), vec2(-0.03125, 0.351562),
-    vec2(0.375, 0.375), vec2(-0.492188, -0.375),
-    vec2(0.140625, 0.476562), vec2(-0.3125, 0.1875),
-    vec2(0.46875, -0.078125), vec2(-0.25, -0.234375),
-    vec2(0.09375, 0.40625), vec2(-0.367188, -0.007812),
-    vec2(0.445312, 0.320312), vec2(-0.15625, 0.367188),
-    vec2(-0.46875, -0.210938), vec2(0.3125, -0.429688),
-    vec2(-0.085938, 0.273438), vec2(0.234375, -0.234375),
-    vec2(-0.320312, 0.351562), vec2(0.476562, -0.46875),
-    vec2(-0.273438, 0.125), vec2(0.078125, -0.015625)
-);
+const float bias = 0.001;
+const float lightSize = 0.0035;
+const int shadowSamples = 64;
 
 float LinearExponentialAttenuation(float dist, float maxDistance) {
     float linearAttenuation = max(1.0 - dist / maxDistance, 0.0);
@@ -44,11 +8,11 @@ float LinearExponentialAttenuation(float dist, float maxDistance) {
     return linearAttenuation * exponentialAttenuation;
 }
 
-float PCSSFindBlocker(vec4 projCoords, float currentDepth, float searchRadius) {
+float PCSSEstimatePenumbraSize(vec4 projCoords, float currentDepth, float searchRadius) {
     float blockerDepthSum = 0.0;
     int blockerCount = 0;
 
-    for (int i = 0; i < shadowSamples / 2; i++) {
+    for (int i = 0; i < shadowSamples; i++) {
         vec2 offset = poissonDisk[i] * searchRadius;
         float depth = texture(shadowMap, projCoords.xy + offset).r;
 
@@ -58,8 +22,10 @@ float PCSSFindBlocker(vec4 projCoords, float currentDepth, float searchRadius) {
         }
     }
 
-    if (blockerCount == 0) return -1.0;
-    return blockerDepthSum / float(blockerCount);
+    blockerDepthSum /= float(blockerCount);
+
+    float estimatedPenumbra = (currentDepth - blockerDepthSum) * lightSize / blockerDepthSum;
+    return max(0, estimatedPenumbra);
 }
 
 float PCSSFilter(vec4 projCoords, float currentDepth, float penumbraSize) {
@@ -80,25 +46,13 @@ float PCSSShadows(vec4 projCoords, float fadeOut) {
     vec2 shadowRes = textureSize(shadowMap, 0);
     float currentDepth = projCoords.z - bias;
 
-    float shadowRenderDistance = MAX_SHADOW_DISTANCE / 100;
-
-    // Blocker search to find average blocker depth
-    float searchRadius = 0.003 * shadowRenderDistance;
-    float blockerDepth = PCSSFindBlocker(projCoords, currentDepth, searchRadius);
-
-    if (blockerDepth <= -1.0)
-        return 0.0; // No blockers, fully lit
-
     // Estimate penumbra size
-    float penumbraSize = (currentDepth - blockerDepth) * lightSize / blockerDepth;
-    penumbraSize += 0.00001;
-    penumbraSize *= shadowSamples;
-    penumbraSize *= shadowRenderDistance;
+    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 10;
 
     // Calculate shadow using PCSS
     float shadow = PCSSFilter(projCoords, currentDepth, penumbraSize);
 
-    return (shadow) * (1.0 - fadeOut);
+    return shadow * (1.0 - fadeOut);
 }
 
 float GetShadowMap(vec3 fragPos) {
@@ -107,9 +61,52 @@ float GetShadowMap(vec3 fragPos) {
     projCoords = projCoords * 0.5 + 0.5;
 
     vec2 uv = projCoords.xy * 2.0 - 1.0;
-    float fadeOut = smoothstep(0.95, 1.0, dot(uv, uv));
+    float fadeOut = smoothstep(0.75, 1.0, dot(uv, uv));
 
     float pcssShadowSample = PCSSShadows(projCoords, fadeOut);
 
     return 1-pcssShadowSample;
 }
+
+//float ScreenSpaceShadows(vec3 fragPos, vec3 viewDirection)
+//{
+//    // Compute ray position and direction (in view-space)
+//    vec3 ray_pos = mul(float4(fragPos, 1.0f), viewDirection).xyz;
+//    vec3 ray_dir = mul(float4(-lightDirection, 0.0f), viewDirection).xyz;
+//
+//    // Compute ray step
+//    vec3 ray_step = ray_dir * g_sss_step_length;
+//
+//    // Ray march towards the light
+//    float occlusion = 0.0;
+//    vec2 ray_uv   = vec2(0.0);
+//    for (int i = 0; i < g_sss_max_steps; i++)
+//    {
+//        // Step the ray
+//        ray_pos += ray_step;
+//        ray_uv  = project_uv(ray_pos, g_projection);
+//
+//        // Ensure the UV coordinates are inside the screen
+//        if (is_saturated(ray_uv))
+//        {
+//            // Compute the difference between the ray's and the camera's depth
+//            float depth_z     = get_linear_depth(ray_uv);
+//            float depth_delta = ray_pos.z - depth_z;
+//
+//            // Check if the camera can't "see" the ray (ray depth must be larger than the camera depth, so positive depth_delta)
+//            if ((depth_delta > 0.0f) && (depth_delta < g_sss_thickness))
+//            {
+//                // Mark as occluded
+//                occlusion = 1.0f;
+//
+//                // Fade out as we approach the edges of the screen
+//                //occlusion *= screen_fade(ray_uv);
+//
+//                break;
+//            }
+//        }
+//    }
+//
+//    // Convert to visibility
+//    return 1.0f - occlusion;
+//}

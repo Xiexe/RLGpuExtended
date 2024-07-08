@@ -44,7 +44,7 @@ public class ShadowMapOverlay extends Overlay {
 
     public ShadowMapOverlay() {
         setLayer(OverlayLayer.ABOVE_WIDGETS);
-        setPosition(OverlayPosition.TOP_LEFT);
+        setPosition(OverlayPosition.DYNAMIC);
         setResizable(true);
     }
 
@@ -89,13 +89,13 @@ public class ShadowMapOverlay extends Overlay {
         var bounds = getBounds();
 
         clientThread.invoke(() -> {
-            if (plugin.glUiProgram == 0)
+            if (plugin.glUiProgram == 0) {
+                log.error("ShadowMapOverlay: glUiProgram is 0");
                 return;
-
+            }
             glUseProgram(plugin.glUiProgram);
             int uniShadowMap = glGetUniformLocation(plugin.glUiProgram, "shadowMap");
-            if (uniShadowMap != -1)
-                glUniform1i(uniShadowMap, 3);
+            glUniform1i(uniShadowMap, 2);
 
             int uniBounds = glGetUniformLocation(plugin.glUiProgram, "shadowMapOverlayDimensions");
             if (uniBounds != -1) {
@@ -120,9 +120,6 @@ public class ShadowMapOverlay extends Overlay {
 
             plugin.checkGLErrors();
         });
-
-        g.setColor(Color.BLACK);
-        g.drawRect(0, 0, bounds.width, bounds.height);
 
         return new Dimension(256, 256);
     }

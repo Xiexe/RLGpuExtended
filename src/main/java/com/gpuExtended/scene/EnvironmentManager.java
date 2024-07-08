@@ -95,7 +95,7 @@ public class EnvironmentManager
     {
         lightBuffer.ensureCapacity(12);
         lightBuffer.put(xPos, yPos, zPos, plane);
-        lightBuffer.put(light.color.r, light.color.g, light.color.b, config);
+        lightBuffer.put(light.color.getRed(), light.color.getGreen(), light.color.getBlue(), config);
         lightBuffer.put(light.intensity, light.radius + 1, light.type.ordinal(), light.animation.ordinal());
     }
 

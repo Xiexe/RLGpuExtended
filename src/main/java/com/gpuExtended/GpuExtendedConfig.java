@@ -9,6 +9,8 @@ import com.gpuExtended.config.AntiAliasingMode;
 import com.gpuExtended.config.ColorBlindMode;
 import com.gpuExtended.config.UIScalingMode;
 
+import java.awt.*;
+
 @ConfigGroup(GpuExtendedConfig.GROUP)
 public interface GpuExtendedConfig extends Config
 {
@@ -209,6 +211,31 @@ public interface GpuExtendedConfig extends Config
 	String lightSettings = "lightSettings";
 
 	@ConfigItem(
+			keyName = "skyColor",
+			name = "Sky Color",
+			description = "",
+			position = 98,
+			section = lightSettings
+	)
+	Color skyColor();
+
+	@ConfigItem(
+			keyName = "skyColorAmbientContribution",
+			name = "Sky Ambient Contribution",
+			description = "",
+			position = 99,
+			section = lightSettings
+	)
+	@Range(
+			min = 0,
+			max = 100
+	)
+	default int skyColorAmbientContribution()
+	{
+		return 75;
+	}
+
+	@ConfigItem(
 			keyName = "overrideLightRotation",
 			name = "Custom Sun Rotation",
 			description = "",
@@ -242,5 +269,24 @@ public interface GpuExtendedConfig extends Config
 	default int lightYaw()
 	{
 		return 50;
+	}
+
+	@ConfigSection(
+			name = "Debugging",
+			description = "Debugging",
+			position = 200
+	)
+	String debugging = "debugging";
+
+	@ConfigItem(
+			keyName = "showShadowMap",
+			name = "Show Shadow Map",
+			description = "",
+			position = 0,
+			section = debugging
+	)
+	default boolean showShadowMap()
+	{
+		return false;
 	}
 }

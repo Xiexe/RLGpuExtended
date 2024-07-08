@@ -4,6 +4,7 @@
 #define SAMPLING_MITCHELL 1
 #define SAMPLING_CATROM 2
 #define SAMPLING_XBR 3
+#include "SHADOW_MAP_OVERLAY"
 
 uniform sampler2D tex;
 
@@ -34,13 +35,11 @@ vec4 alphaBlend(vec4 src, vec4 dst) {
 
 void main() {
   #if SHADOW_MAP_OVERLAY
-  {
     vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
     if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
-      FragColor = vec4(1);
+      FragColor = texture(shadowMap, 1-uv);
       return;
     }
-  }
   #endif
 
   vec4 c;

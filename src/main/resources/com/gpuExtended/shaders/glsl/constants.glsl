@@ -19,7 +19,7 @@
 
 #define FOG_SCENE_EDGE_MIN ((-expandedMapLoadingChunks * 8 + 1) * TILE_SIZE)
 #define FOG_SCENE_EDGE_MAX ((104 + expandedMapLoadingChunks * 8 - 1) * TILE_SIZE)
-#define FOG_CORNER_ROUNDING 20
+#define FOG_CORNER_ROUNDING 10f
 #define FOG_CORNER_ROUNDING_SQUARED (FOG_CORNER_ROUNDING * FOG_CORNER_ROUNDING)
 
 #define FIRE_CAPE 41
@@ -28,6 +28,7 @@
 #define MAX_Z_HEIGHT 4 // 4 tiles high
 #define MAX_SHADOW_DISTANCE 100 // 100 tiles.
 
+#define LIGHT_COUNT 100 // 100 lights maximum
 #define LIGHT_TYPE_INVALID 0
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2

@@ -1,7 +1,5 @@
 #version 420
 
-
-
 in vec4 fColor;
 in vec4 fNormal;
 noperspective centroid in float fHsl;
@@ -14,6 +12,7 @@ in float fPlane;
 in float fOnBridge;
 in float fIsRoof;
 in float fIsTerrain;
+in float fIsLocalPlayer;
 
 out vec4 FragColor;
 
@@ -65,11 +64,13 @@ void main() {
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
 
     float dither = Dither(gl_FragCoord.xy / 2);
-    float shadowMap = GetShadowMap(fPosition);
-    shadowMap *= mix(1, (dither + shadowMap), 1-shadowMap);
+    float shadowTex = GetShadowMap(fPosition);
+    float depthTex = 1-texture(depthMap, gl_FragCoord.xy / resolution).r;
 
     float ndl = max(dot(s.normal.xyz, lightDirection), 0);
-    vec3 litFragment = s.albedo.rgb * (ndl * shadowMap * lightColor + ambientColor);
+    float shadow = shadowTex * ndl;
+
+    vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * lightColor + ambientColor.rgb);
 
     float fog = fFogAmount;
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
@@ -93,12 +94,11 @@ void main() {
     bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
 
     //TODO:: check tiles around terrain roofs to see if they are roofs.
-    //finalColor = vec3(isNonTerrainRoof);
 
     if(isTerrainRoof || isNonTerrainRoof)
     {
         //finalColor = vec3(.5,0,.5);
-        clip(dither - 0.001 - distanceToPlayer);
+       clip((dither - 0.001 - distanceToPlayer));
     }
 
     //finalColor = s.albedo.rgb * 0.1 + vec3(fNormal.w / 4);
@@ -129,6 +129,6 @@ void main() {
 //        }
 //    }
 
-    PostProcessImage(finalColor, colorBlindMode);
+    PostProcessImage(finalColor, colorBlindMode, fog);
     FragColor = vec4(finalColor, s.albedo.a);
 }

@@ -1,5 +1,3 @@
-#define LIGHT_COUNT 100 // 100 lights maximum
-
 struct Light
 {
     vec4 pos;

@@ -36,6 +36,7 @@ out float fPlane;
 out float fOnBridge;
 out float fIsRoof;
 out float fIsTerrain;
+out float fIsLocalPlayer;
 
 void main() {
   int textureId = gTextureId[0];
@@ -75,6 +76,7 @@ void main() {
     fOnBridge = (int(gNormal[0].w) >> 27) & 1;
     fIsRoof = (int(gNormal[0].w) >> 28) & 1;
     fIsTerrain = (int(gNormal[0].w) >> 29) & 1;
+    fIsLocalPlayer = (int(gNormal[0].w) >> 30) & 1;
 
     fPosition = gPosition[i];
     fColor = gColor[i];
