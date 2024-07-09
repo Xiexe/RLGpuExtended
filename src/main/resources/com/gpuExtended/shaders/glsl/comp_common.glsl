@@ -14,14 +14,17 @@ struct Vertex {
   int ahsl;
 };
 
-layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform cameraUniforms {
-  vec3 cameraPosition;
-  float cameraPitch;
-  float cameraYaw;
-  int zoom;
-  int centerX;
-  int centerY;
-};
+layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform CameraBlock {
+  mat4 cameraProjectionMatrix;        // 64 bytes
+  vec4 cameraPosition;                // 16 bytes
+  vec4 cameraFocalPoint;              // 16 bytes
+  float cameraPitch;                  // 4 bytes
+  float cameraYaw;                    // 4 bytes
+  int zoom;                           // 4 bytes
+  int centerX;                        // 4 bytes
+  int centerY;                        // 4 bytes
+};                                     // 128 bytes
+
 
 layout(std430, binding = MODEL_BUFFER_IN_BINDING_ID) readonly buffer modelbuffer_in {
   modelinfo ol[];

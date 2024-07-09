@@ -66,10 +66,48 @@ vec3 adjustBrightness(vec3 color, float brightness) {
 void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff)
 {
     image = mix(adjustSaturationAndContrast(image, 1.1, 1.3), image, fogFalloff);
-    //image = adjustBrightness(image, 0.8);
+    image = adjustBrightness(image, 0.8);
 
     if (colorBlindMode > 0) {
         image = colorblind(colorBlindMode, image);
+    }
+}
+
+void DrawTileMarker(inout vec3 image, vec3 fragPos, vec2 tilePosition, float lineWidth)
+{
+    float gridSize = TILE_SIZE;
+    float x = fragPos.x;
+    float z = fragPos.z;
+
+    float u = mod(x, gridSize) / gridSize;
+    float v = mod(z, gridSize) / gridSize;
+
+    int cellX = int(floor(x / gridSize) * gridSize);
+    int cellZ = int(floor(z / gridSize) * gridSize);
+
+    if (cellX >= int(tilePosition.x - TILE_SIZE) &&
+    cellZ >= int(tilePosition.y - TILE_SIZE) &&
+    cellX <= int(tilePosition.x) &&
+    cellZ <= int(tilePosition.y)
+    )
+    {
+        float eps = 0.00001;
+        if (u > eps && u < 1.0 - eps && v > eps && v < 1.0 - eps)
+        {
+            bool isBorder = (u < lineWidth          ||
+                             u > 1.0 - lineWidth    ||
+                             v < lineWidth          ||
+                             v > 1.0 - lineWidth
+            );
+            if (isBorder)
+            {
+                image = vec3(0, 1, 1);
+            }
+            else
+            {
+                image *= 0.75;
+            }
+        }
     }
 }
 

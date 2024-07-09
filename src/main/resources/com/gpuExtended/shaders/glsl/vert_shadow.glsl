@@ -10,5 +10,5 @@ layout (location = 3) in vec4 vNormal;
 #include "shaders/glsl/uniforms.glsl"
 
 void main() {
-    gl_Position = lightProjectionMatrix * vec4(vPosition, 1);
+    gl_Position = mainLight.projectionMatrix * vec4(vPosition, 1);
 }

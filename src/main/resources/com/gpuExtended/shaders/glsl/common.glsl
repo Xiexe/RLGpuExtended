@@ -54,9 +54,9 @@ int face_distance(vec3 vA, vec3 vB, vec3 vC, float cameraYaw, float cameraPitch)
  * Test if a face is visible (not backward facing)
  */
 bool face_visible(vec3 vA, vec3 vB, vec3 vC, ivec4 position) {
-  vec3 lA = vA + position.xyz - cameraPosition;
-  vec3 lB = vB + position.xyz - cameraPosition;
-  vec3 lC = vC + position.xyz - cameraPosition;
+  vec3 lA = vA + position.xyz - cameraPosition.xyz;
+  vec3 lB = vB + position.xyz - cameraPosition.xyz;
+  vec3 lC = vC + position.xyz - cameraPosition.xyz;
 
   vec3 sA = toScreen(lA, cameraYaw, cameraPitch, centerX, centerY, zoom);
   vec3 sB = toScreen(lB, cameraYaw, cameraPitch, centerX, centerY, zoom);

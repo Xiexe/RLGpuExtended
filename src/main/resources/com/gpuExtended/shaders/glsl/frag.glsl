@@ -12,7 +12,7 @@ in float fPlane;
 in float fOnBridge;
 in float fIsRoof;
 in float fIsTerrain;
-in float fIsLocalPlayer;
+in float fIsDyanmicModel;
 
 out vec4 FragColor;
 
@@ -67,10 +67,10 @@ void main() {
     float shadowTex = GetShadowMap(fPosition);
     float depthTex = 1-texture(depthMap, gl_FragCoord.xy / resolution).r;
 
-    float ndl = max(dot(s.normal.xyz, lightDirection), 0);
+    float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
     float shadow = shadowTex * ndl;
 
-    vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * lightColor + ambientColor.rgb);
+    vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * mainLight.color.rgb + ambientColor.rgb);
 
     float fog = fFogAmount;
     vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
@@ -94,17 +94,13 @@ void main() {
     bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
 
     //TODO:: check tiles around terrain roofs to see if they are roofs.
-
-    if(isTerrainRoof || isNonTerrainRoof)
-    {
-        //finalColor = vec3(.5,0,.5);
-       clip((dither - 0.001 - distanceToPlayer));
-    }
-
-    //finalColor = s.albedo.rgb * 0.1 + vec3(fNormal.w / 4);
-    //finalColor = s.normal.rgb * 0.5 + 0.5;
-    //finalColor = vec3(ndl * shadowMap);
-    //finalColor = vec3(gl_FragCoord.x, gl_FragCoord.y, 0) / vec3(screenWidth, screenHeight, 1);
+//    if(isTerrainRoof || isNonTerrainRoof)
+//    {
+//        //finalColor = vec3(.5,0,.5);
+//       clip((dither - 0.001 - distanceToPlayer));
+//    }
+//
+//    finalColor = vec3(cameraPosition);
 
 //    for(int i = 0; i < LIGHT_COUNT; i++)
 //    {
@@ -128,6 +124,13 @@ void main() {
 //            finalColor += s.albedo.rgb * light.color.rgb * ndl * atten;
 //        }
 //    }
+
+    if(!(fIsDyanmicModel > 0))
+    {
+        DrawTileMarker(finalColor, fPosition, currentTile.xy, 0.025f);
+        DrawTileMarker(finalColor, fPosition, targetTile.xy, 0.025f);
+        DrawTileMarker(finalColor, fPosition, hoveredTile.xy, 0.025f);
+    }
 
     PostProcessImage(finalColor, colorBlindMode, fog);
     FragColor = vec4(finalColor, s.albedo.a);

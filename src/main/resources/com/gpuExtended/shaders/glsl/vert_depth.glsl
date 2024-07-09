@@ -5,8 +5,10 @@ layout (location = 1) in int vHsl;
 layout (location = 2) in vec4 vUv;
 layout (location = 3) in vec4 vNormal;
 
-uniform mat4 projectionMatrix;
+#include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/structs.glsl"
+#include "shaders/glsl/uniforms.glsl"
 
 void main() {
-    gl_Position = projectionMatrix * vec4(vPosition, 1);
+    gl_Position = cameraProjectionMatrix * vec4(vPosition, 1);
 }

@@ -5,18 +5,21 @@ import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.rendering.*;
-import com.gpuExtended.util.GpuFloatBuffer;
-import com.gpuExtended.util.Props;
-import com.gpuExtended.util.ResourcePath;
+import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import static com.gpuExtended.util.ResourcePath.path;
+import static net.runelite.api.Constants.SCENE_SIZE;
+import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 
+@Singleton
 @Slf4j
 public class EnvironmentManager
 {
@@ -37,16 +40,17 @@ public class EnvironmentManager
 
     public int drawDistance = -1;
 
-    public GLBuffer renderLightBuffer = new GLBuffer("render light buffer");
-    public GpuFloatBuffer lightBuffer = new GpuFloatBuffer();
     public HashMap<int[], Light> tileLights = new HashMap<>();
     public HashMap<Integer, Light> decorationLights = new HashMap<>();
     public HashMap<Integer, Light> gameObjectLights = new HashMap<>();
     public HashMap<Integer, Light> projectileLights = new HashMap<>();
-    public Integer lightCount = 0;
+    public ArrayList<Light> renderedLights = new ArrayList<>();
 
     public Environment[] environments;
     public Environment currentEnvironment;
+
+    public float[] lightProjectionMatrix;
+    public float[] lightViewMatrix;
 
     public void Initialize() {
         /*
@@ -66,8 +70,8 @@ public class EnvironmentManager
     }
 
     public void ReloadLights() {
-        lightBuffer.clear();
-        lightCount = 0;
+//        lightBuffer.clear();
+//        lightCount = 0;
 
         /*
         HashMap<String, Light> lightDefinitions = new Gson().fromJson(reader, mapType);
@@ -93,20 +97,64 @@ public class EnvironmentManager
 
     public void PushLightToBuffer(Light light, int xPos, int yPos, int zPos, int plane, int config)
     {
-        lightBuffer.ensureCapacity(12);
-        lightBuffer.put(xPos, yPos, zPos, plane);
-        lightBuffer.put(light.color.getRed(), light.color.getGreen(), light.color.getBlue(), config);
-        lightBuffer.put(light.intensity, light.radius + 1, light.type.ordinal(), light.animation.ordinal());
+//        lightBuffer.ensureCapacity(12);
+//        lightBuffer.put(xPos, yPos, zPos, plane);
+//        lightBuffer.put(light.color.getRed(), light.color.getGreen(), light.color.getBlue(), config);
+//        lightBuffer.put(light.intensity, light.radius + 1, light.type.ordinal(), light.animation.ordinal());
     }
 
     public void UpdateLightBuffer()
     {
-        lightBuffer.flip();
+//        lightBuffer.flip();
     }
 
     public void ClearLightBuffer()
     {
-        lightBuffer.clear();
+//        lightBuffer.clear();
+    }
+
+    public void UpdateEnvironment()
+    {
+        currentEnvironment = Environment.GetDefaultEnvironment();
+        UpdateMainLightProjectionMatrix();
+    }
+
+    public void UpdateMainLightProjectionMatrix()
+    {
+        // Calculate light matrix
+        boolean overrideLightDirection = config.customLightRotation();
+        int customLightPitch = config.lightPitch();
+        int customLightYaw = config.lightYaw();
+
+        float lightPitch = (float) Math.toRadians(overrideLightDirection ? customLightPitch : currentEnvironment.LightDirection.x);
+        float lightYaw = (float) Math.toRadians(overrideLightDirection ? customLightYaw : currentEnvironment.LightDirection.y);
+
+        lightProjectionMatrix = Mat4.identity();
+        lightViewMatrix = Mat4.rotateX((float) Math.PI + lightPitch);
+        Mat4.mul(lightViewMatrix, Mat4.rotateY((float) Math.PI + lightYaw));
+
+        int camX = (int) client.getCameraFpX();
+        int camY = (int) client.getCameraFpY();
+
+        int shadowDrawDistance = 30;
+        int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
+        int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
+        int west = Math.max(camX - drawDistanceSceneUnits, 0);
+        int north = Math.min(camY + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
+        int south = Math.max(camY - drawDistanceSceneUnits, 0);
+        int width = east - west;
+        int height = north - south;
+        int farPlane = 10000;
+
+        int maxDrawDistance = 100;
+        float maxScale = 0.7f;
+        float minScale = 0.4f;
+        float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
+        float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
+        Mat4.mul(lightProjectionMatrix, Mat4.scale(scale, scale, scale));
+        Mat4.mul(lightProjectionMatrix, Mat4.ortho(width, height, farPlane));
+        Mat4.mul(lightProjectionMatrix, lightViewMatrix);
+        Mat4.mul(lightProjectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
     }
 }
 

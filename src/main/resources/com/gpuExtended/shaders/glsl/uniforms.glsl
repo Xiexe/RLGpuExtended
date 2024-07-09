@@ -1,38 +1,53 @@
-layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform cameraUniforms {
-    vec3 cameraPosition;
-    float cameraPitch;
-    float cameraYaw;
-    int zoom;
-    int centerX;
-    int centerY;
-};
+layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform CameraBlock {
+    mat4 cameraProjectionMatrix;        // 64 bytes
+    vec4 cameraPosition;                // 16 bytes
+    vec4 cameraFocalPoint;              // 16 bytes
+    float cameraPitch;                  // 4 bytes
+    float cameraYaw;                    // 4 bytes
+    int zoom;                           // 4 bytes
+    int centerX;                        // 4 bytes
+    int centerY;                        // 4 bytes
+};                                      // 128 bytes
 
-layout(std140, binding = LIGHT_BUFFER_BINDING_ID) uniform lightUniforms {
-    Light LightsArray[LIGHT_COUNT];
-};
+layout(std140, binding = PLAYER_BUFFER_BINDING_ID) uniform PlayerBlock {
+    vec4 playerPosition;                // 16 bytes
+};                                      // 16 bytes
+
+layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock {
+    vec4 ambientColor;                  // 16 bytes
+    vec4 fogColor;                      // 16 bytes
+    int fogDepth;                       // 4 bytes
+    int sceneOffsetX;                   // 4 bytes
+    int sceneOffsetZ;                   // 4 bytes
+    float pad1;                         // 4 bytes
+    Light mainLight;                    // 112 bytes (due to padding inside Light struct)
+    Light additiveLights[LIGHT_COUNT];  // 112 * LIGHT_COUNT = 11,200 bytes (due to padding inside Light struct)
+};                                      // 11,360 bytes
+
+layout(std140, binding = TILEMARKER_BUFFER_BINDING_ID) uniform TileMarkerBlock {
+    vec4 currentTile;                   // 16 bytes
+    vec4 targetTile;                    // 16 bytes
+    vec4 hoveredTile;                   // 16 bytes
+    vec4 markedTiles[256];              // 256 * 16 bytes = 4096 bytes
+};                                      // Total: 4128 bytes
+
+layout(std140, binding = SYSTEMINFO_BUFFER_BINDING_ID) uniform SystemInfoBlock {
+    int tick;                           // 4 bytes
+    int screenWidth;                    // 4 bytes
+    int screenHeight;                   // 4 bytes
+    float deltaTime;                    // 4 bytes
+};                                      // 16 bytes
+
+layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
+    float brightness;                   // 4 bytes
+    float smoothBanding;                // 4 bytes
+    int expandedMapLoadingChunks;       // 4 bytes
+    int drawDistance;                   // 4 bytes
+    int colorBlindMode;                 // 4 bytes
+    float configPad0;                         // 4 bytes
+};                                      // 24 bytes
 
 uniform sampler2DArray textures;
 uniform sampler2D shadowMap;
 uniform sampler2D depthMap;
-uniform float brightness;
-uniform float smoothBanding;
-uniform int fogDepth;
-uniform int colorBlindMode;
-uniform int expandedMapLoadingChunks;
-uniform float textureLightMode;
-uniform vec3 lightColor;
-uniform vec3 lightDirection;
-uniform vec4 ambientColor;
-uniform vec3 fogColor;
-uniform int drawDistance;
-uniform int sceneOffsetX;
-uniform int sceneOffsetZ;
 uniform vec2 textureAnimations[128];
-uniform int tick;
-uniform int screenWidth;
-uniform int screenHeight;
-uniform float deltaTime;
-uniform vec3 playerPosition;
-uniform vec3 cameraFocalPoint;
-uniform mat4 projectionMatrix;
-uniform mat4 lightProjectionMatrix;

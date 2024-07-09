@@ -1,4 +1,4 @@
-const float bias = 0.001;
+const float bias = 0.00065;
 const float lightSize = 0.0035;
 const int shadowSamples = 64;
 
@@ -56,7 +56,7 @@ float PCSSShadows(vec4 projCoords, float fadeOut) {
 }
 
 float GetShadowMap(vec3 fragPos) {
-    vec4 projCoords = lightProjectionMatrix * vec4(fragPos, 1);
+    vec4 projCoords = mainLight.projectionMatrix * vec4(fragPos, 1);
     projCoords = projCoords / projCoords.w;
     projCoords = projCoords * 0.5 + 0.5;
 

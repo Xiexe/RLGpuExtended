@@ -36,7 +36,7 @@ out float fPlane;
 out float fOnBridge;
 out float fIsRoof;
 out float fIsTerrain;
-out float fIsLocalPlayer;
+out float fIsDyanmicModel;
 
 void main() {
   int textureId = gTextureId[0];
@@ -76,7 +76,7 @@ void main() {
     fOnBridge = (int(gNormal[0].w) >> 27) & 1;
     fIsRoof = (int(gNormal[0].w) >> 28) & 1;
     fIsTerrain = (int(gNormal[0].w) >> 29) & 1;
-    fIsLocalPlayer = (int(gNormal[0].w) >> 30) & 1;
+    fIsDyanmicModel = (int(gNormal[0].w) >> 30) & 1;
 
     fPosition = gPosition[i];
     fColor = gColor[i];
@@ -85,13 +85,13 @@ void main() {
     fTextureId = gTextureId[i];
     fNormal = normal;
     fUv = uv[i];
-    gl_Position = projectionMatrix * vec4(gVertex[i], 1);
+    gl_Position = cameraProjectionMatrix * vec4(gVertex[i], 1);
     EmitVertex();
   }
 
 #ifdef LINE_DEBUG
   fPosition = gPosition[0];
-  gl_Position = projectionMatrix * vec4(gVertex[0], 1);
+  gl_Position = cameraProjectionMatrix * vec4(gVertex[0], 1);
   EmitVertex();
 #endif
 

@@ -13,12 +13,6 @@ public class Uniforms
     {
         public int ColorBlindMode;
         public int UiColorBlindMode;
-        public int FogColor;
-        public int FogDepth;
-        public int DrawDistance;
-        public int ExpandedMapLoadingChunks;
-        public int ProjectionMatrix;
-        public int Brightness;
         public int Tex;
         public int TexSamplingMode;
         public int TexSourceDimensions;
@@ -28,30 +22,14 @@ public class Uniforms
         public int TextureAnimations;
         public int BlockSmall;
         public int BlockLarge;
-        //public int BlockMain;
-        public int SmoothBanding;
-        public int TextureLightMode;
-        public int Tick;
-        public int LightDirection;
-        public int LightColor;
-        public int AmbientColor;
-
-        public int SceneOffsetX;
-        public int SceneOffsetZ;
-        public int Time;
-        public int DeltaTime;
-
-        public int ScreenWidth;
-        public int ScreenHeight;
-
-        public int LightUniformsBlock;
-        public int CameraUniformsBlock;
-
-        public int LightProjectionMatrix;
+        public int CameraBlock;
+        public int PlayerBlock;
+        public int EnvironmentBlock;
+        public int TileMarkerBlock;
+        public int SystemInfoBlock;
+        public int ConfigBlock;
         public int ShadowMap;
         public int DepthMap;
-        public int PlayerPosition;
-        public int CameraFocalPoint;
     }
 
     public HashMap<Integer, ShaderVariables> map;
@@ -64,40 +42,12 @@ public class Uniforms
         }
 
         ShaderVariables shaderVariables = new ShaderVariables();
-
-        shaderVariables.ProjectionMatrix = glGetUniformLocation(shader, "projectionMatrix");
-        shaderVariables.Brightness = glGetUniformLocation(shader, "brightness");
-        shaderVariables.SmoothBanding = glGetUniformLocation(shader, "smoothBanding");
-        shaderVariables.FogColor = glGetUniformLocation(shader, "fogColor");
-        shaderVariables.FogDepth = glGetUniformLocation(shader, "fogDepth");
-        shaderVariables.DrawDistance = glGetUniformLocation(shader, "drawDistance");
-        shaderVariables.ExpandedMapLoadingChunks = glGetUniformLocation(shader, "expandedMapLoadingChunks");
-        shaderVariables.ColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
-        shaderVariables.TextureLightMode = glGetUniformLocation(shader, "textureLightMode");
-        shaderVariables.Tick = glGetUniformLocation(shader, "tick");
-        shaderVariables.Textures = glGetUniformLocation(shader, "textures");
-        shaderVariables.TextureAnimations = glGetUniformLocation(shader, "textureAnimations");
-
-        shaderVariables.LightDirection = glGetUniformLocation(shader, "lightDirection");
-        shaderVariables.LightColor = glGetUniformLocation(shader, "lightColor");
-        shaderVariables.AmbientColor = glGetUniformLocation(shader, "ambientColor");
-        shaderVariables.SceneOffsetX = glGetUniformLocation(shader, "sceneOffsetX");
-        shaderVariables.SceneOffsetZ = glGetUniformLocation(shader, "sceneOffsetZ");
-        shaderVariables.Time = glGetUniformLocation(shader, "time");
-        shaderVariables.DeltaTime = glGetUniformLocation(shader, "deltaTime");
-
-        shaderVariables.ScreenWidth = glGetUniformLocation(shader, "screenWidth");
-        shaderVariables.ScreenHeight = glGetUniformLocation(shader, "screenHeight");
-
-        shaderVariables.PlayerPosition = glGetUniformLocation(shader, "playerPosition");
-        shaderVariables.CameraFocalPoint = glGetUniformLocation(shader, "cameraFocalPoint");
-
-        shaderVariables.LightProjectionMatrix = glGetUniformLocation(shader, "lightProjectionMatrix");
         shaderVariables.ShadowMap = glGetUniformLocation(shader, "shadowMap");
         shaderVariables.DepthMap = glGetUniformLocation(shader, "depthMap");
 
-        shaderVariables.CameraUniformsBlock = glGetUniformBlockIndex(shader, "cameraUniforms");
-        shaderVariables.LightUniformsBlock = glGetUniformBlockIndex(shader, "lightUniforms");
+        shaderVariables.ColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
+        shaderVariables.Textures = glGetUniformLocation(shader, "textures");
+        shaderVariables.TextureAnimations = glGetUniformLocation(shader, "textureAnimations");
 
         shaderVariables.Tex = glGetUniformLocation(shader, "tex");
         shaderVariables.TexSamplingMode = glGetUniformLocation(shader, "samplingMode");
@@ -106,10 +56,17 @@ public class Uniforms
         shaderVariables.UiColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
         shaderVariables.UiAlphaOverlay = glGetUniformLocation(shader, "alphaOverlay");
 
+        shaderVariables.CameraBlock = glGetUniformBlockIndex(shader, "CameraBlock");
+        shaderVariables.PlayerBlock = glGetUniformBlockIndex(shader, "PlayerBlock");
+        shaderVariables.EnvironmentBlock = glGetUniformBlockIndex(shader, "EnvironmentBlock");
+        shaderVariables.TileMarkerBlock = glGetUniformBlockIndex(shader, "TileMarkerBlock");
+        shaderVariables.SystemInfoBlock = glGetUniformBlockIndex(shader, "SystemInfoBlock");
+        shaderVariables.ConfigBlock = glGetUniformBlockIndex(shader, "ConfigBlock");
+
         if (computeMode == GpuExtendedPlugin.ComputeMode.OPENGL)
         {
-            shaderVariables.BlockSmall = glGetUniformBlockIndex(shader, "cameraUniforms");
-            shaderVariables.BlockLarge = glGetUniformBlockIndex(shader, "cameraUniforms");
+            shaderVariables.BlockSmall = glGetUniformBlockIndex(shader, "CameraBlock");
+            shaderVariables.BlockLarge = glGetUniformBlockIndex(shader, "CameraBlock");
         }
 
         map.put(shader, shaderVariables);

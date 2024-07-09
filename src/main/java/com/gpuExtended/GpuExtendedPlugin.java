@@ -18,9 +18,12 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
+import com.gpuExtended.scene.Light;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
@@ -66,7 +69,6 @@ import static net.runelite.api.Constants.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
-import static org.lwjgl.opengl.GL45C.glBlitNamedFramebuffer;
 
 @Slf4j
 @PluginDescriptor(
@@ -86,17 +88,23 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private static final int GROUND_MIN_Y = 350; // how far below the ground models extend
 
 	private int CAMERA_BUFFER_BINDING_ID = 0;
-	private int LIGHT_BUFFER_BINDING_ID = 1;
-	private int MODEL_BUFFER_IN_BINDING_ID = 2;
-	private int VERTEX_BUFFER_OUT_BINDING_ID = 3;
-	private int VERTEX_BUFFER_IN_BINDING_ID = 4;
-	private int TEMP_VERTEX_BUFFER_IN_BINDING_ID = 5;
-	private int TEXTURE_BUFFER_OUT_BINDING_ID = 6;
-	private int TEXTURE_BUFFER_IN_BINDING_ID = 7;
-	private int TEMP_TEXTURE_BUFFER_IN_BINDING_ID = 8;
-	private int NORMAL_BUFFER_OUT_BINDING_ID = 9;
-	private int NORMAL_BUFFER_IN_BINDING_ID = 10;
-	private int TEMP_NORMAL_BUFFER_IN_BINDING_ID = 11;
+	private int PLAYER_BUFFER_BINDING_ID = 1;
+	private int ENVIRONMENT_BUFFER_BINDING_ID = 2;
+	private int TILEMARKER_BUFFER_BINDING_ID = 3;
+	private int SYSTEMINFO_BUFFER_BINDING_ID = 4;
+	private int CONFIG_BUFFER_BINDING_ID = 5;
+
+	private int MODEL_BUFFER_IN_BINDING_ID = 1;
+	private int VERTEX_BUFFER_OUT_BINDING_ID = 2;
+	private int VERTEX_BUFFER_IN_BINDING_ID = 3;
+	private int TEMP_VERTEX_BUFFER_IN_BINDING_ID = 4;
+	private int TEXTURE_BUFFER_OUT_BINDING_ID = 5;
+	private int TEXTURE_BUFFER_IN_BINDING_ID = 6;
+	private int TEMP_TEXTURE_BUFFER_IN_BINDING_ID = 7;
+	private int NORMAL_BUFFER_OUT_BINDING_ID = 8;
+	private int NORMAL_BUFFER_IN_BINDING_ID = 9;
+	private int TEMP_NORMAL_BUFFER_IN_BINDING_ID = 10;
+
 
 	@Inject
 	private Client client;
@@ -129,6 +137,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private PluginManager pluginManager;
 
 	private Uniforms uniforms;
+
+	@Inject
 	public EnvironmentManager environmentManager;
 
 	public enum ComputeMode
@@ -232,7 +242,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int tileHeightTex;
 
 	private final GLBuffer glCameraUniformBuffer = new GLBuffer("camera uniform buffer");
-	private ByteBuffer uniformBufferCamera;
+	private final GLBuffer glPlayerUniformBuffer = new GLBuffer("player uniform buffer");
+	private final GLBuffer glEnvironmentUniformBuffer = new GLBuffer("environment uniform buffer");
+	private final GLBuffer glTileMarkerUniformBuffer = new GLBuffer("tile marker uniform buffer");
+	private final GLBuffer glSystemInfoUniformBuffer = new GLBuffer("system info uniform buffer");
+	private final GLBuffer glConfigUniformBuffer = new GLBuffer("config uniform buffer");
+
+	private ByteBuffer bBufferCameraBlock;
+	private ByteBuffer bBufferPlayerBlock;
+	private ByteBuffer bBufferEnvironmentBlock;
+	private ByteBuffer bBufferTileMarkerBlock;
+	private ByteBuffer bBufferSystemInfoBlock;
+	private ByteBuffer bBufferConfigBlock;
 
 	public GpuIntBuffer vertexBuffer;
 	public GpuFloatBuffer uvBuffer;
@@ -321,8 +342,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					client.setGameState(GameState.LOADING);
 				}
 
-				// TODO:: Temporary Scene Initializtion should be moved into a scene loader of some kind through json
-				environmentManager = new EnvironmentManager();
 				environmentManager.Initialize();
 
 				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
@@ -415,8 +434,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initInterfaceTexture();
 				initShadowMapTexture();
 				initDepthMapTexture();
-				initCameraUniformBuffer();
-				initLightBuffer();
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -778,7 +795,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glEnableVertexAttribArray(3);
 		glBindBuffer(GL_ARRAY_BUFFER, renderNormalBuffer.glBufferId);
 		glVertexAttribPointer(3, 4, GL_FLOAT, false, 0, 0);
-
 	}
 
 	private void initVao()
@@ -856,13 +872,37 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		initGlBuffer(renderUvBuffer);
 		initGlBuffer(renderNormalBuffer);
 
-		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BUFFER_BINDING_ID, environmentManager.renderLightBuffer.glBufferId);
+		initUniformBufferBlocks();
 	}
 
 	private void initGlBuffer(GLBuffer glBuffer)
 	{
 		glBuffer.glBufferId = glGenBuffers();
+	}
+
+	private void initUniformBufferBlocks()
+	{
+		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
+
+		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
+		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 16);
+		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 11360);
+		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 4144);
+		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
+		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 32);
+	}
+
+	private ByteBuffer initUniformBufferBlock(GLBuffer glBuffer, int blockSizeBytes)
+	{
+		ByteBuffer byteBuffer = BufferUtils.createByteBuffer(blockSizeBytes);
+		updateBuffer(glBuffer, GL_UNIFORM_BUFFER, blockSizeBytes, GL_DYNAMIC_DRAW, CL_MEM_READ_ONLY);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+		return byteBuffer;
 	}
 
 	private void shutdownBuffers()
@@ -884,9 +924,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		destroyGlBuffer(renderNormalBuffer);
 
 		destroyGlBuffer(glCameraUniformBuffer);
-		destroyGlBuffer(environmentManager.renderLightBuffer);
+		destroyGlBuffer(glPlayerUniformBuffer);
+		destroyGlBuffer(glEnvironmentUniformBuffer);
+		destroyGlBuffer(glTileMarkerUniformBuffer);
+		destroyGlBuffer(glSystemInfoUniformBuffer);
+		destroyGlBuffer(glConfigUniformBuffer);
 
-		uniformBufferCamera = null;
+		bBufferCameraBlock = null;
+		bBufferPlayerBlock = null;
+		bBufferEnvironmentBlock = null;
+		bBufferTileMarkerBlock = null;
+		bBufferSystemInfoBlock = null;
+		bBufferConfigBlock = null;
 	}
 
 	private void destroyGlBuffer(GLBuffer glBuffer)
@@ -905,11 +954,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	private void initTextures()
-	{
-
-	}
-
 	private void initInterfaceTexture()
 	{
 		interfacePbo = glGenBuffers();
@@ -922,7 +966,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
-
 
 	private void initShadowMapTexture()
 	{
@@ -969,21 +1012,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glDeleteBuffers(interfacePbo);
 		glDeleteTextures(interfaceTexture);
 		interfaceTexture = -1;
-	}
-
-	private void initCameraUniformBuffer()
-	{
-		int size = 8 * Float.BYTES;
-		uniformBufferCamera = BufferUtils.createByteBuffer(size);
-		updateBuffer(glCameraUniformBuffer, GL_UNIFORM_BUFFER, size, GL_DYNAMIC_DRAW, CL_MEM_READ_ONLY);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	}
-
-	private void initLightBuffer()
-	{
-		initGlBuffer(environmentManager.renderLightBuffer);
-		updateBuffer(environmentManager.renderLightBuffer, GL_UNIFORM_BUFFER, environmentManager.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
 	private void initAAFbo(int width, int height, int aaSamples)
@@ -1052,21 +1080,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// still redraw the previous frame's scene to emulate the client behavior of not painting over the
 		// viewport buffer.
 		targetBufferOffset = 0;
-
-		uniformBufferCamera
-				.clear()
-				.putFloat((float) cameraX)
-				.putFloat((float) cameraY)
-				.putFloat((float) cameraZ)
-				.putFloat((float) cameraPitch)
-				.putFloat((float) cameraYaw)
-				.putInt(client.getScale())
-				.putInt(client.getCenterX())
-				.putInt(client.getCenterY())
-				.flip();
-
-		glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, uniformBufferCamera);
+		environmentManager.UpdateEnvironment();
+		updateUniformBlocks();
 
 		checkGLErrors();
 	}
@@ -1117,14 +1132,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
 			GL_STREAM_DRAW,
 			CL12.CL_MEM_WRITE_ONLY);
-
-		updateBuffer(environmentManager.renderLightBuffer, GL_UNIFORM_BUFFER, environmentManager.lightBuffer.getBuffer(), GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-
 		// TODO:: make OpenCL work. This is for Mac.
 
 		// Bind UBO to compute programs
-		glUniformBlockBinding(glSmallComputeProgram, uniforms.GetUniforms(glSmallComputeProgram).BlockSmall, 0);
-		glUniformBlockBinding(glComputeProgram, uniforms.GetUniforms(glComputeProgram).BlockLarge, 0);
+		glUniformBlockBinding(glSmallComputeProgram, uniforms.GetUniforms(glSmallComputeProgram).BlockSmall, CAMERA_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
+
+		glUniformBlockBinding(glComputeProgram, uniforms.GetUniforms(glComputeProgram).BlockLarge, CAMERA_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 
 		dispatchModelSortingComputeShader(glUnorderedComputeProgram, unorderedModels, tmpModelBufferUnordered);
 		dispatchModelSortingComputeShader(glSmallComputeProgram, smallModels, tmpModelBufferSmall);
@@ -1334,19 +1349,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		lastAntiAliasingMode = antiAliasingMode;
 
 		Environment env = environmentManager.currentEnvironment;
-		Color ambientColor = config.skyColor() != null ? (config.skyColor() != Color.black ? config.skyColor() : env.AmbientColor) : env.AmbientColor;
-		Color fogColor = config.skyColor() != null ? config.skyColor() : env.FogColor;
-
-		Color skyColor = Utils.colorLerp(env.AmbientColor, ambientColor, config.skyColorAmbientContribution());
-		Color fogSkyColor = Utils.colorLerp(env.FogColor, fogColor, config.skyColorAmbientContribution());
-
 		if(gameState.getState() == GameState.LOGIN_SCREEN.getState())
 		{
 			glClearColor(0, 0, 0, 1f);
 		}
 		else if(gameState.getState() == GameState.LOGGED_IN.getState())
 		{
-			glClearColor(skyColor.getRed() / 255f, skyColor.getGreen() / 255f, skyColor.getBlue() / 255f, 1f);
+			glClearColor(env.FogColor.getRed() / 255f, env.FogColor.getGreen() / 255f, env.FogColor.getBlue() / 255f, 1f);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1392,56 +1401,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				renderWidthOff = (int) Math.floor(scaleFactorX * (renderWidthOff)) - padding;
 			}
 
-			// Calculate light matrix
-			float lightPitch = (float) Math.toRadians(config.customLightRotation() ? config.lightPitch() : env.LightDirection.x);
-			float lightYaw = (float) Math.toRadians(config.customLightRotation() ? config.lightYaw() : env.LightDirection.y);
-
-			float[] lightProjectionMatrix = Mat4.identity();
-			float[] lightViewMatrix = Mat4.rotateX((float) Math.PI + lightPitch);
-			Mat4.mul(lightViewMatrix, Mat4.rotateY((float) Math.PI + lightYaw));
-
-			final int camX = (int) client.getCameraFpX();
-			final int camY = (int) client.getCameraFpY();
-
-			final int shadowDrawDistance = getDrawDistance();
-			final int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
-			final int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
-			final int west = Math.max(camX - drawDistanceSceneUnits, 0);
-			final int north = Math.min(camY + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
-			final int south = Math.max(camY - drawDistanceSceneUnits, 0);
-			final int width = east - west;
-			final int height = north - south;
-			final int farPlane = 10000;
-
-			final int maxDrawDistance = 100;
-			final float maxScale = 0.7f;
-			final float minScale = 0.4f;
-			final float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
-			float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
-			Mat4.mul(lightProjectionMatrix, Mat4.scale(scale, scale, scale));
-			Mat4.mul(lightProjectionMatrix, Mat4.ortho(width, height, farPlane));
-			Mat4.mul(lightProjectionMatrix, lightViewMatrix);
-			Mat4.mul(lightProjectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
-
-			// Calculate camera matrix
-			float[] cameraProjectionMatrix = Mat4.scale(client.getScale(), client.getScale(), 1);
-			Mat4.mul(cameraProjectionMatrix, Mat4.projection(viewportWidth, viewportHeight, 50));
-			Mat4.mul(cameraProjectionMatrix, Mat4.rotateX((float) -(Math.PI - cameraPitch)));
-			Mat4.mul(cameraProjectionMatrix, Mat4.rotateY((float) cameraYaw));
-			Mat4.mul(cameraProjectionMatrix, Mat4.translate((float) -cameraX, (float) -cameraY, (float) -cameraZ));
-
-			int playerZ = client.getPlane();
+			// Set Uniform Blocks Up
 
 			glBindVertexArray(mainDrawVertexArrayObject);
 
-			drawShadowPass(lightProjectionMatrix);
+			drawShadowPass();
 
-			// Scale view before rendering main pass.
+			// This needs to be run before drawing the depth pass or the main pass
 			glDpiAwareViewport(renderWidthOff, renderCanvasHeight - renderViewportHeight - renderHeightOff, renderViewportWidth, renderViewportHeight);
 			glGetIntegerv(GL_VIEWPORT, currentViewport);
-
-			drawDepthPass(cameraProjectionMatrix);
-			drawMainPass(gameState, cameraProjectionMatrix, lightViewMatrix, lightProjectionMatrix, env, skyColor, fogSkyColor, viewportWidth, viewportHeight, playerZ);
+			drawMainPass();
 		}
 
 		if (aaEnabled)
@@ -1506,16 +1475,254 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		checkGLErrors();
 	}
 
-	private void drawMainPass(GameState gameState, float[] cameraProjectionMatrix, float[] lightViewMatrix, float[] lightProjectionMatrix, Environment env, Color skyColor, Color fogSkyColor, int viewportWidth, int viewportHeight, int playerZ)
+	private void updateUniformBlocks()
 	{
-		if(colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3])
+		if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
 		{
-			log.debug("Resizing color buffer texture to {}x{} from {}x{}", currentViewport[2], currentViewport[3], colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
-			colorFramebuffer.resize(viewportWidth, viewportHeight);
+			return;
 		}
 
+		// Calculate camera matrix
+		float[] cameraProjectionMatrix = Mat4.scale(client.getScale(), client.getScale(), 1);
+		Mat4.mul(cameraProjectionMatrix, Mat4.projection(client.getViewportWidth(), client.getViewportHeight(), 50));
+		Mat4.mul(cameraProjectionMatrix, Mat4.rotateX((float) -(Math.PI - cameraPitch)));
+		Mat4.mul(cameraProjectionMatrix, Mat4.rotateY((float) cameraYaw));
+		Mat4.mul(cameraProjectionMatrix, Mat4.translate((float) -cameraX, (float) -cameraY, (float) -cameraZ));
+
+		Environment env = environmentManager.currentEnvironment;
+
+		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
+			bBufferCameraBlock.clear();
+
+			// Fill the cameraProjectionMatrix (16 floats, 64 bytes)
+			for(int i = 0; i < cameraProjectionMatrix.length; i++) {
+				bBufferCameraBlock.putFloat(cameraProjectionMatrix[i]);
+			}
+
+			// Fill cameraPosition (4 floats, 16 bytes)
+			bBufferCameraBlock.putFloat((float) cameraX);
+			bBufferCameraBlock.putFloat((float) cameraY);
+			bBufferCameraBlock.putFloat((float) cameraZ);
+			bBufferCameraBlock.putFloat(0); // pad
+
+			// Fill cameraFocalPoint (4 floats, 16 bytes)
+			bBufferCameraBlock.putFloat((float) client.getCameraFpX());
+			bBufferCameraBlock.putFloat((float) client.getCameraFpY());
+			bBufferCameraBlock.putFloat((float) client.getCameraFpZ());
+			bBufferCameraBlock.putFloat(0); // pad
+
+			// Fill cameraPitch (4 bytes), cameraYaw (4 bytes), zoom (4 bytes), centerX (4 bytes), centerY (4 bytes)
+			// According to std140 layout rules, each of these must be 4 bytes aligned
+			bBufferCameraBlock.putFloat((float) cameraPitch);
+			bBufferCameraBlock.putFloat((float) cameraYaw);
+			bBufferCameraBlock.putInt(client.getScale());
+			bBufferCameraBlock.putInt(client.getCenterX());
+			bBufferCameraBlock.putInt(client.getCenterY());
+
+			bBufferCameraBlock.flip();
+
+			glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferCameraBlock);
+		// </editor-fold>
+
+		// <editor-fold defaultstate="collapsed" desc="Populate Player Buffer Block">
+			bBufferPlayerBlock.clear();
+			bBufferPlayerBlock.putFloat((float) client.getLocalPlayer().getLocalLocation().getX());
+			bBufferPlayerBlock.putFloat((float) client.getLocalPlayer().getLocalLocation().getY());
+			bBufferPlayerBlock.putFloat((float) client.getPlane());
+			bBufferPlayerBlock.flip();
+
+			glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferPlayerBlock);
+		// </editor-fold>
+
+		// <editor-fold defaultstate="collapsed" desc="Populate Environment Buffer Block">
+			bBufferEnvironmentBlock.clear();
+			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getBlue() / 255f);
+			bBufferEnvironmentBlock.putFloat(0);
+			bBufferEnvironmentBlock.putFloat(env.FogColor.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.FogColor.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.FogColor.getBlue() / 255f);
+			bBufferEnvironmentBlock.putFloat(0);
+			bBufferEnvironmentBlock.putInt(env.FogDepth);
+			bBufferEnvironmentBlock.putInt(client.getScene().getBaseX());
+			bBufferEnvironmentBlock.putInt(client.getScene().getBaseY());
+			bBufferEnvironmentBlock.putInt(0); // Pad
+
+			// Pack Main Light
+			bBufferEnvironmentBlock.putFloat(env.LightDirection.x);
+			bBufferEnvironmentBlock.putFloat(env.LightDirection.y);
+			bBufferEnvironmentBlock.putFloat(env.LightDirection.z);
+			bBufferEnvironmentBlock.putFloat(1); // light type / directional
+
+			bBufferEnvironmentBlock.putFloat(env.LightColor.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.LightColor.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.LightColor.getBlue() / 255f);
+			bBufferEnvironmentBlock.putFloat(0); // pad
+
+			bBufferEnvironmentBlock.putFloat(0); // light intensity
+			bBufferEnvironmentBlock.putFloat(0); // light radius
+			bBufferEnvironmentBlock.putFloat(0); // light animation
+			bBufferEnvironmentBlock.putFloat(0); // pad
+
+			for(int i = 0; i < environmentManager.lightProjectionMatrix.length; i++)
+			{
+				bBufferEnvironmentBlock.putFloat(environmentManager.lightProjectionMatrix[i]);
+			}
+
+			// Pack Extra Lights
+			for(int i = 0; i < environmentManager.renderedLights.size(); i++)
+			{
+				Light light = environmentManager.renderedLights.get(i);
+				bBufferEnvironmentBlock.putFloat(light.position.x);
+				bBufferEnvironmentBlock.putFloat(light.position.y);
+				bBufferEnvironmentBlock.putFloat(light.position.z);
+				bBufferEnvironmentBlock.putFloat(light.type.ordinal());
+
+				bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
+				bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
+				bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
+				bBufferEnvironmentBlock.putFloat(0); // pad
+
+				bBufferEnvironmentBlock.putFloat(light.intensity);
+				bBufferEnvironmentBlock.putFloat(light.radius);
+				bBufferEnvironmentBlock.putFloat(light.animation.ordinal());
+				bBufferEnvironmentBlock.putFloat(0); // pad
+
+				for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
+				{
+					// TODO:: these lights don't actually have projection matricies at the moment.
+					// Pad it. Future stuff.
+					bBufferEnvironmentBlock.putFloat(0);
+				}
+			}
+
+			bBufferEnvironmentBlock.flip();
+
+			glBindBuffer(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.glBufferId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
+		// </editor-fold>
+
+		// <editor-fold defaultstate="collapsed" desc="Populate Tile Marker Buffer Block">
+			float currentTileX = -1;
+			float currentTileY = -1;
+			float targetTileX = -1;
+			float targetTileY = -1;
+			float hoveredTileX = -1;
+			float hoveredTileY = -1;
+
+			final WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+			if (playerPos != null)
+			{
+				final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+				if (playerPosLocal != null)
+				{
+					currentTileX = (float)playerPosLocal.getX();
+					currentTileY = (float)playerPosLocal.getY();
+				}
+			}
+
+			if(client.getLocalDestinationLocation() != null)
+			{
+				targetTileX = (float)client.getLocalDestinationLocation().getX();
+				targetTileY = (float)client.getLocalDestinationLocation().getY();
+			}
+
+			if(client.getSelectedSceneTile() != null)
+			{
+				hoveredTileX = (float)client.getSelectedSceneTile().getLocalLocation().getX();
+				hoveredTileY = (float)client.getSelectedSceneTile().getLocalLocation().getY();
+			}
+
+			bBufferTileMarkerBlock.clear();
+			bBufferTileMarkerBlock.putFloat(currentTileX);
+			bBufferTileMarkerBlock.putFloat(currentTileY);
+			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(0);
+
+			bBufferTileMarkerBlock.putFloat(targetTileX);
+			bBufferTileMarkerBlock.putFloat(targetTileY);
+			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(0);
+
+			bBufferTileMarkerBlock.putFloat(hoveredTileX);
+			bBufferTileMarkerBlock.putFloat(hoveredTileY);
+			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(0);
+
+			// TODO:: Add marked tiles.
+
+			bBufferTileMarkerBlock.flip();
+
+			glBindBuffer(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.glBufferId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferTileMarkerBlock);
+		// </editor-fold>
+
+		// <editor-fold defaultstate="collapsed" desc="Populate System Info Block">
+			bBufferSystemInfoBlock.clear();
+
+			bBufferSystemInfoBlock.putInt(client.getGameCycle());
+			bBufferSystemInfoBlock.putInt(currentViewport[2]);
+			bBufferSystemInfoBlock.putInt(currentViewport[3]);
+			bBufferSystemInfoBlock.putFloat(DeltaTime);
+
+			bBufferSystemInfoBlock.flip();
+
+			glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
+		// </editor-fold>
+
+		// <editor-fold defaultstate="collapsed" desc="Populate Config Block">
+			bBufferConfigBlock.clear();
+
+			bBufferConfigBlock.putFloat(1); // brightness (float) textureProvider.getBrightness()
+			bBufferConfigBlock.putFloat(config.smoothBanding() ? 1 : 0);
+			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
+			bBufferConfigBlock.putInt(getDrawDistance());
+			bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
+			bBufferConfigBlock.putFloat(0); // pad
+
+			bBufferConfigBlock.flip();
+
+			glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
+		// </editor-fold>
+	}
+
+	private void drawMainPass()
+	{
 		glUseProgram(glProgram);
 		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glProgram);
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
+		glUniform1i(uni.ShadowMap, 2);
+		glActiveTexture(GL_TEXTURE0);
+
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, depthMapFramebuffer.getTexture().getId());
+		glUniform1i(uni.DepthMap, 3);
+		glActiveTexture(GL_TEXTURE0);
+
+		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
+
+		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
+
+		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
+
+		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
+
+		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
+
+		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
 
 		final TextureProvider textureProvider = client.getTextureProvider();
 		if (textureArrayId == -1)
@@ -1531,51 +1738,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 		}
 
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
-		glUniform1i(uni.ShadowMap, 2);
-		glActiveTexture(GL_TEXTURE0);
-
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, depthMapFramebuffer.getTexture().getId());
-		glUniform1i(uni.DepthMap, 3);
-		glActiveTexture(GL_TEXTURE0);
-
-		glUniform1i(uni.DrawDistance, getDrawDistance() * Perspective.LOCAL_TILE_SIZE);
-		glUniform1i(uni.ExpandedMapLoadingChunks, client.getExpandedMapLoading());
-		glUniform1i(uni.SceneOffsetX, client.getScene().getBaseX());
-		glUniform1i(uni.SceneOffsetZ, client.getScene().getBaseY());
-
-		glUniform1f(uni.Time, Time);
-		glUniform1f(uni.DeltaTime, DeltaTime);
-		glUniform1i(uni.ScreenWidth, currentViewport[2]);
-		glUniform1i(uni.ScreenHeight, currentViewport[3]);
-
-		glUniform3f(uni.PlayerPosition, (float)client.getLocalPlayer().getLocalLocation().getX(), (float)client.getLocalPlayer().getLocalLocation().getY(), playerZ);
-		glUniform3f(uni.CameraFocalPoint, (float)client.getCameraFocalPointX(), (float)client.getCameraFocalPointY(), (float)client.getCameraFocalPointZ());
-		glUniformMatrix4fv(uni.LightProjectionMatrix, false, lightProjectionMatrix);
-		glUniform3f(uni.LightDirection, lightViewMatrix[2], -lightViewMatrix[6], lightViewMatrix[10]);
-
-		glUniform3f(uni.LightColor, env.LightColor.getRed() / 255f, env.LightColor.getGreen() / 255f, env.LightColor.getBlue() / 255f);
-		glUniform4f(uni.AmbientColor, skyColor.getRed() / 255f, skyColor.getGreen() / 255f, skyColor.getBlue() / 255f, config.skyColorAmbientContribution());
-		glUniform3f(uni.FogColor, fogSkyColor.getRed() / 255f, fogSkyColor.getGreen() / 255f, fogSkyColor.getBlue() / 255f);
-		glUniform1i(uni.FogDepth, env.FogDepth == 0 ? config.fogDepth() : env.FogDepth);
-
-		// Brightness happens to also be stored in the texture provider, so we use that
-		glUniform1f(uni.Brightness, (float) textureProvider.getBrightness());
-		glUniform1f(uni.SmoothBanding, config.smoothBanding() ? 0f : 1f);
-		glUniform1i(uni.ColorBlindMode, config.colorBlindMode().ordinal());
-		glUniform1f(uni.TextureLightMode, config.brightTextures() ? 1f : 0f);
-		if (gameState == GameState.LOGGED_IN)
-		{
-			// avoid textures animating during loading
-			glUniform1i(uni.Tick, client.getGameCycle());
-		}
-
-		glUniformMatrix4fv(uni.ProjectionMatrix, false, cameraProjectionMatrix);
-
-		glUniformBlockBinding(glProgram, uni.CameraUniformsBlock, 0);
-		glUniformBlockBinding(glProgram, uni.LightUniformsBlock, 0);
 		glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
 
 		// We just allow the GL to do face culling. Note this requires the priority renderer
@@ -1604,7 +1766,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUseProgram(0);
 	}
 
-	private void drawShadowPass(float[] lightProjectionMatrix)
+	private void drawShadowPass()
 	{
 		glViewport(0, 0, shadowMapFramebuffer.getTexture().getWidth(), shadowMapFramebuffer.getTexture().getHeight());
 		glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFramebuffer.getId());
@@ -1615,40 +1777,24 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glUseProgram(glShadowProgram);
 		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glShadowProgram);
-		glUniformMatrix4fv(uni.LightProjectionMatrix, false, lightProjectionMatrix);
 
-		glEnable(GL_CULL_FACE);
-		glEnable(GL_DEPTH_TEST);
+		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 
-		glDrawArrays(GL_TRIANGLES, 0, targetBufferOffset);
+		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
 
-		glDisable(GL_CULL_FACE);
-		glDisable(GL_DEPTH_TEST);
+		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
-		glUseProgram(0);
-	}
+		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
 
-	private void drawDepthPass(float[] cameraProjectionMatrix)
-	{
-		int viewportWidth = currentViewport[2];
-		int viewportHeight = currentViewport[3];
-		if(depthMapFramebuffer.getTexture().getWidth() != viewportWidth || depthMapFramebuffer.getTexture().getHeight() != viewportHeight)
-		{
-			log.debug("Resizing depth map texture to {}x{} from {}x{}", viewportWidth, viewportHeight, depthMapFramebuffer.getTexture().getWidth(), depthMapFramebuffer.getTexture().getHeight());
-			depthMapFramebuffer.resize(viewportWidth, viewportHeight);
-		}
+		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
 
-		glViewport(0, 0, depthMapFramebuffer.getTexture().getWidth(), depthMapFramebuffer.getTexture().getHeight());
-		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFramebuffer.getId());
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glDepthProgram);
-
-		glClearDepthf(1);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glDepthFunc(GL_LEQUAL);
-
-		glUseProgram(glDepthProgram);
-		glUniformMatrix4fv(uni.ProjectionMatrix, false, cameraProjectionMatrix);
+		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
 
 		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
@@ -1877,48 +2023,58 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	}
 
 	@Override
-	public boolean tileInFrustum(Scene scene, int pitchSin, int pitchCos, int yawSin, int yawCos, int cameraX, int cameraY, int cameraZ, int plane, int msx, int msy)
-	{
+	public boolean tileInFrustum(Scene scene, int pitchSin, int pitchCos, int yawSin, int yawCos, int cameraX, int cameraY, int cameraZ, int plane, int msx, int msy) {
+		// Get the tile heights from the scene
 		int[][][] tileHeights = scene.getTileHeights();
+
+		// Calculate the relative x and z coordinates of the tile from the camera's perspective
 		int x = ((msx - SCENE_OFFSET) << Perspective.LOCAL_COORD_BITS) + 64 - cameraX;
 		int z = ((msy - SCENE_OFFSET) << Perspective.LOCAL_COORD_BITS) + 64 - cameraZ;
+
+		// Determine the highest point on the tile
 		int y = Math.max(
-			Math.max(tileHeights[plane][msx][msy], tileHeights[plane][msx][msy + 1]),
-			Math.max(tileHeights[plane][msx + 1][msy], tileHeights[plane][msx + 1][msy + 1])
+				Math.max(tileHeights[plane][msx][msy], tileHeights[plane][msx][msy + 1]),
+				Math.max(tileHeights[plane][msx + 1][msy], tileHeights[plane][msx + 1][msy + 1])
 		) + GROUND_MIN_Y - cameraY;
 
+		// Radius for frustum culling
 		int radius = 96; // ~ 64 * sqrt(2)
 
-		int zoom = client.get3dZoom();
-		int Rasterizer3D_clipMidX2 = client.getRasterizer3D_clipMidX2();
-		int Rasterizer3D_clipNegativeMidX = client.getRasterizer3D_clipNegativeMidX();
-		int Rasterizer3D_clipNegativeMidY = client.getRasterizer3D_clipNegativeMidY();
+		// Get the necessary rendering parameters from the client
+		int zoom = client.get3dZoom() / 2;
+		int clipMaxX = client.getRasterizer3D_clipMidX2();
+		int clipMinX = client.getRasterizer3D_clipNegativeMidX();
+		int clipCeilY = client.getRasterizer3D_clipNegativeMidY();
 
-		int var11 = yawCos * z - yawSin * x >> 16;
-		int var12 = pitchSin * y + pitchCos * var11 >> 16;
-		int var13 = pitchCos * radius >> 16;
-		int depth = var12 + var13;
-		if (depth > 50)
-		{
-			int rx = z * yawSin + yawCos * x >> 16;
-			int var16 = (rx - radius) * zoom;
-			int var17 = (rx + radius) * zoom;
-			// left && right
-			if (var16 < Rasterizer3D_clipMidX2 * depth && var17 > Rasterizer3D_clipNegativeMidX * depth)
-			{
-				int ry = pitchCos * y - var11 * pitchSin >> 16;
-				int ybottom = pitchSin * radius >> 16;
-				int var20 = (ry + ybottom) * zoom;
-				// top
-				if (var20 > Rasterizer3D_clipNegativeMidY * depth)
-				{
-					// we don't test the bottom so we don't have to find the height of all the models on the tile
+		// Transform the coordinates using yaw
+		int transformedX = yawCos * z - yawSin * x >> 16;
+		int transformedY = pitchSin * y + pitchCos * transformedX >> 16;
+		int transformedRadius = pitchCos * radius >> 16;
+		int depth = transformedY + transformedRadius;
+
+		// Check if the depth is within the view frustum
+		if (depth > 50) {
+			int rotatedX = z * yawSin + yawCos * x >> 16;
+			int minX = (rotatedX - radius) * zoom;
+			int maxX = (rotatedX + radius) * zoom;
+
+			// Check if the tile is within the left and right bounds of the view frustum
+			if (minX < clipMaxX * depth && maxX > clipMinX * depth) {
+				int rotatedY = pitchCos * y - transformedX * pitchSin >> 16;
+				int minY = pitchSin * radius >> 16;
+				int maxY = (rotatedY + minY) * zoom;
+
+				// Check if the tile is within the top bound of the view frustum
+				if (maxY > clipCeilY * depth) {
+					// We don't test the bottom bound to avoid calculating the height of all models on the tile
 					return true;
 				}
 			}
 		}
+
 		return false;
 	}
+
 
 	/**
 	 * Check is a model is visible and should be drawn.
@@ -2042,7 +2198,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z) | (isLocalPlayer ? (1 << 30) : 0);
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z) | (1 << 30);
 		boolean hasUv = model.getFaceTextures() != null;
 
 		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);

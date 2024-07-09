@@ -297,6 +297,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
     vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
     vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
+
     normA = hillskew_vertexf(normA, hillskew, minfo.y, plane);
     normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
     normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);

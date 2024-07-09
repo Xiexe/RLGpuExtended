@@ -37,7 +37,7 @@ void main() {
   #if SHADOW_MAP_OVERLAY
     vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
     if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
-      FragColor = texture(shadowMap, 1-uv);
+      FragColor = texture(shadowMap, uv);
       return;
     }
   #endif
