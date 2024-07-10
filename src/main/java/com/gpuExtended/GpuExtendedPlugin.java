@@ -872,6 +872,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		initGlBuffer(renderUvBuffer);
 		initGlBuffer(renderNormalBuffer);
 
+		initGlBuffer(glCameraUniformBuffer);
+		initGlBuffer(glPlayerUniformBuffer);
+		initGlBuffer(glEnvironmentUniformBuffer);
+		initGlBuffer(glTileMarkerUniformBuffer);
+		initGlBuffer(glSystemInfoUniformBuffer);
+		initGlBuffer(glConfigUniformBuffer);
+
 		initUniformBufferBlocks();
 	}
 
@@ -895,13 +902,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 4144);
 		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
 		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 32);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
 	private ByteBuffer initUniformBufferBlock(GLBuffer glBuffer, int blockSizeBytes)
 	{
 		ByteBuffer byteBuffer = BufferUtils.createByteBuffer(blockSizeBytes);
 		updateBuffer(glBuffer, GL_UNIFORM_BUFFER, blockSizeBytes, GL_DYNAMIC_DRAW, CL_MEM_READ_ONLY);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 		return byteBuffer;
 	}
 
@@ -1355,7 +1363,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 		else if(gameState.getState() == GameState.LOGGED_IN.getState())
 		{
-			glClearColor(env.FogColor.getRed() / 255f, env.FogColor.getGreen() / 255f, env.FogColor.getBlue() / 255f, 1f);
+			glClearColor(config.skyColor().getRed() / 255f, config.skyColor().getGreen() / 255f, config.skyColor().getBlue() / 255f, 1f);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1542,19 +1550,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
-			bBufferEnvironmentBlock.putFloat(env.FogColor.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.FogColor.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.FogColor.getBlue() / 255f);
+
+			bBufferEnvironmentBlock.putFloat(config.skyColor().getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(config.skyColor().getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(config.skyColor().getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
-			bBufferEnvironmentBlock.putInt(env.FogDepth);
+
+			bBufferEnvironmentBlock.putInt(config.fogDepth());
 			bBufferEnvironmentBlock.putInt(client.getScene().getBaseX());
 			bBufferEnvironmentBlock.putInt(client.getScene().getBaseY());
 			bBufferEnvironmentBlock.putInt(0); // Pad
 
 			// Pack Main Light
-			bBufferEnvironmentBlock.putFloat(env.LightDirection.x);
-			bBufferEnvironmentBlock.putFloat(env.LightDirection.y);
-			bBufferEnvironmentBlock.putFloat(env.LightDirection.z);
+			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[2]);
+			bBufferEnvironmentBlock.putFloat(-environmentManager.lightViewMatrix[6]);
+			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[10]);
 			bBufferEnvironmentBlock.putFloat(1); // light type / directional
 
 			bBufferEnvironmentBlock.putFloat(env.LightColor.getRed() / 255f);
@@ -1564,7 +1574,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferEnvironmentBlock.putFloat(0); // light intensity
 			bBufferEnvironmentBlock.putFloat(0); // light radius
-			bBufferEnvironmentBlock.putFloat(0); // light animation
+			bBufferEnvironmentBlock.putInt(0); // light animation
 			bBufferEnvironmentBlock.putFloat(0); // pad
 
 			for(int i = 0; i < environmentManager.lightProjectionMatrix.length; i++)
@@ -1588,7 +1598,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				bBufferEnvironmentBlock.putFloat(light.intensity);
 				bBufferEnvironmentBlock.putFloat(light.radius);
-				bBufferEnvironmentBlock.putFloat(light.animation.ordinal());
+				bBufferEnvironmentBlock.putInt(light.animation.ordinal());
 				bBufferEnvironmentBlock.putFloat(0); // pad
 
 				for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)

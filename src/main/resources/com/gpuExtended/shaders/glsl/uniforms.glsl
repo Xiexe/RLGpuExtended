@@ -19,7 +19,7 @@ layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock
     int fogDepth;                       // 4 bytes
     int sceneOffsetX;                   // 4 bytes
     int sceneOffsetZ;                   // 4 bytes
-    float pad1;                         // 4 bytes
+    float envPadding;                   // 4 bytes
     Light mainLight;                    // 112 bytes (due to padding inside Light struct)
     Light additiveLights[LIGHT_COUNT];  // 112 * LIGHT_COUNT = 11,200 bytes (due to padding inside Light struct)
 };                                      // 11,360 bytes

@@ -73,7 +73,7 @@ void main() {
     vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * mainLight.color.rgb + ambientColor.rgb);
 
     float fog = fFogAmount;
-    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
+    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, 0);
 
     vec3 playerPos = vec3(0,0,0);
     playerPos.x = ((playerPosition.x - sceneOffsetX) + 0.5f) * TILE_SIZE;
