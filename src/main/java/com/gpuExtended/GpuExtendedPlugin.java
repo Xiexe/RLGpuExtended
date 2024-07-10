@@ -591,6 +591,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					}
 				});
 			}
+
+			client.getScene().setRoofRemovalMode(config.roofFading() ? 16 : 0);
 		}
 	}
 
@@ -889,19 +891,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void initUniformBufferBlocks()
 	{
+		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
+		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 16);
+		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 11360);
+		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 4144);
+		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
+		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 7 * Float.BYTES);
+
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
 		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
 		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
 		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
 		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
-
-		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
-		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 16);
-		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 11360);
-		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 4144);
-		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
-		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 32);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
@@ -1088,9 +1090,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// still redraw the previous frame's scene to emulate the client behavior of not painting over the
 		// viewport buffer.
 		targetBufferOffset = 0;
-		environmentManager.UpdateEnvironment();
-		updateUniformBlocks();
-
 		checkGLErrors();
 	}
 
@@ -1373,6 +1372,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			long currentTime = System.currentTimeMillis();
 			DeltaTime = currentTime - Time;
 			Time = currentTime - StartTime;
+			environmentManager.UpdateEnvironment();
+			updateUniformBlocks();
 
 			int renderWidthOff = viewportOffsetX;
 			int renderHeightOff = viewportOffsetY;
@@ -1497,6 +1498,20 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		Mat4.mul(cameraProjectionMatrix, Mat4.rotateY((float) cameraYaw));
 		Mat4.mul(cameraProjectionMatrix, Mat4.translate((float) -cameraX, (float) -cameraY, (float) -cameraZ));
 
+		int playerX = client.getLocalPlayer().getLocalLocation().getX();
+		int playerY = client.getLocalPlayer().getLocalLocation().getY();
+		int playerPlane = client.getPlane();
+
+//		int worldX = (playerX / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+//		int worldY = (playerY / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+//		if (1 <= worldX && worldX < EXTENDED_SCENE_SIZE-1 && 1 <= worldY && worldY < EXTENDED_SCENE_SIZE-1) {
+//			Tile tile = client.getScene().getExtendedTiles()[playerPlane][worldX][worldY];
+//			if(tile.getBridge() != null)
+//			{
+//				playerPlane += 1;
+//			}
+//		}
+
 		Environment env = environmentManager.currentEnvironment;
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
@@ -1535,9 +1550,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Player Buffer Block">
 			bBufferPlayerBlock.clear();
-			bBufferPlayerBlock.putFloat((float) client.getLocalPlayer().getLocalLocation().getX());
-			bBufferPlayerBlock.putFloat((float) client.getLocalPlayer().getLocalLocation().getY());
-			bBufferPlayerBlock.putFloat((float) client.getPlane());
+			bBufferPlayerBlock.putFloat((float) playerX);
+			bBufferPlayerBlock.putFloat((float) playerY);
+			bBufferPlayerBlock.putFloat((float) playerPlane);
 			bBufferPlayerBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
@@ -1618,10 +1633,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// <editor-fold defaultstate="collapsed" desc="Populate Tile Marker Buffer Block">
 			float currentTileX = -1;
 			float currentTileY = -1;
+			float currentTileZ = -1;
 			float targetTileX = -1;
 			float targetTileY = -1;
+			float targetTileZ = -1;
 			float hoveredTileX = -1;
 			float hoveredTileY = -1;
+			float hoveredTileZ = -1;
 
 			final WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
 			if (playerPos != null)
@@ -1631,6 +1649,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				{
 					currentTileX = (float)playerPosLocal.getX();
 					currentTileY = (float)playerPosLocal.getY();
+					currentTileZ = (float)client.getPlane();
 				}
 			}
 
@@ -1638,28 +1657,30 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			{
 				targetTileX = (float)client.getLocalDestinationLocation().getX();
 				targetTileY = (float)client.getLocalDestinationLocation().getY();
+				targetTileZ = (float)client.getPlane();
 			}
 
 			if(client.getSelectedSceneTile() != null)
 			{
 				hoveredTileX = (float)client.getSelectedSceneTile().getLocalLocation().getX();
 				hoveredTileY = (float)client.getSelectedSceneTile().getLocalLocation().getY();
+				hoveredTileZ = (float)client.getPlane();
 			}
 
 			bBufferTileMarkerBlock.clear();
 			bBufferTileMarkerBlock.putFloat(currentTileX);
 			bBufferTileMarkerBlock.putFloat(currentTileY);
-			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(currentTileZ);
 			bBufferTileMarkerBlock.putFloat(0);
 
 			bBufferTileMarkerBlock.putFloat(targetTileX);
 			bBufferTileMarkerBlock.putFloat(targetTileY);
-			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(targetTileZ);
 			bBufferTileMarkerBlock.putFloat(0);
 
 			bBufferTileMarkerBlock.putFloat(hoveredTileX);
 			bBufferTileMarkerBlock.putFloat(hoveredTileY);
-			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(hoveredTileZ);
 			bBufferTileMarkerBlock.putFloat(0);
 
 			// TODO:: Add marked tiles.
@@ -1688,11 +1709,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferConfigBlock.clear();
 
 			bBufferConfigBlock.putFloat((float) client.getTextureProvider().getBrightness());
-			bBufferConfigBlock.putFloat(config.smoothBanding() ? 1 : 0);
+			bBufferConfigBlock.putFloat(config.smoothBanding() ? 0 : 1);
 			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
 			bBufferConfigBlock.putInt(getDrawDistance());
 			bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-			bBufferConfigBlock.putFloat(0); // pad
+			bBufferConfigBlock.putInt(config.roofFading() ? 1 : 0);
+			bBufferConfigBlock.putInt(config.roofFadingRange());
 
 			bBufferConfigBlock.flip();
 
@@ -1717,22 +1739,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glActiveTexture(GL_TEXTURE0);
 
 		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
 
 		final TextureProvider textureProvider = client.getTextureProvider();
 		if (textureArrayId == -1)
@@ -1789,22 +1800,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glShadowProgram);
 
 		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
-
 		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
 
 		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
@@ -1957,6 +1957,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneTexBuffer = uvBuffer;
 		nextSceneNormalBuffer = normalBuffer;
 		nextSceneId = sceneUploader.sceneId;
+
+		if(config.roofFading()) {
+			scene.setRoofRemovalMode(16);
+		} else {
+			scene.setRoofRemovalMode(0);
+		}
 	}
 
 	private void uploadTileHeights(Scene scene)
@@ -2176,7 +2182,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 		int uvOffset = offsetModel.getUvBufferOffset();
-		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z);
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, false);
 
 		GpuIntBuffer b = bufferForTriangles(tc);
 
@@ -2203,12 +2209,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		if (renderable instanceof Player)
 		{
-			if(renderable == client.getLocalPlayer())
+			if(renderable == client.getLocalPlayer()) {
 				isLocalPlayer = true;
+			}
 		}
 
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z) | (1 << 30);
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, isLocalPlayer) | (1 << 30);
 		boolean hasUv = model.getFaceTextures() != null;
 
 		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
@@ -2230,10 +2237,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z)
+	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z, boolean isLocalPlayer)
 	{
 		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
 		boolean isBridge = false;
+		boolean isOnBridge = false;
 		boolean isRoof = false;
 		boolean hillskew = offsetModel != model;
 
@@ -2244,7 +2252,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			int tileHeight = scene.getTileHeights()[plane][tileExX][tileExY];
 			int belowTileHeight = scene.getTileHeights()[0][tileExX][tileExY];
 
+			Tile tile = scene.getExtendedTiles()[plane][tileExX][tileExY];
 			int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
+			int belowTileSettings = scene.getExtendedTileSettings()[Math.max(0, plane - 1)][tileExX][tileExY];
+
 			int nSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY + 1];
 			int sSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY - 1];
 			int eSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY];
@@ -2265,8 +2276,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
 			boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
 
-			isBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0;
-			isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof) && plane > client.getPlane() && !isBridge && tileHeight != belowTileHeight;
+			if(tile != null) {
+				isBridge = tile.getBridge() != null;
+			}
+
+			isOnBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0 || (belowTileSettings & TILE_FLAG_BRIDGE) != 0;
+
+			isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof) &&
+					plane > client.getPlane() &&
+					!isOnBridge &&
+					tileHeight != 0;
 		}
 
 		return  (plane << 24) 				|

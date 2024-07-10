@@ -23,7 +23,7 @@ public class Environment {
         env.Name = "Default";
         env.LightDirection = new Vector3(45, 200, 0); // 90 on X would be straight down from the top, 90 on Y points East
         env.LightColor = new Color(0.75f, 0.75f, 0.75f, 1f);
-        env.AmbientColor = new Color(0.65f, 0.65f, 0.65f, 0.75f);
+        env.AmbientColor = new Color(1f, 0.9f, 0.8f, 1f);
         env.FogColor = new Color(0, 0, 0);
         env.FogDepth = 0;
         return env;

@@ -33,7 +33,7 @@ out vec2 fUv;
 out vec3 fPosition;
 out float fFogAmount;
 out float fPlane;
-out float fOnBridge;
+out float fIsBridge;
 out float fIsRoof;
 out float fIsTerrain;
 out float fIsDyanmicModel;
@@ -73,7 +73,7 @@ void main() {
     }
 
     fPlane = (int(gNormal[0].w) >> 24) & 3;
-    fOnBridge = (int(gNormal[0].w) >> 27) & 1;
+    fIsBridge = (int(gNormal[0].w) >> 27) & 1;
     fIsRoof = (int(gNormal[0].w) >> 28) & 1;
     fIsTerrain = (int(gNormal[0].w) >> 29) & 1;
     fIsDyanmicModel = (int(gNormal[0].w) >> 30) & 1;

@@ -144,18 +144,6 @@ public interface GpuExtendedConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "brightTextures",
-		name = "Bright Textures",
-		description = "Use old texture lighting method which results in brighter game textures",
-		position = 9,
-		section = generalSettings
-	)
-	default boolean brightTextures()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 		keyName = "unlockFps",
 		name = "Unlock FPS",
 		description = "Removes the 50 FPS cap for camera movement",
@@ -202,11 +190,11 @@ public interface GpuExtendedConfig extends Config
 		return 120;
 	}
 
-
 	@ConfigSection(
 			name = "Lighting",
 			description = "Lighting settings",
-			position = 100
+			position = 100,
+			closedByDefault = true
 	)
 	String lightSettings = "lightSettings";
 
@@ -218,22 +206,6 @@ public interface GpuExtendedConfig extends Config
 			section = lightSettings
 	)
 	Color skyColor();
-
-	@ConfigItem(
-			keyName = "skyColorAmbientContribution",
-			name = "Sky Ambient Contribution",
-			description = "",
-			position = 99,
-			section = lightSettings
-	)
-	@Range(
-			min = 0,
-			max = 100
-	)
-	default int skyColorAmbientContribution()
-	{
-		return 75;
-	}
 
 	@ConfigItem(
 			keyName = "overrideLightRotation",
@@ -272,9 +244,37 @@ public interface GpuExtendedConfig extends Config
 	}
 
 	@ConfigSection(
+			name = "Experimental",
+			description = "Experimental settings that may not work correctly or at all.",
+			position = 200,
+			closedByDefault = true
+	)
+	String experimentalSettings = "experimental";
+
+	@ConfigItem(
+			keyName = "roofFading",
+			name = "Roof Fading",
+			description = "Forces the client to render roofs, but smoothly fades them out when they are in the way, rather than snapping them on / off.\n" +
+					"Please disable the Roof Removal plugin, as they might interfere with each other.",
+			position = 1,
+			section = experimentalSettings
+	)
+	default boolean roofFading() { return false; }
+
+	@ConfigItem(
+			keyName = "roofFadingRange",
+			name = "Roof Fading Range",
+			description = "Changes the range at which roofs start to fade out.",
+			position = 2,
+			section = experimentalSettings
+	)
+	default int roofFadingRange() { return 15; }
+
+	@ConfigSection(
 			name = "Debugging",
 			description = "Debugging",
-			position = 200
+			position = 999,
+			closedByDefault = true
 	)
 	String debugging = "debugging";
 

@@ -44,8 +44,9 @@ layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
     int expandedMapLoadingChunks;       // 4 bytes
     int drawDistance;                   // 4 bytes
     int colorBlindMode;                 // 4 bytes
-    float configPad0;                         // 4 bytes
-};                                      // 24 bytes
+    int roofFading;                     // 4 bytes
+    int roofFadeDistance;               // 4 bytes
+};
 
 uniform sampler2DArray textures;
 uniform sampler2D shadowMap;

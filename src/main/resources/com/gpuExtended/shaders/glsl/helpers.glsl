@@ -106,24 +106,28 @@ void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff)
 
 void DrawTileMarker(inout vec3 image, vec3 fragPos, vec3 tilePosition, float lineWidth)
 {
-    float gridSize = TILE_SIZE;
     float x = fragPos.x;
     float z = fragPos.z;
+    float u = mod(x, TILE_SIZE) / TILE_SIZE;
+    float v = mod(z, TILE_SIZE) / TILE_SIZE;
 
-    float u = mod(x, gridSize) / gridSize;
-    float v = mod(z, gridSize) / gridSize;
+    int cellX = int(floor(x / TILE_SIZE) * TILE_SIZE);
+    int cellZ = int(floor(z / TILE_SIZE) * TILE_SIZE);
 
-    int cellX = int(floor(x / gridSize) * gridSize);
-    int cellZ = int(floor(z / gridSize) * gridSize);
+    bool isBridge = fIsBridge > 0;
+    bool isTerrain = fIsTerrain > 0;
+    float realPlane = max(0, fPlane - (isBridge ? 1 : 0));
 
+    bool tileValidPlane = (tilePosition.z == -1) ? true : approximatelyEqual(realPlane, playerPosition.z, 0.01);
+    bool isTileWalkable = (isTerrain || isBridge) && tileValidPlane;
     if (cellX >= int(tilePosition.x - TILE_SIZE) &&
         cellZ >= int(tilePosition.y - TILE_SIZE) &&
         cellX <= int(tilePosition.x) &&
         cellZ <= int(tilePosition.y) &&
-        approximatelyEqual(tilePosition.z, playerPosition.z, 0.01)
+        isTileWalkable
     )
     {
-        float eps = 0.00001;
+        float eps = 0.001;
         if (u > eps && u < 1.0 - eps && v > eps && v < 1.0 - eps)
         {
             bool isBorder = (u < lineWidth          ||
@@ -140,6 +144,34 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec3 tilePosition, float lin
                 image *= 0.75;
             }
         }
+    }
+}
+
+void FadeRoofs(float dither)
+{
+    if(!(roofFading > 0))
+    {
+        return;
+    }
+
+    float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
+    distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
+
+    bool isOnBridge = fIsBridge > 0;
+    float realPlane = max(0, fPlane - (isOnBridge ? 1 : 0));
+
+    bool isOnSamePlane = approximatelyEqual(realPlane, playerPosition.z, 0.001);
+    bool isAbovePlayer = realPlane > playerPosition.z;
+    bool isUnderPlayer = realPlane < playerPosition.z;
+
+    bool isTerrainRoof = fIsRoof > 0 && fIsTerrain > 0 && !isOnSamePlane && !isUnderPlayer;
+    bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
+
+    //TODO:: check tiles around terrain roofs to see if they are roofs.
+    if(isTerrainRoof || isNonTerrainRoof)
+    {
+        //finalColor = vec3(.5,0,.5);
+        clip((dither - 0.001 - distanceToPlayer));
     }
 }
 
