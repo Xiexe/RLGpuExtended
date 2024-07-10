@@ -24,38 +24,6 @@ out vec4 FragColor;
 #include "shaders/glsl/helpers.glsl"
 #include "shaders/glsl/lighting.glsl"
 
-
-float Dither8x8Bayer( int x, int y ) {
-    const float dither[ 64 ] = {
-        1, 49, 13, 61,  4, 52, 16, 64,
-        33, 17, 45, 29, 36, 20, 48, 32,
-        9, 57,  5, 53, 12, 60,  8, 56,
-        41, 25, 37, 21, 44, 28, 40, 24,
-        3, 51, 15, 63,  2, 50, 14, 62,
-        35, 19, 47, 31, 34, 18, 46, 30,
-        11, 59,  7, 55, 10, 58,  6, 54,
-        43, 27, 39, 23, 42, 26, 38, 22};
-
-    int r = y * 8 + x;
-    return dither[r] / 64;
-}
-
-float Dither(vec2 screenPos) {
-    float dither = Dither8x8Bayer(
-        int(mod(screenPos.x, 8)),
-        int(mod(screenPos.y, 8))
-    );
-    return dither;
-}
-
-void clip(float value) {
-    if(value < 0) discard;
-}
-
-bool approximatelyEqual(float a, float b, float epsilon) {
-    return abs(a - b) < epsilon;
-}
-
 void main() {
     Surface s;
     PopulateSurfaceColor(s);
@@ -94,11 +62,11 @@ void main() {
     bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
 
     //TODO:: check tiles around terrain roofs to see if they are roofs.
-//    if(isTerrainRoof || isNonTerrainRoof)
-//    {
-//        //finalColor = vec3(.5,0,.5);
-//       clip((dither - 0.001 - distanceToPlayer));
-//    }
+    if(isTerrainRoof || isNonTerrainRoof)
+    {
+        //finalColor = vec3(.5,0,.5);
+       clip((dither - 0.001 - distanceToPlayer));
+    }
 //
 //    finalColor = vec3(cameraPosition);
 
@@ -127,9 +95,9 @@ void main() {
 
     if(!(fIsDyanmicModel > 0))
     {
-        DrawTileMarker(finalColor, fPosition, currentTile.xy, 0.025f);
-        DrawTileMarker(finalColor, fPosition, targetTile.xy, 0.025f);
-        DrawTileMarker(finalColor, fPosition, hoveredTile.xy, 0.025f);
+        DrawTileMarker(finalColor, fPosition, vec3(currentTile.xy, fPlane), 0.025f);
+        DrawTileMarker(finalColor, fPosition, vec3(targetTile.xy, fPlane), 0.025f);
+        DrawTileMarker(finalColor, fPosition, vec3(hoveredTile.xy, fPlane), 0.025f);
     }
 
     PostProcessImage(finalColor, colorBlindMode, fog);

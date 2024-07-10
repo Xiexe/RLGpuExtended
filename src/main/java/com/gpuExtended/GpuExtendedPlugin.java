@@ -1687,7 +1687,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// <editor-fold defaultstate="collapsed" desc="Populate Config Block">
 			bBufferConfigBlock.clear();
 
-			bBufferConfigBlock.putFloat(1); // brightness (float) textureProvider.getBrightness()
+			bBufferConfigBlock.putFloat((float) client.getTextureProvider().getBrightness());
 			bBufferConfigBlock.putFloat(config.smoothBanding() ? 1 : 0);
 			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
 			bBufferConfigBlock.putInt(getDrawDistance());

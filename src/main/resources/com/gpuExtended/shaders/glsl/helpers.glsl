@@ -1,3 +1,18 @@
+float Dither8x8Bayer( int x, int y ) {
+    const float dither[ 64 ] = {
+    1, 49, 13, 61,  4, 52, 16, 64,
+    33, 17, 45, 29, 36, 20, 48, 32,
+    9, 57,  5, 53, 12, 60,  8, 56,
+    41, 25, 37, 21, 44, 28, 40, 24,
+    3, 51, 15, 63,  2, 50, 14, 62,
+    35, 19, 47, 31, 34, 18, 46, 30,
+    11, 59,  7, 55, 10, 58,  6, 54,
+    43, 27, 39, 23, 42, 26, 38, 22};
+
+    int r = y * 8 + x;
+    return dither[r] / 64;
+}
+
 bool CheckIsInfernalCapeFireCape(int texId)
 {
     return (texId == FIRE_CAPE) || (texId == INFERNAL_CAPE);
@@ -6,6 +21,22 @@ bool CheckIsInfernalCapeFireCape(int texId)
 bool CheckIsUnlitTexture(int texId)
 {
     return CheckIsInfernalCapeFireCape(texId);
+}
+
+float Dither(vec2 screenPos) {
+    float dither = Dither8x8Bayer(
+    int(mod(screenPos.x, 8)),
+    int(mod(screenPos.y, 8))
+    );
+    return dither;
+}
+
+void clip(float value) {
+    if(value < 0) discard;
+}
+
+bool approximatelyEqual(float a, float b, float epsilon) {
+    return abs(a - b) < epsilon;
 }
 
 void PopulateSurfaceColor(inout Surface s)
@@ -73,7 +104,7 @@ void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff)
     }
 }
 
-void DrawTileMarker(inout vec3 image, vec3 fragPos, vec2 tilePosition, float lineWidth)
+void DrawTileMarker(inout vec3 image, vec3 fragPos, vec3 tilePosition, float lineWidth)
 {
     float gridSize = TILE_SIZE;
     float x = fragPos.x;
@@ -86,9 +117,10 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec2 tilePosition, float lin
     int cellZ = int(floor(z / gridSize) * gridSize);
 
     if (cellX >= int(tilePosition.x - TILE_SIZE) &&
-    cellZ >= int(tilePosition.y - TILE_SIZE) &&
-    cellX <= int(tilePosition.x) &&
-    cellZ <= int(tilePosition.y)
+        cellZ >= int(tilePosition.y - TILE_SIZE) &&
+        cellX <= int(tilePosition.x) &&
+        cellZ <= int(tilePosition.y) &&
+        approximatelyEqual(tilePosition.z, playerPosition.z, 0.01)
     )
     {
         float eps = 0.00001;
