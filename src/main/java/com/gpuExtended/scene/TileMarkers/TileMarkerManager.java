@@ -11,15 +11,17 @@ import com.gpuExtended.rendering.Texture2D;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Perspective;
+import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.overlay.OverlayManager;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -57,6 +59,9 @@ public class TileMarkerManager {
     @Getter(AccessLevel.PACKAGE)
     private final List<ColorTileMarker> points = new ArrayList<>();
 
+    Color defaultFillColor = new Color(0, 0, 0, 75);
+
+    private int currentPlane = 0;
     public Texture2D tileSettingsTexture;
     public Texture2D tileFillColorTexture;
     public Texture2D tileBorderColorTexture;
@@ -110,8 +115,6 @@ public class TileMarkerManager {
         {
             return Collections.emptyList();
         }
-
-        log.info("Tile Marker JSON: {}", json);
         return gson.fromJson(json, new TypeToken<List<TileMarker>>(){}.getType());
     }
 
@@ -124,19 +127,94 @@ public class TileMarkerManager {
 
         return points.stream()
                 .map(point -> new ColorTileMarker(
-                        WorldPoint.fromRegion(point.getRegionId(), point.getRegionX(), point.getRegionY(), point.getZ()),
-                        point.getColor(), point.getLabel()))
+                        WorldPoint.fromRegion(
+                                point.getRegionId(),
+                                point.getRegionX(),
+                                point.getRegionY(),
+                                point.getZ()),
+                                point.getColor(),
+                                point.getFillColor(),
+                                point.getCornerLength(),
+                                point.getBorderWidth(),
+                                point.getLabel()))
                 .flatMap(colorTile ->
                 {
                     final Collection<WorldPoint> localWorldPoints = WorldPoint.toLocalInstance(client, colorTile.getWorldPoint());
-                    return localWorldPoints.stream().map(wp -> new ColorTileMarker(wp, colorTile.getColor(), colorTile.getLabel()));
+                    return localWorldPoints.stream()
+                        .map(wp -> new ColorTileMarker(
+                            wp,
+                            colorTile.getColor(),
+                            colorTile.getFillColor(),
+                            colorTile.getCornerLength(),
+                            colorTile.getBorderWidth(),
+                            colorTile.getLabel()
+                        )
+                    );
                 })
                 .collect(Collectors.toList());
+    }
+
+    public void DrawTileMarker(LocalPoint localPoint, Color fillColor, Color borderColor, int cornerLength, int borderWidth)
+    {
+        if(localPoint == null)
+            return;
+
+        int x = (localPoint.getX() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
+        int y = (localPoint.getY() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
+
+        int fillColorR = fillColor == null ? defaultFillColor.getRed() : fillColor.getRed();
+        int fillColorG = fillColor == null ? defaultFillColor.getGreen() : fillColor.getGreen();
+        int fillColorB = fillColor == null ? defaultFillColor.getBlue() : fillColor.getBlue();
+        int fillColorA = fillColor == null ? defaultFillColor.getAlpha() : fillColor.getAlpha();
+
+        int outlineColorR = borderColor == null ? 0 : borderColor.getRed();
+        int outlineColorG = borderColor == null ? 0 : borderColor.getGreen();
+        int outlineColorB = borderColor == null ? 0 : borderColor.getBlue();
+        int outlineColorA = borderColor == null ? 0 : borderColor.getAlpha();
+
+        int cornerL = cornerLength == 0 ? 64 : cornerLength;
+        int borderW = borderWidth == 0 ? 4 : borderWidth;
+
+        tileFillColorTexture.setPixel(x, y, fillColorR, fillColorG, fillColorB, fillColorA);
+        tileBorderColorTexture.setPixel(x, y, outlineColorR, outlineColorG, outlineColorB, outlineColorA);
+        tileSettingsTexture.setPixel(x, y, cornerL, borderW, 0, 0);
+    }
+
+    public void MarkTile(WorldPoint worldPoint, LocalPoint localPoint, Color fillColor, Color borderColor, int cornerLength, int borderWidth)
+    {
+        List<TileMarker> groundMarkerPoints = new ArrayList<>(LoadRegionTileData(worldPoint.getRegionID()));
+        TileMarker point = new TileMarker(worldPoint.getRegionID(), worldPoint.getRegionX(), worldPoint.getRegionY(), worldPoint.getPlane(), borderColor, fillColor, null, cornerLength, borderWidth);
+        if (groundMarkerPoints.contains(point))
+        {
+            groundMarkerPoints.remove(point);
+        }
+        else
+        {
+            groundMarkerPoints.add(point);
+        }
+
+        SaveTileMarkers(worldPoint.getRegionID(), groundMarkerPoints);
+    }
+
+    public void UpdateTile(WorldPoint worldPoint, LocalPoint localPoint, Color fillColor, Color borderColor, int cornerLength, int borderWidth)
+    {
+        List<TileMarker> groundMarkerPoints = new ArrayList<>(LoadRegionTileData(worldPoint.getRegionID()));
+        TileMarker point = new TileMarker(worldPoint.getRegionID(), worldPoint.getRegionX(), worldPoint.getRegionY(), worldPoint.getPlane(), borderColor, fillColor, null, cornerLength, borderWidth);
+        if (groundMarkerPoints.contains(point))
+        {
+            groundMarkerPoints.remove(point);
+            groundMarkerPoints.add(point);
+        }
+
+        SaveTileMarkers(worldPoint.getRegionID(), groundMarkerPoints);
     }
 
     public void LoadTileMarkers()
     {
         points.clear();
+        tileBorderColorTexture.floodPixels(0, 0, 0, 0);
+        tileFillColorTexture.floodPixels(0, 0, 0, 0);
+        tileSettingsTexture.floodPixels(0, 0, 0, 0);
 
         int[] regions = client.getMapRegions();
 
@@ -152,29 +230,22 @@ public class TileMarkerManager {
             points.addAll(colorTileMarkers);
         }
 
-        for(int i = 0; i < points.size(); i++)
-        {
-            ColorTileMarker tileMarker = points.get(i);
+        if(!points.isEmpty()) {
+            for (int i = 0; i < points.size(); i++) {
+                ColorTileMarker tileMarker = points.get(i);
+                int plane = tileMarker.getWorldPoint().getPlane();
+                if (plane != client.getPlane())
+                    continue;
 
-            LocalPoint localPoint = LocalPoint.fromWorld(client, tileMarker.getWorldPoint());
-            int x = (localPoint.getX() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
-            int y = (localPoint.getY() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
-
-            log.info("Marking Tile at: " + x + ", " + y);
-
-            int fillColorR = config.tileMarkerFillColor().getRed();
-            int fillColorG = config.tileMarkerFillColor().getGreen();
-            int fillColorB = config.tileMarkerFillColor().getBlue();
-            int fillColorA = config.tileMarkerFillColor().getAlpha();
-
-            int outlineColorR = tileMarker.getColor().getRed();
-            int outlineColorG = tileMarker.getColor().getGreen();
-            int outlineColorB = tileMarker.getColor().getBlue();
-            int outlineColorA = tileMarker.getColor().getAlpha();
-
-            tileFillColorTexture.setPixel(x, y, fillColorR, fillColorG, fillColorB, fillColorA);
-            tileBorderColorTexture.setPixel(x, y, outlineColorR, outlineColorG, outlineColorB, outlineColorA);
-            tileSettingsTexture.setPixel(x, y, config.tileMarkerCornerLength(), config.tileMarkerBorderWidth(), 0, 0);
+                LocalPoint localPoint = LocalPoint.fromWorld(client, tileMarker.getWorldPoint());
+                DrawTileMarker(
+                        localPoint,
+                        tileMarker.getFillColor(),
+                        tileMarker.getColor(),
+                        tileMarker.getCornerLength(),
+                        tileMarker.getBorderWidth()
+                );
+            }
         }
     }
 
@@ -183,10 +254,79 @@ public class TileMarkerManager {
         if (points == null || points.isEmpty())
         {
             configManager.unsetConfiguration(CONFIG_GROUP, REGION_PREFIX + regionId);
+            tileBorderColorTexture.floodPixels(0, 0, 0, 0);
+            tileFillColorTexture.floodPixels(0, 0, 0, 0);
+            tileSettingsTexture.floodPixels(0, 0, 0, 0);
             return;
         }
 
         String json = gson.toJson(points);
         configManager.setConfiguration(CONFIG_GROUP, REGION_PREFIX + regionId, json);
+
+        LoadTileMarkers();
+    }
+
+    @Subscribe
+    public void onMenuEntryAdded(MenuEntryAdded event)
+    {
+        final boolean hotKeyPressed = client.isKeyPressed(KeyCode.KC_SHIFT);
+        if (hotKeyPressed && event.getOption().equals(WALK_HERE)) {
+            final Tile selectedSceneTile = client.getSelectedSceneTile();
+
+            if (selectedSceneTile == null) {
+                return;
+            }
+
+            final WorldPoint worldPoint = WorldPoint.fromLocalInstance(client, selectedSceneTile.getLocalLocation());
+            final int regionId = worldPoint.getRegionID();
+            var regionPoints = LoadRegionTileData(regionId);
+
+            var existingOpt = regionPoints.stream()
+                    .filter(p -> p.getRegionX() == worldPoint.getRegionX() && p.getRegionY() == worldPoint.getRegionY() && p.getZ() == worldPoint.getPlane())
+                    .findFirst();
+
+            boolean isMarked = existingOpt.isPresent();
+
+            client.createMenuEntry(-1)
+                    .setOption(isMarked ? "Unmark" : "Mark")
+                    .setTarget("Tile")
+                    .setType(MenuAction.RUNELITE)
+                    .onClick(e ->
+                    {
+                        Tile target = client.getSelectedSceneTile();
+                        if (target != null) {
+                            MarkTile(
+                                worldPoint,
+                                target.getLocalLocation(),
+                                config.tileMarkerFillColor(),
+                                config.tileMarkerBorderColor(),
+                                config.tileMarkerCornerLength(),
+                                config.tileMarkerBorderWidth()
+                            );
+                        };
+                    });
+
+            if(isMarked)
+            {
+                client.createMenuEntry(-1)
+                        .setOption("Remark")
+                        .setTarget("Tile")
+                        .setType(MenuAction.RUNELITE)
+                        .onClick(e ->
+                        {
+                            Tile target = client.getSelectedSceneTile();
+                            if (target != null) {
+                                UpdateTile(
+                                        worldPoint,
+                                        target.getLocalLocation(),
+                                        config.tileMarkerFillColor(),
+                                        config.tileMarkerBorderColor(),
+                                        config.tileMarkerCornerLength(),
+                                        config.tileMarkerBorderWidth()
+                                );
+                            };
+                        });
+            }
+        }
     }
 }

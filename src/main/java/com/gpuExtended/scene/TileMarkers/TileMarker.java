@@ -7,7 +7,7 @@ import javax.annotation.Nullable;
 import java.awt.*;
 
 @Value
-@EqualsAndHashCode(exclude = { "color", "label" })
+@EqualsAndHashCode(exclude = { "color", "fillColor", "cornerLength", "borderWidth", "label" })
 public class TileMarker {
     private int regionId;
     private int regionX;
@@ -16,5 +16,11 @@ public class TileMarker {
     @Nullable
     private Color color;
     @Nullable
+    private Color fillColor;
+    @Nullable
     private String label;
+    @Nullable
+    private int cornerLength;
+    @Nullable
+    private int borderWidth;
 }

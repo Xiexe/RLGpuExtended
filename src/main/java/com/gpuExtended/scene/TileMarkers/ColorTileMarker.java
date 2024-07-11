@@ -12,5 +12,11 @@ public class ColorTileMarker {
     @Nullable
     private Color color;
     @Nullable
+    private Color fillColor;
+    @Nullable
+    private int cornerLength;
+    @Nullable
+    private int borderWidth;
+    @Nullable
     private String label;
 }

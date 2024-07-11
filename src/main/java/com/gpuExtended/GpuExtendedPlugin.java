@@ -29,6 +29,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
@@ -118,6 +119,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	@Inject
 	private ClientThread clientThread;
+
+	@Inject
+	private EventBus eventBus;
 
 	@Inject
 	private GpuExtendedConfig config;
@@ -317,6 +321,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private long DeltaTime;
 	private long StartTime;
 	private float currentTrueTileAlpha = 1;
+	private int currentPlane = 0;
 	private int[] lastPlayerPosition = new int[2];
 
 	private int[] currentViewport = new int[4];
@@ -440,6 +445,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initInterfaceTexture();
 				initShadowMapTexture();
 				initDepthMapTexture();
+
+				eventBus.register(tileMarkerManager);
 				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
 
 				// force rebuild of main buffer provider to enable alpha channel
@@ -517,6 +524,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				shutdownVao();
 				shutdownBuffers();
 				shutdownAAFbo();
+
+				eventBus.unregister(tileMarkerManager);
 
 				if (colorFramebuffer != null)
 				{
@@ -1418,7 +1427,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				renderWidthOff = (int) Math.floor(scaleFactorX * (renderWidthOff)) - padding;
 			}
 
-			// Set Uniform Blocks Up
+			if(client.getPlane() != currentPlane)
+			{
+				tileMarkerManager.Reset();
+				tileMarkerManager.LoadTileMarkers();
+			}
 
 			glBindVertexArray(mainDrawVertexArrayObject);
 
@@ -1431,6 +1444,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			lastPlayerPosition[0] = client.getLocalPlayer().getLocalLocation().getX();
 			lastPlayerPosition[1] = client.getLocalPlayer().getLocalLocation().getY();
+			currentPlane = client.getPlane();
 		}
 
 		if (aaEnabled)
@@ -2262,22 +2276,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void PackDynamicModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
-		boolean isLocalPlayer = false;
 		// Apply height to renderable from the model
 		if (model != renderable)
 		{
 			renderable.setModelHeight(model.getModelHeight());
 		}
 
-		if (renderable instanceof Player)
-		{
-			if(renderable == client.getLocalPlayer()) {
-				isLocalPlayer = true;
-			}
-		}
-
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, isLocalPlayer) | (1 << 30);
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, true);
 		boolean hasUv = model.getFaceTextures() != null;
 
 		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
@@ -2299,7 +2305,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z, boolean isLocalPlayer)
+	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z, boolean isDynamicModel)
 	{
 		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
 		boolean isBridge = false;
@@ -2338,8 +2344,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
 			boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
 
-			if(tile != null) {
-				isBridge = tile.getBridge() != null;
+			if(!isDynamicModel) {
+				if(tile != null) {
+					isBridge = tile.getBridge() != null;
+				}
 			}
 
 			isOnBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0 || (belowTileSettings & TILE_FLAG_BRIDGE) != 0;
@@ -2350,10 +2358,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					tileHeight != 0;
 		}
 
-		return  (plane << 24) 				|
-				(hillskew ? (1 << 26) : 0)  |
-				(isBridge ? (1<<27) : 0) 	|
-				(isRoof ? (1<<28) : 0) 		|
+		return  (plane << 24) 					 |
+				(hillskew ? (1 << 26) : 0)  	 |
+				(isBridge ? (1<<27) : 0) 		 |
+				(isRoof ? (1<<28) : 0) 			 |
+				(isDynamicModel ? (1 << 30) : 0) |
 				orientation;
 	}
 
