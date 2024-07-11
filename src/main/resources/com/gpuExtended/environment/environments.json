@@ -1,0 +1,11 @@
+[
+  {
+    "area": "DEFAULT",
+    "ambientColor": "#c0ae94",
+    "ambientStrength": 3,
+    "directionalColor": "#f5bc67",
+    "directionalStrength": 1,
+    "fogColor": "#b8d6ff",
+    "fogDepth": 70
+  }
+]

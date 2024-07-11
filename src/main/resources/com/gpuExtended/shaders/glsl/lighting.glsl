@@ -42,71 +42,49 @@ float PCSSFilter(vec4 projCoords, float currentDepth, float penumbraSize) {
     return shadow / float(shadowSamples);
 }
 
-float PCSSShadows(vec4 projCoords, float fadeOut) {
+float PCSSShadows(vec4 projCoords, float fadeOut, float shadowBias) {
     vec2 shadowRes = textureSize(shadowMap, 0);
-    float currentDepth = projCoords.z - bias;
-
-    // Estimate penumbra size
+    float currentDepth = projCoords.z - shadowBias;
     float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 5;
-
-    // Calculate shadow using PCSS
     float shadow = PCSSFilter(projCoords, currentDepth, penumbraSize);
 
     return shadow * (1.0 - fadeOut);
 }
 
-float GetShadowMap(vec3 fragPos) {
+float PCFShadows(vec4 projCoords, float fadeOut, float shadowBias) {
+    float shadow = 0.0;
+    float currentDepth = projCoords.z - shadowBias;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+
+    for(int i = 0; i < shadowSamples; i++) {
+        vec2 offset = poissonDisk[i] * texelSize * 20;
+        float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
+        shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
+    }
+
+    shadow /= shadowSamples;
+
+    return shadow * (1.0 - fadeOut);
+}
+
+float GetShadowMap(vec3 fragPos, float ndl) {
     vec4 projCoords = mainLight.projectionMatrix * vec4(fragPos, 1);
     projCoords = projCoords / projCoords.w;
     projCoords = projCoords * 0.5 + 0.5;
 
     vec2 uv = projCoords.xy * 2.0 - 1.0;
     float fadeOut = smoothstep(0.75, 1.0, dot(uv, uv));
+    if (fadeOut >= 1.0)
+        return 0.0;
 
-    float pcssShadowSample = PCSSShadows(projCoords, fadeOut);
+    switch (envType)
+    {
+        case ENV_TYPE_DEFAULT:
+            return 1.0 - PCSSShadows(projCoords, fadeOut, bias);
+        case ENV_TYPE_UNDERGROUND:
+            return 1.0 - PCFShadows(projCoords, fadeOut, bias);
+        default:
+            return 1.0;
 
-    return 1-pcssShadowSample;
+    }
 }
-
-//float ScreenSpaceShadows(vec3 fragPos, vec3 viewDirection)
-//{
-//    // Compute ray position and direction (in view-space)
-//    vec3 ray_pos = mul(float4(fragPos, 1.0f), viewDirection).xyz;
-//    vec3 ray_dir = mul(float4(-lightDirection, 0.0f), viewDirection).xyz;
-//
-//    // Compute ray step
-//    vec3 ray_step = ray_dir * g_sss_step_length;
-//
-//    // Ray march towards the light
-//    float occlusion = 0.0;
-//    vec2 ray_uv   = vec2(0.0);
-//    for (int i = 0; i < g_sss_max_steps; i++)
-//    {
-//        // Step the ray
-//        ray_pos += ray_step;
-//        ray_uv  = project_uv(ray_pos, g_projection);
-//
-//        // Ensure the UV coordinates are inside the screen
-//        if (is_saturated(ray_uv))
-//        {
-//            // Compute the difference between the ray's and the camera's depth
-//            float depth_z     = get_linear_depth(ray_uv);
-//            float depth_delta = ray_pos.z - depth_z;
-//
-//            // Check if the camera can't "see" the ray (ray depth must be larger than the camera depth, so positive depth_delta)
-//            if ((depth_delta > 0.0f) && (depth_delta < g_sss_thickness))
-//            {
-//                // Mark as occluded
-//                occlusion = 1.0f;
-//
-//                // Fade out as we approach the edges of the screen
-//                //occlusion *= screen_fade(ray_uv);
-//
-//                break;
-//            }
-//        }
-//    }
-//
-//    // Convert to visibility
-//    return 1.0f - occlusion;
-//}

@@ -36,6 +36,9 @@
 #define MAX_Z_HEIGHT 4 // 4 tiles high
 #define MAX_SHADOW_DISTANCE 100 // 100 tiles.
 
+#define ENV_TYPE_DEFAULT 0
+#define ENV_TYPE_UNDERGROUND 1
+
 #define LIGHT_COUNT 100 // 100 lights maximum
 #define LIGHT_TYPE_INVALID 0
 #define LIGHT_TYPE_DIRECTIONAL 1

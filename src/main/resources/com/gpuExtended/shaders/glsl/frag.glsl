@@ -32,11 +32,12 @@ void main() {
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
 
     float dither = Dither(gl_FragCoord.xy / 2);
-    float shadowTex = GetShadowMap(fPosition);
+    float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
+
+    float shadowTex = GetShadowMap(fPosition, ndl);
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
-    float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
     float shadow = shadowTex * ndl;
 
     vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * mainLight.color.rgb + ambientColor.rgb);
@@ -79,7 +80,6 @@ void main() {
 
     FadeRoofs(dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog);
-
-    finalColor = mix(finalColor, fogColor.rgb, fog);
+    finalColor = mix(finalColor, skyColor.rgb, fog);
     FragColor = vec4(finalColor, s.albedo.a);
 }

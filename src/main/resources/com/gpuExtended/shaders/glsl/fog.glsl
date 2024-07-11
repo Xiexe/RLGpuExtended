@@ -6,7 +6,7 @@ float CalculateFogAmount(vec3 position) {
     if (fogDepth == 0)
     return 0.f;
 
-    float drawDistance2 = drawDistance * TILE_SIZE;
+    float drawDistance2 = (drawDistance * TILE_SIZE);
 
     // the client draws one less tile to the north and east than it does to the south
     // and west, so subtract a tiles width from the north and east edges.

@@ -908,7 +908,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initUniformBufferBlocks()
 	{
 		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
-		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 16);
+		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 24);
 		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 11360);
 		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 144);
 		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
@@ -1379,7 +1379,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 		else if(gameState.getState() == GameState.LOGGED_IN.getState())
 		{
-			glClearColor(config.skyColor().getRed() / 255f, config.skyColor().getGreen() / 255f, config.skyColor().getBlue() / 255f, 1f);
+			glClearColor(env.SkyColor.getRed() / 255f, env.SkyColor.getGreen() / 255f, env.SkyColor.getBlue() / 255f, 1f);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1571,6 +1571,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferPlayerBlock.putFloat((float) playerX);
 			bBufferPlayerBlock.putFloat((float) playerY);
 			bBufferPlayerBlock.putFloat((float) playerPlane);
+			bBufferPlayerBlock.putFloat(0); // pad
+
+			bBufferEnvironmentBlock.putInt(client.getScene().getBaseX());
+			bBufferEnvironmentBlock.putInt(client.getScene().getBaseY());
 			bBufferPlayerBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
@@ -1579,21 +1583,25 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Environment Buffer Block">
 			bBufferEnvironmentBlock.clear();
+
+			// Ambient Color
 			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getRed() / 255f);
 			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
 
-			// Fog Color
-			bBufferEnvironmentBlock.putFloat(config.skyColor().getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(config.skyColor().getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(config.skyColor().getBlue() / 255f);
+			// Sky Color
+			bBufferEnvironmentBlock.putFloat(env.SkyColor.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.SkyColor.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(env.SkyColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
 
+			// Fog
+			bBufferEnvironmentBlock.putInt(env.Type); // Pad
 			bBufferEnvironmentBlock.putInt(config.fogDepth());
-			bBufferEnvironmentBlock.putInt(client.getScene().getBaseX());
-			bBufferEnvironmentBlock.putInt(client.getScene().getBaseY());
-			bBufferEnvironmentBlock.putInt(0); // Pad
+			bBufferEnvironmentBlock.putInt(0);
+			bBufferEnvironmentBlock.putInt(0);
+
 
 			// Pack Main Light
 			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[2]);

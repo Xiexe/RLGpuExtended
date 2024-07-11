@@ -11,15 +11,17 @@ layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform CameraBlock {
 
 layout(std140, binding = PLAYER_BUFFER_BINDING_ID) uniform PlayerBlock {
     vec4 playerPosition;                // 16 bytes
-};                                      // 16 bytes
+    int sceneOffsetX;                   // 4 bytes
+    int sceneOffsetZ;                   // 4 bytes
+};                                      // 24 bytes
 
 layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock {
     vec4 ambientColor;                  // 16 bytes
-    vec4 fogColor;                      // 16 bytes
+    vec4 skyColor;                      // 16 bytes
+    int envType;                        // 4 bytes
     int fogDepth;                       // 4 bytes
-    int sceneOffsetX;                   // 4 bytes
-    int sceneOffsetZ;                   // 4 bytes
-    float envPadding;                   // 4 bytes
+    int padEnv0;                        // 4 bytes
+    int padEnv1;                        // 4 bytes
     Light mainLight;                    // 112 bytes (due to padding inside Light struct)
     Light additiveLights[LIGHT_COUNT];  // 112 * LIGHT_COUNT = 11,200 bytes (due to padding inside Light struct)
 };                                      // 11,360 bytes

@@ -8,10 +8,14 @@ import com.gpuExtended.rendering.*;
 import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.Constants;
+import net.runelite.api.Player;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -129,32 +133,13 @@ public class EnvironmentManager
             currentEnvironment = Environment.GetDefaultEnvironment();
         }
 
-
-//        int nextIndex = (dayNightCycleIndex + 1) % lightPitches.length;
-//
-//        if(nextIndex == 0)
-//        {
-//            currentEnvironment.LightDirection.x = lightPitches[dayNightCycleIndex];
-//            currentEnvironment.LightDirection.y = lightYaws[dayNightCycleIndex];
-//            dayNightCycleIndex = nextIndex;
-//        }
-//        else {
-//            // Interpolate between the current value and the next value
-//            float interpolatedPitch = interpolate(lightPitches[dayNightCycleIndex], lightPitches[nextIndex], interpolationProgress);
-//            float interpolatedYaw = interpolate(lightYaws[dayNightCycleIndex], lightYaws[nextIndex], interpolationProgress);
-//
-//            currentEnvironment.LightDirection.x = interpolatedPitch;
-//            currentEnvironment.LightDirection.y = interpolatedYaw;
-//
-//            // Update the interpolation progress
-//            interpolationProgress += (deltaTime / 512f);
-//
-//            // Once interpolation is complete, move to the next index
-//            if (interpolationProgress >= 1.0f) {
-//                interpolationProgress = 0.0f;
-//                dayNightCycleIndex = nextIndex;
-//            }
-//        }
+        Player player = client.getLocalPlayer();
+        if (player != null)
+        {
+            boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
+            Environment targetEnvironment = isInOverworld ? Environment.GetDefaultEnvironment() : Environment.GetDefaultUndergroundEnvironment();
+            currentEnvironment = targetEnvironment;
+        }
 
         UpdateMainLightProjectionMatrix();
     }
