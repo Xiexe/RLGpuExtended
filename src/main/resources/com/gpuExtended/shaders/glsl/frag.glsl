@@ -34,6 +34,7 @@ void main() {
     float dither = Dither(gl_FragCoord.xy / 2);
     float shadowTex = GetShadowMap(fPosition);
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
+    float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
     float shadow = shadowTex * ndl;
@@ -41,8 +42,7 @@ void main() {
     vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * mainLight.color.rgb + ambientColor.rgb);
 
     float fog = fFogAmount;
-    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, 0);
-
+    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
         //
 //    finalColor = vec3(cameraPosition);
 

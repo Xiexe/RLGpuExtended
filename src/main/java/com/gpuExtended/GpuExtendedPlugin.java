@@ -1584,6 +1584,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
 
+			// Fog Color
 			bBufferEnvironmentBlock.putFloat(config.skyColor().getRed() / 255f);
 			bBufferEnvironmentBlock.putFloat(config.skyColor().getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(config.skyColor().getBlue() / 255f);
