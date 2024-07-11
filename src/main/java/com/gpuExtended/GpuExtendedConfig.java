@@ -192,6 +192,60 @@ public interface GpuExtendedConfig extends Config
 		}
 	// </editor-fold>
 
+	// <editor-fold defaultstate="collapsed" desc="GPU Tile Markers">
+		@ConfigSection(
+				name = "GPU Tile Markers",
+				description = "Tile markers that are rendered on the GPU. Allows tile markers to be depth sorted properly.",
+				position = 1,
+				closedByDefault = true
+		)
+		String gpuTileMarkers = "gpuTileMarkers";
+
+		@ConfigItem(
+				keyName = "tileMarkerCornerLength",
+				name = "Corner Length",
+				description = "How far border lines should be drawn from the corners.",
+				position = 3,
+				section = gpuTileMarkers
+		)
+		@Range(
+				max = 64
+		)
+		default int tileMarkerCornerLength() { return 64; }
+
+		@ConfigItem(
+				keyName = "tileMarkerBorderWidth",
+				name = "Border Width",
+				description = "How thick the border is.",
+				position = 4,
+				section = gpuTileMarkers
+		)
+		@Range(
+				max = 64
+		)
+		default int tileMarkerBorderWidth() { return 3; }
+
+		@Alpha
+		@ConfigItem(
+				keyName = "tileMarkerFillColor",
+				name = "Fill Color",
+				description = "Changes the fill color of the true tile.",
+				position = 5,
+				section = gpuTileMarkers
+		)
+		default Color tileMarkerFillColor() { return new Color(0f, 0f, 0f, 0.25f); }
+
+		@Alpha
+		@ConfigItem(
+				keyName = "tileMarkerBorderColor",
+				name = "Border Color",
+				description = "Changes the border color of the true tile.",
+				position = 6,
+				section = gpuTileMarkers
+		)
+		default Color tileMarkerBorderColor() { return new Color(0f, 1f, 1f, 0.25f); }
+	// </editor-fold>
+
 	// <editor-fold defaultstate="collapsed" desc="GPU True Tile Settings">
 		@ConfigSection(
 				name = "GPU True Tile",
@@ -240,12 +294,24 @@ public interface GpuExtendedConfig extends Config
 		)
 		default int trueTileCornerLength() { return 64; }
 
+		@ConfigItem(
+				keyName = "trueTileBorderWidth",
+				name = "Border Width",
+				description = "How thick the border is.",
+				position = 4,
+				section = gpuTrueTile
+		)
+		@Range(
+				max = 64
+		)
+		default int trueTileBorderWidth() { return 3; }
+
 		@Alpha
 		@ConfigItem(
 				keyName = "trueTileFillColor",
 				name = "Fill Color",
 				description = "Changes the fill color of the true tile.",
-				position = 4,
+				position = 5,
 				section = gpuTrueTile
 		)
 		default Color trueTileFillColor() { return new Color(0f, 0f, 0f, 0.25f); }
@@ -255,7 +321,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "trueTileBorderColor",
 				name = "Border Color",
 				description = "Changes the border color of the true tile.",
-				position = 5,
+				position = 6,
 				section = gpuTrueTile
 		)
 		default Color trueTileBorderColor() { return new Color(0f, 1f, 1f, 0.25f); }
@@ -291,12 +357,24 @@ public interface GpuExtendedConfig extends Config
 		)
 		default int hoveredTileCornerLength() { return 64; }
 
+		@ConfigItem(
+				keyName = "hoveredTileBorderWidth",
+				name = "Border Width",
+				description = "How thick the border is.",
+				position = 4,
+				section = gpuHoveredTile
+		)
+		@Range(
+				max = 64
+		)
+		default int hoveredTileBorderWidth() { return 3; }
+
 		@Alpha
 		@ConfigItem(
 				keyName = "hoveredTileFillColor",
 				name = "Fill Color",
 				description = "Changes the fill color of the true tile.",
-				position = 1,
+				position = 5,
 				section = gpuHoveredTile
 		)
 		default Color hoveredTileFillColor() { return new Color(0f, 0f, 0f, 0.25f); }
@@ -306,7 +384,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "hoveredTileBorderColor",
 				name = "Border Color",
 				description = "Changes the border color of the true tile.",
-				position = 2,
+				position = 6,
 				section = gpuHoveredTile
 		)
 		default Color hoveredTileBorderColor() { return new Color(0f, 1f, 1f, 0.25f); }
@@ -342,12 +420,24 @@ public interface GpuExtendedConfig extends Config
 		)
 		default int destinationTileCornerLength() { return 64; }
 
+		@ConfigItem(
+				keyName = "destinationTileBorderWidth",
+				name = "Border Width",
+				description = "How thick the border is.",
+				position = 4,
+				section = gpuDestTile
+		)
+		@Range(
+				max = 64
+		)
+		default int destinationTileBorderWidth() { return 3; }
+
 		@Alpha
 		@ConfigItem(
 				keyName = "destinationTileFillColor",
 				name = "Fill Color",
 				description = "Changes the fill color of the true tile.",
-				position = 1,
+				position = 5,
 				section = gpuDestTile
 		)
 		default Color destinationTileFillColor() { return new Color(0f, 0f, 0f, 0.25f); }
@@ -357,7 +447,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "destinationTileBorderColor",
 				name = "Border Color",
 				description = "Changes the border color of the true tile.",
-				position = 2,
+				position = 6,
 				section = gpuDestTile
 		)
 		default Color destinationTileBorderColor() { return new Color(0f, 1f, 1f, 0.25f); }

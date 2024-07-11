@@ -1522,21 +1522,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			int x = (client.getLocalPlayer().getLocalLocation().getX() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
 			int y = (client.getLocalPlayer().getLocalLocation().getY() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
-			int fillColorR = config.trueTileFillColor().getRed();
-			int fillColorG = config.trueTileFillColor().getGreen();
-			int fillColorB = config.trueTileFillColor().getBlue();
-			int fillColorA = config.trueTileFillColor().getAlpha();
+			int fillColorR = config.tileMarkerFillColor().getRed();
+			int fillColorG = config.tileMarkerFillColor().getGreen();
+			int fillColorB = config.tileMarkerFillColor().getBlue();
+			int fillColorA = config.tileMarkerFillColor().getAlpha();
 
-			int outlineColorR = config.trueTileBorderColor().getRed();
-			int outlineColorG = config.trueTileBorderColor().getGreen();
-			int outlineColorB = config.trueTileBorderColor().getBlue();
-			int outlineColorA = config.trueTileBorderColor().getAlpha();
-
-			int outlineWidth = 1;
+			int outlineColorR = config.tileMarkerBorderColor().getRed();
+			int outlineColorG = config.tileMarkerBorderColor().getGreen();
+			int outlineColorB = config.tileMarkerBorderColor().getBlue();
+			int outlineColorA = config.tileMarkerBorderColor().getAlpha();
 
 			tileMarkerMap.tileFillColorTexture.setPixel(x, y, fillColorR, fillColorG, fillColorB, fillColorA);
 			tileMarkerMap.tileBorderColorTexture.setPixel(x, y, outlineColorR, outlineColorG, outlineColorB, outlineColorA);
-			tileMarkerMap.tileSettingsTexture.setPixel(x, y, config.trueTileCornerLength(), outlineWidth, 0, 0);
+			tileMarkerMap.tileSettingsTexture.setPixel(x, y, config.tileMarkerCornerLength(), config.tileMarkerBorderWidth(), 0, 0);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
@@ -1712,7 +1710,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferTileMarkerBlock.clear();
 			bBufferTileMarkerBlock.putFloat(currentTileX);
 			bBufferTileMarkerBlock.putFloat(currentTileY);
-			bBufferTileMarkerBlock.putFloat(currentTileZ);
+			bBufferTileMarkerBlock.putFloat(config.trueTileBorderWidth());
 			bBufferTileMarkerBlock.putFloat(config.trueTileCornerLength());
 
 			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getRed() / 255f : 0);
@@ -1727,7 +1725,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferTileMarkerBlock.putFloat(targetTileX);
 			bBufferTileMarkerBlock.putFloat(targetTileY);
-			bBufferTileMarkerBlock.putFloat(targetTileZ);
+			bBufferTileMarkerBlock.putFloat(config.destinationTileBorderWidth());
 			bBufferTileMarkerBlock.putFloat(config.destinationTileCornerLength());
 
 			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getRed() / 255f : 0);
@@ -1742,7 +1740,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferTileMarkerBlock.putFloat(hoveredTileX);
 			bBufferTileMarkerBlock.putFloat(hoveredTileY);
-			bBufferTileMarkerBlock.putFloat(hoveredTileZ);
+			bBufferTileMarkerBlock.putFloat(config.hoveredTileBorderWidth());
 			bBufferTileMarkerBlock.putFloat(config.hoveredTileCornerLength());
 
 			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getRed() / 255f : 0);

@@ -204,7 +204,8 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec4 tilePosition, vec4 fill
         float cornerLength = tilePosition.w / TILE_SIZE;
         if (u > eps && u < 1.0 - eps && v > eps && v < 1.0 - eps)
         {
-            lineWidth += eps;
+            lineWidth /= 64f;
+
             bool isBorder = (
                 (u < lineWidth && v < cornerLength) ||
                 (u < lineWidth && v > 1.0 - cornerLength) ||
