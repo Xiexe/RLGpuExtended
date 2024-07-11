@@ -52,6 +52,12 @@ public class EnvironmentManager
     public float[] lightProjectionMatrix;
     public float[] lightViewMatrix;
 
+    final int[] lightPitches = new int[] { 45, 60, 75, 90, 105, 120, 135 };
+    final int[] lightYaws = new int[] { 30, 60, 90, 120, 150, 180, 210 };
+    int dayNightCycleIndex = 0;
+    float interpolationSpeed = 0.01f; // Adjust this for smoother/faster transitions
+    float interpolationProgress = 0.0f;
+
     public void Initialize() {
         /*
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
@@ -113,9 +119,43 @@ public class EnvironmentManager
 //        lightBuffer.clear();
     }
 
-    public void UpdateEnvironment()
+    private float interpolate(float start, float end, float progress) {
+        return start + (end - start) * progress;
+    }
+
+    public void UpdateEnvironment(float deltaTime)
     {
-        currentEnvironment = Environment.GetDefaultEnvironment();
+        if(currentEnvironment == null) {
+            currentEnvironment = Environment.GetDefaultEnvironment();
+        }
+
+
+//        int nextIndex = (dayNightCycleIndex + 1) % lightPitches.length;
+//
+//        if(nextIndex == 0)
+//        {
+//            currentEnvironment.LightDirection.x = lightPitches[dayNightCycleIndex];
+//            currentEnvironment.LightDirection.y = lightYaws[dayNightCycleIndex];
+//            dayNightCycleIndex = nextIndex;
+//        }
+//        else {
+//            // Interpolate between the current value and the next value
+//            float interpolatedPitch = interpolate(lightPitches[dayNightCycleIndex], lightPitches[nextIndex], interpolationProgress);
+//            float interpolatedYaw = interpolate(lightYaws[dayNightCycleIndex], lightYaws[nextIndex], interpolationProgress);
+//
+//            currentEnvironment.LightDirection.x = interpolatedPitch;
+//            currentEnvironment.LightDirection.y = interpolatedYaw;
+//
+//            // Update the interpolation progress
+//            interpolationProgress += (deltaTime / 512f);
+//
+//            // Once interpolation is complete, move to the next index
+//            if (interpolationProgress >= 1.0f) {
+//                interpolationProgress = 0.0f;
+//                dayNightCycleIndex = nextIndex;
+//            }
+//        }
+
         UpdateMainLightProjectionMatrix();
     }
 
@@ -136,7 +176,7 @@ public class EnvironmentManager
         int camX = (int) client.getCameraFpX();
         int camY = (int) client.getCameraFpY();
 
-        int shadowDrawDistance = 30;
+        int shadowDrawDistance = 90;
         int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
         int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
         int west = Math.max(camX - drawDistanceSceneUnits, 0);

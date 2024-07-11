@@ -1389,7 +1389,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			long currentTime = System.currentTimeMillis();
 			DeltaTime = currentTime - (StartTime + Time);
 			Time = currentTime - StartTime;
-			environmentManager.UpdateEnvironment();
+			environmentManager.UpdateEnvironment(DeltaTime);
 			updateUniformBlocks();
 
 			int renderWidthOff = viewportOffsetX;

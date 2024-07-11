@@ -47,7 +47,7 @@ float PCSSShadows(vec4 projCoords, float fadeOut) {
     float currentDepth = projCoords.z - bias;
 
     // Estimate penumbra size
-    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 10;
+    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 5;
 
     // Calculate shadow using PCSS
     float shadow = PCSSFilter(projCoords, currentDepth, penumbraSize);
