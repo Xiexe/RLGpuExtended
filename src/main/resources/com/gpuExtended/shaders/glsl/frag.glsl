@@ -33,7 +33,7 @@ void main() {
 
     float dither = Dither(gl_FragCoord.xy / 2);
     float shadowTex = GetShadowMap(fPosition);
-    float depthTex = 1-texture(depthMap, gl_FragCoord.xy / resolution).r;
+    float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
 
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
     float shadow = shadowTex * ndl;
@@ -71,12 +71,13 @@ void main() {
 
     if(!(fIsDyanmicModel > 0))
     {
-        DrawTileMarker(finalColor, fPosition, vec3(currentTile.xy, fPlane), 0.01f);
-        DrawTileMarker(finalColor, fPosition, vec3(targetTile.xy, fPlane), 0.01f);
-        DrawTileMarker(finalColor, fPosition, vec3(hoveredTile.xy, fPlane), 0.01f);
+        DrawMarkedTilesFromMap(finalColor, fPosition, fPlane, distanceToPlayer);
+        DrawTileMarker(finalColor, fPosition, vec4(targetTile.xy, fPlane, targetTile.w), targetTileFillColor, targetTileOutlineColor, 0.02f, distanceToPlayer);
+        DrawTileMarker(finalColor, fPosition, vec4(hoveredTile.xy, fPlane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, 0.02f, distanceToPlayer);
+        DrawTileMarker(finalColor, fPosition, vec4(currentTile.xy, fPlane, currentTile.w), currentTileFillColor, currentTileOutlineColor, 0.02f, distanceToPlayer);
     }
 
-    FadeRoofs(dither);
+    FadeRoofs(dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog);
     FragColor = vec4(finalColor, s.albedo.a);
 }

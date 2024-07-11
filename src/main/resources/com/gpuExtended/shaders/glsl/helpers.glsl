@@ -94,6 +94,12 @@ vec3 adjustBrightness(vec3 color, float brightness) {
     return color * brightness;
 }
 
+// Function to combine upper and lower parts to form a 32-bit integer
+int combine16(int upper, int lower) {
+    return (upper << 16) | lower;
+}
+
+
 void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff)
 {
     image = mix(adjustSaturationAndContrast(image, 1.1, 1.3), image, fogFalloff);
@@ -104,7 +110,74 @@ void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff)
     }
 }
 
-void DrawTileMarker(inout vec3 image, vec3 fragPos, vec3 tilePosition, float lineWidth)
+vec4 intToColor(int color) {
+    float r = float((color >> 24) & 0xFF) / 255.0;
+    float g = float((color >> 16) & 0xFF) / 255.0;
+    float b = float((color >> 8) & 0xFF) / 255.0;
+    float a = float(color & 0xFF) / 255.0;
+    return vec4(r, g, b, a);
+}
+
+vec4 unpackColor(vec4 packedColor) {
+    float r = packedColor.r;
+    float g = packedColor.g;
+    float b = packedColor.b;
+    float a = packedColor.a;
+    return vec4(r, g, b, a);
+}
+
+void DrawMarkedTilesFromMap(inout vec3 image, vec3 fragPos, float fPlane, float distanceToPlayer)
+{
+    int tileMapCellX = int(floor(fragPos.x / TILE_SIZE));
+    int tileMapCellZ = int(floor(fragPos.z / TILE_SIZE));
+    int cellX = int(tileMapCellX * TILE_SIZE);
+    int cellZ = int(tileMapCellZ * TILE_SIZE);
+
+    ivec2 cellUv = ivec2(tileMapCellX + SCENE_OFFSET, tileMapCellZ + SCENE_OFFSET);
+    vec4 packedFillColor = texelFetch(tileFillColorMap, cellUv, 0);
+    vec4 packedOutlineColor = texelFetch(tileBorderColorMap, cellUv, 0);
+    vec4 packedSettings = texelFetch(tileSettingsMap, cellUv, 0);
+
+    float cornerLength = packedSettings.r * 255;
+    float outlineWidth = packedSettings.g * 255;
+
+    vec4 fillColor = unpackColor(packedFillColor);
+    vec4 outlineColor = unpackColor(packedOutlineColor);
+
+    bool isBridge = fIsBridge > 0;
+    bool isTerrain = fIsTerrain > 0;
+    float realPlane = max(0, fPlane - (isBridge ? 1 : 0));
+
+    bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
+    bool isTileWalkable = (isTerrain || isBridge) && tileValidPlane;
+    if(isTileWalkable)
+    {
+        vec2 tileUv = vec2(mod(fragPos.x, TILE_SIZE) / TILE_SIZE, mod(fragPos.z, TILE_SIZE) / TILE_SIZE);
+
+        // Determine if the current fragment is within the border width
+        outlineWidth = max(outlineWidth, outlineWidth * (distanceToPlayer / 2000f));
+        outlineWidth /= TILE_SIZE;
+        cornerLength /= TILE_SIZE;
+
+        bool isBorder = (
+            (tileUv.x < outlineWidth && tileUv.y < cornerLength) ||
+            (tileUv.x < outlineWidth && tileUv.y > 1.0 - cornerLength) ||
+            (tileUv.x > 1.0 - outlineWidth && tileUv.y < cornerLength) ||
+            (tileUv.x > 1.0 - outlineWidth && tileUv.y > 1.0 - cornerLength) ||
+            (tileUv.y < outlineWidth && tileUv.x < cornerLength) ||
+            (tileUv.y < outlineWidth && tileUv.x > 1.0 - cornerLength) ||
+            (tileUv.y > 1.0 - outlineWidth && tileUv.x < cornerLength) ||
+            (tileUv.y > 1.0 - outlineWidth && tileUv.x > 1.0 - cornerLength)
+        );
+
+        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder));
+        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder));
+    }
+}
+
+// TilePosition.w = corner length
+// TilePosition.z = plane
+void DrawTileMarker(inout vec3 image, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer)
 {
     float x = fragPos.x;
     float z = fragPos.z;
@@ -118,7 +191,7 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec3 tilePosition, float lin
     bool isTerrain = fIsTerrain > 0;
     float realPlane = max(0, fPlane - (isBridge ? 1 : 0));
 
-    bool tileValidPlane = (tilePosition.z == -1) ? true : approximatelyEqual(realPlane, playerPosition.z, 0.01);
+    bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
     bool isTileWalkable = (isTerrain || isBridge) && tileValidPlane;
     if (cellX >= int(tilePosition.x - TILE_SIZE) &&
         cellZ >= int(tilePosition.y - TILE_SIZE) &&
@@ -127,34 +200,40 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec3 tilePosition, float lin
         isTileWalkable
     )
     {
-        float eps = 0.001;
+        float eps = 0.01;
+        float cornerLength = tilePosition.w / TILE_SIZE;
         if (u > eps && u < 1.0 - eps && v > eps && v < 1.0 - eps)
         {
-            bool isBorder = (u < lineWidth          ||
-                             u > 1.0 - lineWidth    ||
-                             v < lineWidth          ||
-                             v > 1.0 - lineWidth
+            lineWidth += eps;
+            bool isBorder = (
+                (u < lineWidth && v < cornerLength) ||
+                (u < lineWidth && v > 1.0 - cornerLength) ||
+                (u > 1.0 - lineWidth && v < cornerLength) ||
+                (u > 1.0 - lineWidth && v > 1.0 - cornerLength) ||
+                (v < lineWidth && u < cornerLength) ||
+                (v < lineWidth && u > 1.0 - cornerLength) ||
+                (v > 1.0 - lineWidth && u < cornerLength) ||
+                (v > 1.0 - lineWidth && u > 1.0 - cornerLength)
             );
             if (isBorder)
             {
-                image = vec3(0, 1, 1);
+                image = mix(image, borderColor.rgb, borderColor.a);
             }
             else
             {
-                image *= 0.75;
+                image = mix(image, fillColor.rgb, fillColor.a);
             }
         }
     }
 }
 
-void FadeRoofs(float dither)
+void FadeRoofs(float dither, float distanceToPlayer)
 {
     if(!(roofFading > 0))
     {
         return;
     }
 
-    float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
 
     bool isOnBridge = fIsBridge > 0;
@@ -171,7 +250,7 @@ void FadeRoofs(float dither)
     if(isTerrainRoof || isNonTerrainRoof)
     {
         //finalColor = vec3(.5,0,.5);
-        clip((dither - 0.001 - distanceToPlayer));
+        clip(dither - 0.001 - distanceToPlayer);
     }
 }
 

@@ -30,6 +30,9 @@ public class Uniforms
         public int ConfigBlock;
         public int ShadowMap;
         public int DepthMap;
+        public int TileMarkerBorderColorMap;
+        public int TileMarkerFillColorMap;
+        public int TileMarkerSettingsMap;
     }
 
     public HashMap<Integer, ShaderVariables> map;
@@ -44,6 +47,10 @@ public class Uniforms
         ShaderVariables shaderVariables = new ShaderVariables();
         shaderVariables.ShadowMap = glGetUniformLocation(shader, "shadowMap");
         shaderVariables.DepthMap = glGetUniformLocation(shader, "depthMap");
+
+        shaderVariables.TileMarkerFillColorMap = glGetUniformLocation(shader, "tileFillColorMap");
+        shaderVariables.TileMarkerBorderColorMap = glGetUniformLocation(shader, "tileBorderColorMap");
+        shaderVariables.TileMarkerSettingsMap = glGetUniformLocation(shader, "tileSettingsMap");
 
         shaderVariables.ColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
         shaderVariables.Textures = glGetUniformLocation(shader, "textures");

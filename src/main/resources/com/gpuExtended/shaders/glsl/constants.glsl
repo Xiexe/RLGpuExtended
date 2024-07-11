@@ -3,7 +3,9 @@
 
 #define TILE_SIZE 128
 #define PLANE_HEIGHT 256
-
+#define EXTENDED_SCENE_SIZE 184
+#define SCENE_SIZE 104
+#define SCENE_OFFSET 40
 
 #define CAMERA_BUFFER_BINDING_ID 0
 #define PLAYER_BUFFER_BINDING_ID 1
@@ -22,7 +24,6 @@
 #define NORMAL_BUFFER_OUT_BINDING_ID 8
 #define NORMAL_BUFFER_IN_BINDING_ID 9
 #define TEMP_NORMAL_BUFFER_IN_BINDING_ID 10
-
 
 #define FOG_SCENE_EDGE_MIN ((-expandedMapLoadingChunks * 8 + 1) * TILE_SIZE)
 #define FOG_SCENE_EDGE_MAX ((104 + expandedMapLoadingChunks * 8 - 1) * TILE_SIZE)

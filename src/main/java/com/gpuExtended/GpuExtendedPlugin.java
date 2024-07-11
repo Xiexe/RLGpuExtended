@@ -19,6 +19,7 @@ import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
 import com.gpuExtended.scene.Light;
+import com.gpuExtended.scene.TileMarkers;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -315,10 +316,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private long Time;
 	private long DeltaTime;
 	private long StartTime;
+	private float currentTrueTileAlpha = 1;
+	private int[] lastPlayerPosition = new int[2];
+
 	private int[] currentViewport = new int[4];
 
 	@Inject
 	private ShadowMapOverlay shadowMapOverlay;
+
+	@Inject
+	private TileMarkers tileMarkerMap;
 
 	@Override
 	protected void startUp()
@@ -343,7 +350,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				}
 
 				environmentManager.Initialize();
-
 				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
 				//environment.ReloadLights();
 
@@ -434,6 +440,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initInterfaceTexture();
 				initShadowMapTexture();
 				initDepthMapTexture();
+				tileMarkerMap.Initialize(EXTENDED_SCENE_SIZE);
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -894,7 +901,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
 		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 16);
 		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 11360);
-		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 4144);
+		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 144);
 		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
 		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 7 * Float.BYTES);
 
@@ -1084,6 +1091,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		final Scene scene = client.getScene();
 		scene.setDrawDistance(getDrawDistance());
+		scene.setRoofRemovalMode(config.roofFading() ? 16 : 0);
 
 		// Only reset the target buffer offset right before drawing the scene. That way if there are frames
 		// after this that don't involve a scene draw, like during LOADING/HOPPING/CONNECTION_LOST, we can
@@ -1370,7 +1378,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		if (gameState.getState() >= GameState.LOADING.getState())
 		{
 			long currentTime = System.currentTimeMillis();
-			DeltaTime = currentTime - Time;
+			DeltaTime = currentTime - (StartTime + Time);
 			Time = currentTime - StartTime;
 			environmentManager.UpdateEnvironment();
 			updateUniformBlocks();
@@ -1420,6 +1428,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glDpiAwareViewport(renderWidthOff, renderCanvasHeight - renderViewportHeight - renderHeightOff, renderViewportWidth, renderViewportHeight);
 			glGetIntegerv(GL_VIEWPORT, currentViewport);
 			drawMainPass();
+
+			lastPlayerPosition[0] = client.getLocalPlayer().getLocalLocation().getX();
+			lastPlayerPosition[1] = client.getLocalPlayer().getLocalLocation().getY();
 		}
 
 		if (aaEnabled)
@@ -1502,17 +1513,31 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int playerY = client.getLocalPlayer().getLocalLocation().getY();
 		int playerPlane = client.getPlane();
 
-//		int worldX = (playerX / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-//		int worldY = (playerY / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-//		if (1 <= worldX && worldX < EXTENDED_SCENE_SIZE-1 && 1 <= worldY && worldY < EXTENDED_SCENE_SIZE-1) {
-//			Tile tile = client.getScene().getExtendedTiles()[playerPlane][worldX][worldY];
-//			if(tile.getBridge() != null)
-//			{
-//				playerPlane += 1;
-//			}
-//		}
-
 		Environment env = environmentManager.currentEnvironment;
+
+		// <editor-fold defaultstate="collapsed" desc="Write Tilemap Data">
+			// tileSettings l/w : 	12 bits / 6 bits per setting
+			// outlineColor 		32 bits / 8 bits per color
+			// fillColor 			32 bits / 8 bits per color
+			int x = (client.getLocalPlayer().getLocalLocation().getX() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
+			int y = (client.getLocalPlayer().getLocalLocation().getY() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
+
+			int fillColorR = config.trueTileFillColor().getRed();
+			int fillColorG = config.trueTileFillColor().getGreen();
+			int fillColorB = config.trueTileFillColor().getBlue();
+			int fillColorA = config.trueTileFillColor().getAlpha();
+
+			int outlineColorR = config.trueTileBorderColor().getRed();
+			int outlineColorG = config.trueTileBorderColor().getGreen();
+			int outlineColorB = config.trueTileBorderColor().getBlue();
+			int outlineColorA = config.trueTileBorderColor().getAlpha();
+
+			int outlineWidth = 1;
+
+			tileMarkerMap.tileFillColorTexture.setPixel(x, y, fillColorR, fillColorG, fillColorB, fillColorA);
+			tileMarkerMap.tileBorderColorTexture.setPixel(x, y, outlineColorR, outlineColorG, outlineColorB, outlineColorA);
+			tileMarkerMap.tileSettingsTexture.setPixel(x, y, config.trueTileCornerLength(), outlineWidth, 0, 0);
+		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
 			bBufferCameraBlock.clear();
@@ -1667,23 +1692,68 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				hoveredTileZ = (float)client.getPlane();
 			}
 
+			if(config.trueTileFadeOut())
+			{
+				if( client.getLocalPlayer().getLocalLocation().getX() == lastPlayerPosition[0] &&
+					client.getLocalPlayer().getLocalLocation().getY() == lastPlayerPosition[1])
+				{
+					currentTrueTileAlpha = Math.max(0, currentTrueTileAlpha - (float)DeltaTime / config.trueTileFadeOutTime());
+				}
+				else
+				{
+					currentTrueTileAlpha = 1;
+				}
+			}
+			else
+			{
+				currentTrueTileAlpha = 1;
+			}
+
 			bBufferTileMarkerBlock.clear();
 			bBufferTileMarkerBlock.putFloat(currentTileX);
 			bBufferTileMarkerBlock.putFloat(currentTileY);
 			bBufferTileMarkerBlock.putFloat(currentTileZ);
-			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(config.trueTileCornerLength());
+
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getRed() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getGreen() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getBlue() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? (config.trueTileFillColor().getAlpha() / 255f) * currentTrueTileAlpha : 0);
+
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileBorderColor().getRed() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileBorderColor().getGreen() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileBorderColor().getBlue() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? (config.trueTileBorderColor().getAlpha() / 255f) * currentTrueTileAlpha : 0);
 
 			bBufferTileMarkerBlock.putFloat(targetTileX);
 			bBufferTileMarkerBlock.putFloat(targetTileY);
 			bBufferTileMarkerBlock.putFloat(targetTileZ);
-			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(config.destinationTileCornerLength());
+
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getRed() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getGreen() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getBlue() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getAlpha() / 255f : 0);
+
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getRed() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getGreen() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getBlue() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getAlpha() / 255f : 0);
 
 			bBufferTileMarkerBlock.putFloat(hoveredTileX);
 			bBufferTileMarkerBlock.putFloat(hoveredTileY);
 			bBufferTileMarkerBlock.putFloat(hoveredTileZ);
-			bBufferTileMarkerBlock.putFloat(0);
+			bBufferTileMarkerBlock.putFloat(config.hoveredTileCornerLength());
 
-			// TODO:: Add marked tiles.
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getRed() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getGreen() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getBlue() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getAlpha() / 255f : 0);
+
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getRed() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getGreen() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getBlue() / 255f : 0);
+			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getAlpha() / 255f : 0);
 
 			bBufferTileMarkerBlock.flip();
 
@@ -1734,8 +1804,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, depthMapFramebuffer.getTexture().getId());
-		glUniform1i(uni.DepthMap, 3);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerMap.tileFillColorTexture.getId());
+		glUniform1i(uni.TileMarkerFillColorMap, 3);
+		glActiveTexture(GL_TEXTURE0);
+
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerMap.tileBorderColorTexture.getId());
+		glUniform1i(uni.TileMarkerBorderColorMap, 4);
+		glActiveTexture(GL_TEXTURE0);
+
+		glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerMap.tileSettingsTexture.getId());
+		glUniform1i(uni.TileMarkerSettingsMap, 5);
 		glActiveTexture(GL_TEXTURE0);
 
 		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
@@ -2034,6 +2114,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneTexBuffer = null;
 		nextSceneNormalBuffer = null;
 		nextSceneId = -1;
+
+		tileMarkerMap.Reset();
 
 		checkGLErrors();
 	}

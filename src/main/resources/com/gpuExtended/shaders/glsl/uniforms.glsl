@@ -26,10 +26,15 @@ layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock
 
 layout(std140, binding = TILEMARKER_BUFFER_BINDING_ID) uniform TileMarkerBlock {
     vec4 currentTile;                   // 16 bytes
+    vec4 currentTileFillColor;
+    vec4 currentTileOutlineColor;
     vec4 targetTile;                    // 16 bytes
+    vec4 targetTileFillColor;
+    vec4 targetTileOutlineColor;
     vec4 hoveredTile;                   // 16 bytes
-    vec4 markedTiles[256];              // 256 * 16 bytes = 4096 bytes
-};                                      // Total: 4128 bytes
+    vec4 hoveredTileFillColor;
+    vec4 hoveredTileOutlineColor;
+};                                      // Total: 9 * 16 = 144 bytes
 
 layout(std140, binding = SYSTEMINFO_BUFFER_BINDING_ID) uniform SystemInfoBlock {
     int tick;                           // 4 bytes
@@ -50,5 +55,7 @@ layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
 
 uniform sampler2DArray textures;
 uniform sampler2D shadowMap;
-uniform sampler2D depthMap;
+uniform sampler2D tileFillColorMap; // holds colors of tiles
+uniform sampler2D tileBorderColorMap; // holds textures of tiles
+uniform sampler2D tileSettingsMap; // holds settings of tiles
 uniform vec2 textureAnimations[128];
