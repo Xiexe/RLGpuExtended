@@ -77,6 +77,8 @@ void main() {
         DrawTileMarker(finalColor, fPosition, vec4(currentTile.xy, fPlane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
+    //finalColor = texture(tileBorderColorMap, gl_FragCoord.xy / resolution).rgb;
+
     FadeRoofs(dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog);
     FragColor = vec4(finalColor, s.albedo.a);

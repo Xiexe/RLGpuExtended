@@ -19,7 +19,7 @@ import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
 import com.gpuExtended.scene.Light;
-import com.gpuExtended.scene.TileMarkers;
+import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -325,7 +325,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private ShadowMapOverlay shadowMapOverlay;
 
 	@Inject
-	private TileMarkers tileMarkerMap;
+	private TileMarkerManager tileMarkerManager;
 
 	@Override
 	protected void startUp()
@@ -440,7 +440,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initInterfaceTexture();
 				initShadowMapTexture();
 				initDepthMapTexture();
-				tileMarkerMap.Initialize(EXTENDED_SCENE_SIZE);
+				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -1516,25 +1516,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		Environment env = environmentManager.currentEnvironment;
 
 		// <editor-fold defaultstate="collapsed" desc="Write Tilemap Data">
-			// tileSettings l/w : 	12 bits / 6 bits per setting
-			// outlineColor 		32 bits / 8 bits per color
-			// fillColor 			32 bits / 8 bits per color
-			int x = (client.getLocalPlayer().getLocalLocation().getX() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
-			int y = (client.getLocalPlayer().getLocalLocation().getY() / Perspective.LOCAL_TILE_SIZE) + SCENE_OFFSET;
-
-			int fillColorR = config.tileMarkerFillColor().getRed();
-			int fillColorG = config.tileMarkerFillColor().getGreen();
-			int fillColorB = config.tileMarkerFillColor().getBlue();
-			int fillColorA = config.tileMarkerFillColor().getAlpha();
-
-			int outlineColorR = config.tileMarkerBorderColor().getRed();
-			int outlineColorG = config.tileMarkerBorderColor().getGreen();
-			int outlineColorB = config.tileMarkerBorderColor().getBlue();
-			int outlineColorA = config.tileMarkerBorderColor().getAlpha();
-
-			tileMarkerMap.tileFillColorTexture.setPixel(x, y, fillColorR, fillColorG, fillColorB, fillColorA);
-			tileMarkerMap.tileBorderColorTexture.setPixel(x, y, outlineColorR, outlineColorG, outlineColorB, outlineColorA);
-			tileMarkerMap.tileSettingsTexture.setPixel(x, y, config.tileMarkerCornerLength(), config.tileMarkerBorderWidth(), 0, 0);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
@@ -1802,17 +1783,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, tileMarkerMap.tileFillColorTexture.getId());
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileFillColorTexture.getId());
 		glUniform1i(uni.TileMarkerFillColorMap, 3);
 		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, tileMarkerMap.tileBorderColorTexture.getId());
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileBorderColorTexture.getId());
 		glUniform1i(uni.TileMarkerBorderColorMap, 4);
 		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE5);
-		glBindTexture(GL_TEXTURE_2D, tileMarkerMap.tileSettingsTexture.getId());
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileSettingsTexture.getId());
 		glUniform1i(uni.TileMarkerSettingsMap, 5);
 		glActiveTexture(GL_TEXTURE0);
 
@@ -2113,7 +2094,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneNormalBuffer = null;
 		nextSceneId = -1;
 
-		tileMarkerMap.Reset();
+		tileMarkerManager.Reset();
+		tileMarkerManager.LoadTileMarkers();
 
 		checkGLErrors();
 	}
