@@ -42,7 +42,7 @@ void main() {
     vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * mainLight.color.rgb + ambientColor.rgb);
 
     float fog = fFogAmount;
-    vec3 finalColor = mix(CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment, fogColor.rgb, fog);
+    vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
         //
 //    finalColor = vec3(cameraPosition);
 
@@ -79,5 +79,7 @@ void main() {
 
     FadeRoofs(dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog);
+
+    finalColor = mix(finalColor, fogColor.rgb, fog);
     FragColor = vec4(finalColor, s.albedo.a);
 }
