@@ -217,12 +217,6 @@ public class SceneUploader
 			{
 				PushStaticModel((Model) renderable2, tile, vertexBuffer, uvBuffer, normalBuffer);
 			}
-
-			int decorativeObjectId = decorativeObject.getId();
-			if(env.decorationLights.containsKey(decorativeObjectId))
-			{
-				log.debug("Found Decoration that should have a light!");
-			}
 		}
 
 

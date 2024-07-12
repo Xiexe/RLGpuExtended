@@ -43,7 +43,8 @@ layout(std140, binding = SYSTEMINFO_BUFFER_BINDING_ID) uniform SystemInfoBlock {
     int screenWidth;                    // 4 bytes
     int screenHeight;                   // 4 bytes
     float deltaTime;                    // 4 bytes
-};                                      // 16 bytes
+    float time;                         // 4 bytes
+};                                      // 24 bytes
 
 layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
     float brightness;                   // 4 bytes

@@ -39,6 +39,11 @@ bool approximatelyEqual(float a, float b, float epsilon) {
     return abs(a - b) < epsilon;
 }
 
+float hash21(vec2 uv)
+{
+    return fract(sin(7.289 * uv.x + 11.23 * uv.y) * 23758.5453);
+}
+
 void PopulateSurfaceColor(inout Surface s)
 {
     vec4 color;

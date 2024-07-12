@@ -926,7 +926,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 24);
 		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 12976);
 		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 144);
-		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
+		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 24);
 		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 7 * Float.BYTES);
 
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
@@ -1446,6 +1446,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			{
 				tileMarkerManager.Reset();
 				tileMarkerManager.LoadTileMarkers();
+				environmentManager.LoadSceneLights(client.getScene());
 			}
 
 			glBindVertexArray(mainDrawVertexArrayObject);
@@ -1648,8 +1649,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 
 			// Pack Extra Lights
+			int packedLights = 0;
 			for(Light light : environmentManager.sceneLights)
 			{
+				if(light == null || packedLights >= 100)
+				{
+					break;
+				}
+
 				bBufferEnvironmentBlock.putFloat(light.position.x);
 				bBufferEnvironmentBlock.putFloat(light.position.y);
 				bBufferEnvironmentBlock.putFloat(light.position.z);
@@ -1676,6 +1683,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					// Pad it. Future stuff.
 					bBufferEnvironmentBlock.putFloat(0);
 				}
+
+				packedLights++;
 			}
 
 			bBufferEnvironmentBlock.flip();
@@ -1797,6 +1806,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferSystemInfoBlock.putInt(currentViewport[2]);
 			bBufferSystemInfoBlock.putInt(currentViewport[3]);
 			bBufferSystemInfoBlock.putFloat(DeltaTime);
+			bBufferSystemInfoBlock.putFloat(Time);
 
 			bBufferSystemInfoBlock.flip();
 

@@ -4,8 +4,7 @@ const int shadowSamples = 64;
 
 float LinearExponentialAttenuation(float dist, float maxDistance) {
     float linearAttenuation = max(1.0 - dist / maxDistance, 0.0);
-    float exponentialAttenuation = exp(-dist * 0.5);
-    return linearAttenuation * exponentialAttenuation;
+    return linearAttenuation;
 }
 
 float PCSSEstimatePenumbraSize(vec4 projCoords, float currentDepth, float searchRadius) {
@@ -124,6 +123,29 @@ vec3 OffsetLight(Light light)
     return pos;
 }
 
+void ApplyLightAnimation(inout Light light)
+{
+    if(light.animation == LIGHT_ANIM_NONE) return;
+
+    float hashXY = hash21(vec2(light.pos.x, light.pos.z)) * (EXTENDED_SCENE_SIZE * TILE_SIZE);
+    float hashHZ = hash21(vec2(light.pos.y, light.pos.y)) * (EXTENDED_SCENE_SIZE * TILE_SIZE);
+    float offset = (hashXY + hashHZ);
+
+    switch(light.animation)
+    {
+        case LIGHT_ANIM_FLICKER:
+        float flicker = sin((time / 100) - hashXY) * 0.1 + 0.9;
+        float flicker2 = sin((time / 30) - hashHZ) * 0.05 + 0.95;
+        light.intensity *= flicker * flicker2;
+        break;
+
+        case LIGHT_ANIM_PULSE:
+        float pulse = sin((time / 100) - offset) * 0.5 + 0.5;
+        light.intensity *= pulse;
+        break;
+    }
+}
+
 void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 fragPos)
 {
     for(int i = 0; i < LIGHT_COUNT; i++)
@@ -131,18 +153,19 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
         Light light = additiveLights[i];
         if(light.type == LIGHT_TYPE_INVALID) break;
 
+        ApplyLightAnimation(light);
         light.pos.xyz = OffsetLight(light);
 
         vec3 toLight = (light.pos.xyz - fragPos.xzy);
         float distToLight = length(toLight) / TILE_SIZE;
-        if(distToLight < light.radius)
-        {
-            toLight = normalize(toLight);
-            toLight.z = -toLight.z;
 
-            float atten = LinearExponentialAttenuation(distToLight, light.radius) * light.intensity;
-            float ndl = max(dot(normal.xzy, toLight), 0);
-            image += albedo.rgb * light.color.rgb * ndl * atten;
-        }
+        if(distToLight > light.radius) continue;
+
+        toLight = normalize(toLight);
+        toLight.z = -toLight.z;
+
+        float atten = LinearExponentialAttenuation(distToLight, light.radius) * light.intensity;
+        float ndl = max(dot(normal.xzy, toLight), 0);
+        image += albedo.rgb * light.color.rgb * ndl * atten;
     }
 }

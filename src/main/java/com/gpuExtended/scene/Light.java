@@ -75,6 +75,7 @@ public class Light
         }
     }
 
+    public String name;
     public LightType type;
     public LightAnimation animation;
     public Color color = new Color(1,1,1);
@@ -90,6 +91,7 @@ public class Light
     public static Light CreateLightFromTemplate(Light template, Vector4 position)
     {
         Light light = new Light();
+        light.name = template.name;
         light.type = template.type;
         light.animation = template.animation;
         light.color = template.color;
@@ -97,26 +99,24 @@ public class Light
         light.offset = new Vector3(template.offset.x, template.offset.y, template.offset.z);
         light.intensity = template.intensity;
         light.radius = template.radius;
-        light.tiles = template.tiles.clone();
-        light.decorations = template.decorations.clone();
-        light.gameObjects = template.gameObjects.clone();
-        light.projectiles = template.projectiles.clone();
+
+        if(template.tiles != null)
+            light.tiles = template.tiles.clone();
+
+        if(template.decorations != null)
+            light.decorations = template.decorations.clone();
+
+        if(template.gameObjects != null)
+            light.gameObjects = template.gameObjects.clone();
+
+        if(template.projectiles != null)
+            light.projectiles = template.projectiles.clone();
+
         return light;
     }
 
     public String toString()
     {
-        return "Light{" +
-                "type=" + type +
-                ", animation=" + animation +
-                ", color=" + color +
-                ", position=" + position +
-                ", intensity=" + intensity +
-                ", radius=" + radius +
-                ", tiles=" + tiles +
-                ", decorations=" + decorations +
-                ", gameObjects=" + gameObjects +
-                ", projectiles=" + projectiles +
-                '}';
+        return "Light: " + name + " Type: " + type + " Animation: " + animation + " Color: " + color + " Position: " + position + " Offset: " + offset + " Intensity: " + intensity + " Radius: " + radius;
     }
 }

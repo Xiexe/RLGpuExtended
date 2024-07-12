@@ -1,19 +1,121 @@
 [
   {
+    "TEMPLATE": {
+        "type": "point",
+        "color": [0, 0, 0],
+        "offset": [0, 0, 0],
+        "intensity": 1,
+        "radius": 1,
+        "animation": "flicker",
+        "decorations": [],
+        "gameObjects": [],
+        "projectiles": [],
+        "tiles": []
+    }
+  },
+  {
     "TORCHES": {
       "type": "point",
       "color": [1.00, 0.52, 0.00],
-      "offset": [0.2, 0, 1.5],
-      "intensity": 2,
-      "radius": 6,
+      "offset": [0, 0, 1.5],
+      "intensity": 0.65,
+      "radius": 10,
       "animation": "flicker",
       "decorations": [
         196,
         197
-      ],
-      "gameObjects": [],
-      "projectiles": [],
-      "tiles": []
+      ]
+    }
+  },
+  {
+    "LUMBRIDGE_CASTLE_FIREPLACE": {
+      "type": "point",
+      "color": [1.00, 0.52, 0.00],
+      "offset": [0, 0, 1],
+      "intensity": 1.5,
+      "radius": 10,
+      "animation": "flicker",
+      "gameObjects": [
+        24970
+      ]
+    }
+  },
+  {
+    "LUMBRIDGE_CHURCH_WINDOW": {
+      "type": "point",
+      "color": [1.00, 0.95, 0.9],
+      "offset": [0, 0, 0.2],
+      "intensity": 2,
+      "radius": 5,
+      "animation": "none",
+      "tiles": [
+          [3243, 3210, 0]
+      ]
+    }
+  },
+  {
+    "CANDELABRA": {
+      "type": "point",
+      "color": [1.00, 0.52, 0.00],
+      "offset": [0, 0, 1.5],
+      "intensity": 1,
+      "radius": 3,
+      "animation": "flicker",
+      "gameObjects": [
+        202
+      ]
+    }
+  },
+  {
+    "COOKING_RANGE": {
+      "type": "point",
+      "color": [1.00, 0.25, 0.00],
+      "offset": [0.5, -0.35, 0.6],
+      "intensity": 1,
+      "radius": 3,
+      "animation": "none",
+      "gameObjects": [
+        114
+      ]
+    }
+  },
+  {
+    "ALTAR_CANDLE_LEFT": {
+      "type": "point",
+      "color": [1.00, 0.52, 0.00],
+      "offset": [-0.8, 0.25, 1.8],
+      "intensity": 1,
+      "radius": 2,
+      "animation": "flicker",
+      "gameObjects": [
+        409
+      ]
+    }
+  },
+  {
+    "ALTAR_CANDLE_RIGHT": {
+      "type": "point",
+      "color": [1.00, 0.52, 0.00],
+      "offset": [0.8, 0.25, 1.8],
+      "intensity": 1,
+      "radius": 2,
+      "animation": "flicker",
+      "gameObjects": [
+        409
+      ]
+    }
+  },
+  {
+    "TOA_ENTRANCE": {
+        "type": "point",
+        "color": [1.00, 0.8, 0.8],
+        "offset": [0, 0, 4],
+        "intensity": 5,
+        "radius": 15,
+        "animation": "none",
+        "tiles": [
+          [3359, 9129, 0]
+        ]
     }
   }
 ]
