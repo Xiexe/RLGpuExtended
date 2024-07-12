@@ -19,8 +19,11 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
+import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
+import com.gpuExtended.util.deserializers.ColorDeserializer;
+import com.gpuExtended.util.deserializers.VectorDeserializer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -501,6 +504,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		GsonBuilder builder = new GsonBuilder();
 		builder.registerTypeAdapter(Color.class, new ColorDeserializer());
+		builder.registerTypeAdapter(Vector4.class, new VectorDeserializer());
 		gson = builder.create();
 	}
 

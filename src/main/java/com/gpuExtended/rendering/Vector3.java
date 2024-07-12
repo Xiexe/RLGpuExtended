@@ -1,15 +1,13 @@
 package com.gpuExtended.rendering;
 
-public class Vector3
+public class Vector3 extends Vector2
 {
     public float x = 0;
     public float y = 0;
     public float z = 0;
 
-    public Vector3(float x, float y, float z)
-    {
-        this.x = x;
-        this.y = y;
+    public Vector3(float x, float y, float z) {
+        super(x, y);
         this.z = z;
     }
     public static Vector3 Zero()

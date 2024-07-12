@@ -2,10 +2,10 @@ package com.gpuExtended.rendering;
 
 public class Vector2
 {
-    public double x;
-    public double y;
+    public float x;
+    public float y;
 
-    public Vector2(double x, double y)
+    public Vector2(float x, float y)
     {
         this.x = x;
         this.y = y;

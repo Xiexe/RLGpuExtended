@@ -2,7 +2,7 @@
   {
     "TORCHES": {
       "type": 2,
-      "color": [1, 0.52, 0],
+      "color": [1.00, 0.52, 0.00, 1.00],
       "position": [0, 0, 0],
       "intensity": 3,
       "radius": 3,

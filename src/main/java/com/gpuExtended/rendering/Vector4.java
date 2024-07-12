@@ -1,17 +1,15 @@
 package com.gpuExtended.rendering;
 
-public class Vector4
+public class Vector4 extends Vector3
 {
-    public double x = 0;
-    public double y = 0;
-    public double z = 0;
-    public double w = 0;
+    public float x = 0;
+    public float y = 0;
+    public float z = 0;
+    public float w = 0;
 
-    public Vector4(double x, double y, double z, double w)
+    public Vector4(float x, float y, float z, float w)
     {
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        super(x, y, z);
         this.w = w;
     }
 
@@ -38,4 +36,5 @@ public class Vector4
         float length = (float) Math.sqrt(x*x + y*y + z*z);
         return new Vector4(x / length, y / length, z / length, this.w);
     }
+
 }
