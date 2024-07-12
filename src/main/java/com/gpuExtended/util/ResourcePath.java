@@ -294,6 +294,23 @@ public class ResourcePath {
 
     public <T> T loadJson(Gson gson, Class<T> type) throws IOException {
         try (BufferedReader reader = toReader()) {
+            if(gson == null)
+            {
+                gson = new Gson();
+            }
+
+            if(type == null)
+            {
+                log.info("TYPE NULL");
+                return null;
+            }
+
+            if(reader == null)
+            {
+                log.info("READER NULL");
+                return null;
+            }
+
             return gson.fromJson(reader, type);
         }
     }

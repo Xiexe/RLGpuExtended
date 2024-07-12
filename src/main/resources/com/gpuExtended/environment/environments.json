@@ -1,11 +1,32 @@
 [
   {
-    "area": "DEFAULT",
-    "ambientColor": "#c0ae94",
-    "ambientStrength": 3,
-    "directionalColor": "#f5bc67",
-    "directionalStrength": 1,
-    "fogColor": "#b8d6ff",
-    "fogDepth": 70
+    "Name": "",
+    "SkyColor": [0, 0, 0, 0],
+    "AmbientColor": [0, 0, 0, 0],
+    "LightColor": [0, 0, 0, 0],
+    "LightPitch": 0,
+    "LightYaw": 0,
+    "FogDepth": 0,
+    "Type": 0
+  },
+  {
+    "Name": "DEFAULT",
+    "SkyColor": [232, 225, 213, 225],
+    "AmbientColor": [193, 210, 217, 255],
+    "LightColor": [255, 239, 224, 255],
+    "LightPitch": 45,
+    "LightYaw": 200,
+    "FogDepth": 10,
+    "Type": 0
+  },
+  {
+    "Name": "DEFAULT_UNDERGROUND",
+    "SkyColor": [0, 0, 0, 255],
+    "AmbientColor": [160, 150, 150, 255],
+    "LightColor": [50, 50, 50, 255],
+    "LightPitch": 90,
+    "LightYaw": 0,
+    "FogDepth": 70,
+    "Type": 1
   }
 ]

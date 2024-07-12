@@ -27,7 +27,32 @@ import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 @Slf4j
 public class EnvironmentManager
 {
-    private static final ResourcePath ENVIRONMENT_PATH = Props.getPathOrDefault("environments-path", () -> path("/environment/"));
+    private static final ResourcePath ENVIRONMENT_PATH = Props.getPathOrDefault(
+            "environments-path", () -> path(GpuExtendedPlugin.class, "environment/environments.json"));
+
+    public enum EnvironmentType {
+        DEFAULT(0),
+        UNDERGROUND(1);
+
+        private final int value;
+
+        EnvironmentType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public static EnvironmentType fromValue(int value) {
+            for (EnvironmentType type : values()) {
+                if (type.getValue() == value) {
+                    return type;
+                }
+            }
+            return null;
+        }
+    }
 
     @Inject
     private Client client;
@@ -51,6 +76,7 @@ public class EnvironmentManager
     public ArrayList<Light> renderedLights = new ArrayList<>();
 
     public Environment[] environments;
+    public HashMap<String, Environment> environmentMap = new HashMap<>();
     public Environment currentEnvironment;
 
     public float[] lightProjectionMatrix;
@@ -63,64 +89,30 @@ public class EnvironmentManager
     float interpolationProgress = 0.0f;
 
     public void Initialize() {
-        /*
+        environments = new Environment[0];
+
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
-            log.info("Environment was updated.");
-            try{
-                environments = path.loadJson(plugin.getGson(), com.gpuExtended.scene.Environment[].class);
-            }
-            catch (Exception e) {
-                log.error("Failed to load environment: " + path, e);
-            }
+            LoadEnvironments();
         });
-         */
-
-        currentEnvironment = Environment.GetDefaultEnvironment();
-        //ReloadLights();
     }
 
-    public void ReloadLights() {
-//        lightBuffer.clear();
-//        lightCount = 0;
+    public void LoadEnvironments()
+    {
+        try {
+            log.info("Fetching new environment information: " + ENVIRONMENT_PATH.resolve().toAbsolute());
+            environments = ENVIRONMENT_PATH.loadJson(plugin.getGson(), Environment[].class);
 
-        /*
-        HashMap<String, Light> lightDefinitions = new Gson().fromJson(reader, mapType);
-        for (Light light : lightDefinitions.values()) {
-            for (int[] tileLocation : light.tiles) {
-                tileLights.put(tileLocation, light);
-            }
+            environmentMap.clear();
+            for(int i = 0; i < environments.length; i++) {
+                environmentMap.put(environments[i].Name, environments[i]);
 
-            for (int decorationId : light.decorations) {
-                decorationLights.put(decorationId, light);
+                log.info("loaded environment: " + environments[i]);
             }
+            log.info("Loaded " + environments.length + " environments");
 
-            for (int gameObjectId : light.gameObjects) {
-                gameObjectLights.put(gameObjectId, light);
-            }
-
-            for (int projectileId : light.projectiles) {
-                projectileLights.put(projectileId, light);
-            }
+        } catch (Exception e) {
+            log.error("Failed to load environment: " + ENVIRONMENT_PATH, e);
         }
-         */
-    }
-
-    public void PushLightToBuffer(Light light, int xPos, int yPos, int zPos, int plane, int config)
-    {
-//        lightBuffer.ensureCapacity(12);
-//        lightBuffer.put(xPos, yPos, zPos, plane);
-//        lightBuffer.put(light.color.getRed(), light.color.getGreen(), light.color.getBlue(), config);
-//        lightBuffer.put(light.intensity, light.radius + 1, light.type.ordinal(), light.animation.ordinal());
-    }
-
-    public void UpdateLightBuffer()
-    {
-//        lightBuffer.flip();
-    }
-
-    public void ClearLightBuffer()
-    {
-//        lightBuffer.clear();
     }
 
     private float interpolate(float start, float end, float progress) {
@@ -130,14 +122,14 @@ public class EnvironmentManager
     public void UpdateEnvironment(float deltaTime)
     {
         if(currentEnvironment == null) {
-            currentEnvironment = Environment.GetDefaultEnvironment();
+            currentEnvironment = GetDefaultEnvironment();
         }
 
         Player player = client.getLocalPlayer();
         if (player != null)
         {
             boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
-            Environment targetEnvironment = isInOverworld ? Environment.GetDefaultEnvironment() : Environment.GetDefaultUndergroundEnvironment();
+            Environment targetEnvironment = isInOverworld ? GetDefaultEnvironment() : GetDefaultUndergroundEnvironment();
             currentEnvironment = targetEnvironment;
         }
 
@@ -151,8 +143,8 @@ public class EnvironmentManager
         int customLightPitch = config.lightPitch();
         int customLightYaw = config.lightYaw();
 
-        float lightPitch = (float) Math.toRadians(overrideLightDirection ? customLightPitch : currentEnvironment.LightDirection.x);
-        float lightYaw = (float) Math.toRadians(overrideLightDirection ? customLightYaw : currentEnvironment.LightDirection.y);
+        float lightPitch = (float) Math.toRadians(overrideLightDirection ? customLightPitch : currentEnvironment.LightPitch);
+        float lightYaw = (float) Math.toRadians(overrideLightDirection ? customLightYaw : currentEnvironment.LightYaw);
 
         lightProjectionMatrix = Mat4.identity();
         lightViewMatrix = Mat4.rotateX((float) Math.PI + lightPitch);
@@ -180,6 +172,24 @@ public class EnvironmentManager
         Mat4.mul(lightProjectionMatrix, Mat4.ortho(width, height, farPlane));
         Mat4.mul(lightProjectionMatrix, lightViewMatrix);
         Mat4.mul(lightProjectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
+    }
+
+    private Environment GetDefaultEnvironment() {
+        try {
+            return environmentMap.get("DEFAULT");
+        } catch (Exception e) {
+            log.error("Failed to get default environment", e);
+            return null;
+        }
+    }
+
+    private Environment GetDefaultUndergroundEnvironment() {
+        try {
+            return environmentMap.get("DEFAULT_UNDERGROUND");
+        } catch (Exception e) {
+            log.error("Failed to get default underground environment", e);
+            return null;
+        }
     }
 }
 

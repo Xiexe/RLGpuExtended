@@ -2,6 +2,7 @@ package com.gpuExtended;
 
 import com.google.common.primitives.Ints;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
 
 import java.awt.*;
@@ -354,7 +355,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					client.setGameState(GameState.LOADING);
 				}
 
-				environmentManager.Initialize();
+				setupCustomGsonSerializers();
 				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
 				//environment.ReloadLights();
 
@@ -448,6 +449,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				eventBus.register(tileMarkerManager);
 				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
+				environmentManager.Initialize();
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -493,6 +495,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		});
 
 		shutDown();
+	}
+
+	private void setupCustomGsonSerializers()
+	{
+		GsonBuilder builder = new GsonBuilder();
+		builder.registerTypeAdapter(Color.class, new ColorDeserializer());
+		gson = builder.create();
 	}
 
 	@Override
@@ -648,7 +657,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private Template createTemplate(int threadCount, int facesPerThread)
 	{
-		log.debug("Creating shader template with path: {}", SHADER_PATH.toPath().toAbsolutePath());
+		//log.debug("Creating shader template with path: {}", SHADER_PATH.toPath().toAbsolutePath());
 		String versionHeader = OSType.getOSType() == OSType.Linux ? LINUX_VERSION_HEADER : WINDOWS_VERSION_HEADER;
 		Template template = new Template()
 			.addInclude("VERSION_HEADER", versionHeader)
@@ -1598,7 +1607,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			// Fog
 			bBufferEnvironmentBlock.putInt(env.Type); // Pad
-			bBufferEnvironmentBlock.putInt(config.fogDepth());
+			bBufferEnvironmentBlock.putInt(env.FogDepth);
 			bBufferEnvironmentBlock.putInt(0);
 			bBufferEnvironmentBlock.putInt(0);
 
@@ -2326,12 +2335,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 		if (1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE-1 && 1 <= tileExY && tileExY < EXTENDED_SCENE_SIZE-1) {
 			Scene scene = client.getScene();
+			int belowPlane = Math.max(0, plane - 1);
+
 			int tileHeight = scene.getTileHeights()[plane][tileExX][tileExY];
-			int belowTileHeight = scene.getTileHeights()[0][tileExX][tileExY];
+			int belowTileHeight = scene.getTileHeights()[belowPlane][tileExX][tileExY];
 
 			Tile tile = scene.getExtendedTiles()[plane][tileExX][tileExY];
 			int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
-			int belowTileSettings = scene.getExtendedTileSettings()[Math.max(0, plane - 1)][tileExX][tileExY];
+			int belowTileSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY];
 
 			int nSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY + 1];
 			int sSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY - 1];

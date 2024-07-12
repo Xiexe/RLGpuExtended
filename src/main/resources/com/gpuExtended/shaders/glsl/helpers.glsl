@@ -247,10 +247,16 @@ void FadeRoofs(float dither, float distanceToPlayer)
     bool isTerrainRoof = fIsRoof > 0 && fIsTerrain > 0 && !isOnSamePlane && !isUnderPlayer;
     bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
 
-    //TODO:: check tiles around terrain roofs to see if they are roofs.
+
+    // TODO:: cull roofs this way if in PoH
+    //    if(isAbovePlayer)
+    //    {
+    //        distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
+    //        clip(dither - 0.001 - distanceToPlayer);
+    //    }
+    //    finalColor = mix(finalColor, vec3(1), fIsRoof);
     if(isTerrainRoof || isNonTerrainRoof)
     {
-        //finalColor = vec3(.5,0,.5);
         clip(dither - 0.001 - distanceToPlayer);
     }
 }

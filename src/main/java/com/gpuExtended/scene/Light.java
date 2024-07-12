@@ -44,8 +44,7 @@ public class Light
     public LightAnimation animation;
 
     public Color color = new Color(1,1,1);
-    public Vector3 position = new Vector3(0,0,0); // used for offsets
-    public Vector3 direction = new Vector3(0,0,0);
+    public Vector3 position = new Vector3(0,0,0); // local position to the thing it's attached to, not world position
     public float intensity = 1;
     public float radius = 2;
     public int[][] tiles = new int[0][0];

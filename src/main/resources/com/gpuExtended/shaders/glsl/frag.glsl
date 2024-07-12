@@ -70,6 +70,21 @@ void main() {
 //        }
 //    }
 
+    FadeRoofs(dither, distanceToPlayer);
+    PostProcessImage(finalColor, colorBlindMode, fog);
+    vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
+
+    finalColor = mix(finalColor, skyColor.rgb, fog);
+
+//    if(sceneUV.x > 1 || sceneUV.y > 1 || sceneUV.x < 0 || sceneUV.y < 0)
+//    {
+//        finalColor = vec3(1,0,1);
+//    }
+//    else
+//    {
+//        finalColor = vec3(sceneUV, 0.0);
+//    }
+
     if(!(fIsDyanmicModel > 0))
     {
         DrawMarkedTilesFromMap(finalColor, fPosition, fPlane, distanceToPlayer);
@@ -77,9 +92,5 @@ void main() {
         DrawTileMarker(finalColor, fPosition, vec4(hoveredTile.xy, fPlane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer);
         DrawTileMarker(finalColor, fPosition, vec4(currentTile.xy, fPlane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
-
-    FadeRoofs(dither, distanceToPlayer);
-    PostProcessImage(finalColor, colorBlindMode, fog);
-    finalColor = mix(finalColor, skyColor.rgb, fog);
     FragColor = vec4(finalColor, s.albedo.a);
 }

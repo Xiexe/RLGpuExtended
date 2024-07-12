@@ -154,7 +154,7 @@ public class Template
 		includeList.add(filename);
 		includeStack.add(0);
 
-		log.debug("Loading: {}", filename);
+		//log.debug("Loading: {}", filename);
 		switch (ResourcePath.path(filename).getExtension().toLowerCase())
 		{
 			case "glsl":
@@ -188,7 +188,7 @@ public class Template
 	{
 		return addIncludeLoader(path -> {
 			ResourcePath resolved = includePath.resolve(path);
-			log.info("Loading include: {}", resolved.toPath().toAbsolutePath());
+			//log.info("Loading include: {}", resolved.toPath().toAbsolutePath());
 			if (resolved.exists())
 				return resolved.loadString();
 			return null;

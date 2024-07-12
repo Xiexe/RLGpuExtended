@@ -1,25 +1,19 @@
-{
-  "TORCHES" : {
-    "type": 2,
-    "color": {
-      "r": 1,
-      "g": 0.52,
-      "b": 0
-    },
-    "position": {
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "intensity": 3,
-    "radius": 3,
-    "animation": 1,
-    "decorations": [
-      196,
-      197
-    ],
-    "gameObjects": [],
-    "projectiles": [],
-    "tiles": []
+[
+  {
+    "TORCHES": {
+      "type": 2,
+      "color": [1, 0.52, 0],
+      "position": [0, 0, 0],
+      "intensity": 3,
+      "radius": 3,
+      "animation": 1,
+      "decorations": [
+        196,
+        197
+      ],
+      "gameObjects": [],
+      "projectiles": [],
+      "tiles": []
+    }
   }
-}
+]

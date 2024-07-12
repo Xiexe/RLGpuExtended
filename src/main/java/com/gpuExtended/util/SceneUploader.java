@@ -81,7 +81,6 @@ public class SceneUploader
 		staticSharedVertexMap = ArrayListMultimap.create();
 		dynamicSharedVertexMap = ArrayListMultimap.create();
 
-		GpuExtendedPlugin.Instance.environmentManager.ClearLightBuffer();
 		vertexBuffer.clear();
 		normalBuffer.clear();
 		uvBuffer.clear();
@@ -120,8 +119,6 @@ public class SceneUploader
 				}
 			}
 		}
-
-		GpuExtendedPlugin.Instance.environmentManager.UpdateLightBuffer();
 	}
 
 	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean isUnderBridge)
@@ -224,15 +221,7 @@ public class SceneUploader
 			int decorativeObjectId = decorativeObject.getId();
 			if(env.decorationLights.containsKey(decorativeObjectId))
 			{
-				log.debug("Placing light for Decoration ID : " + decorativeObjectId + " | World Location: " + worldLocation.getX() + ", " + worldLocation.getPlane() + ", " + worldLocation.getY() + " | Model Z: " + decorativeObject.getZ());
-				env.PushLightToBuffer(
-					env.decorationLights.get(decorativeObjectId),
-					worldLocation.getX(),
-					decorativeObject.getZ(),
-					worldLocation.getY(),
-					worldLocation.getPlane(),
-					decorativeObject.getConfig()
-				);
+				log.debug("Found Decoration that should have a light!");
 			}
 		}
 
@@ -311,8 +300,8 @@ public class SceneUploader
 
 		boolean isRoof = false;
 		if (1 <= tileX && tileX < EXTENDED_SCENE_SIZE-1 && 1 <= tileY && tileY < EXTENDED_SCENE_SIZE-1) {
-			int currentTileSettings = scene.getExtendedTileSettings()[tileZ][tileX][tileY];
-			int belowTileSettings = scene.getExtendedTileSettings()[0][tileX][tileY];
+			int belowPlane = Math.max(0, tileZ - 1);
+			int belowTileSettings = scene.getExtendedTileSettings()[belowPlane][tileX][tileY];
 			isRoof = (belowTileSettings & TILE_FLAG_UNDER_ROOF) != 0 && tileZ > 0;
 		}
 
@@ -420,10 +409,8 @@ public class SceneUploader
 
 		boolean isRoof = false;
 		if (1 <= worldTileX && worldTileX < EXTENDED_SCENE_SIZE-1 && 1 <= worldTileY && worldTileY < EXTENDED_SCENE_SIZE-1) {
-			int currentTileSettings = scene.getExtendedTileSettings()[tileZ][worldTileX][worldTileY];
-			int belowTileSettings = scene.getExtendedTileSettings()[0][worldTileX][worldTileY];
-			int tileHeight = tileHeights[tileZ][worldTileX][worldTileY];
-			int belowTileHeight = tileHeights[0][worldTileX][worldTileY];
+			int belowPlane = Math.max(0, tileZ - 1);
+			int belowTileSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX][worldTileY];
 
 			isRoof = (belowTileSettings & TILE_FLAG_UNDER_ROOF) != 0 && tileZ > 0;
 		}
@@ -588,6 +575,25 @@ public class SceneUploader
 				continue;
 			}
 
+			if(IsBakedGroundShading(model, tri))
+			{
+				color1 = color2 = color3 = 0x12345678;
+				vertexBuffer.put(0, 0, 0, 0);
+				vertexBuffer.put(0, 0, 0, 0);
+				vertexBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				if (faceTextures != null)
+				{
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+				}
+				vertexCount += 3;
+				continue;
+			}
+
 			// HSL override is not applied to textured faces
 			if (faceTextures == null || faceTextures[tri] == -1)
 			{
@@ -675,6 +681,25 @@ public class SceneUploader
 		}
 
 		return vertexCount;
+	}
+
+	private boolean IsBakedGroundShading(Model model, int face) {
+		final byte[] faceTransparencies = model.getFaceTransparencies();
+		if (faceTransparencies == null || (faceTransparencies[face] & 0xFF) <= 100)
+			return false;
+
+		final short[] faceTextures = model.getFaceTextures();
+		if (faceTextures != null && faceTextures[face] != -1)
+			return false;
+
+		final float[] yVertices = model.getVerticesY();
+		float heightA = yVertices[model.getFaceIndices1()[face]];
+		if (heightA < -8)
+			return false;
+
+		float heightB = yVertices[model.getFaceIndices2()[face]];
+		float heightC = yVertices[model.getFaceIndices3()[face]];
+		return heightA == heightB && heightA == heightC;
 	}
 
 	public Vector3 CalculateBaseNormal(float p0x, float p0y, float p0z, float p1x, float p1y, float p1z, float p2x, float p2y, float p2z)

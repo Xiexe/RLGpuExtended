@@ -46,6 +46,7 @@ float PCSSShadows(vec4 projCoords, float fadeOut, float shadowBias) {
     vec2 shadowRes = textureSize(shadowMap, 0);
     float currentDepth = projCoords.z - shadowBias;
     float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 5;
+    penumbraSize += 0.0002;
     float shadow = PCSSFilter(projCoords, currentDepth, penumbraSize);
 
     return shadow * (1.0 - fadeOut);
@@ -75,7 +76,7 @@ float GetShadowMap(vec3 fragPos, float ndl) {
     vec2 uv = projCoords.xy * 2.0 - 1.0;
     float fadeOut = smoothstep(0.75, 1.0, dot(uv, uv));
     if (fadeOut >= 1.0)
-        return 0.0;
+        return 1.0;
 
     switch (envType)
     {
