@@ -2,9 +2,7 @@ package com.gpuExtended.rendering;
 
 public class Vector3 extends Vector2
 {
-    public float x = 0;
-    public float y = 0;
-    public float z = 0;
+    public float z;
 
     public Vector3(float x, float y, float z) {
         super(x, y);

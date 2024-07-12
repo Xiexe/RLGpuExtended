@@ -22,9 +22,9 @@ layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock
     int fogDepth;                       // 4 bytes
     int padEnv0;                        // 4 bytes
     int padEnv1;                        // 4 bytes
-    Light mainLight;                    // 112 bytes (due to padding inside Light struct)
-    Light additiveLights[LIGHT_COUNT];  // 112 * LIGHT_COUNT = 11,200 bytes (due to padding inside Light struct)
-};                                      // 11,360 bytes
+    Light mainLight;                    // 128 bytes (due to padding inside Light struct)
+    Light additiveLights[LIGHT_COUNT];  // 128 * LIGHT_COUNT = 12,800 bytes (due to padding inside Light struct)
+};                                      // 12,976 bytes
 
 layout(std140, binding = TILEMARKER_BUFFER_BINDING_ID) uniform TileMarkerBlock {
     vec4 currentTile;                   // 16 bytes

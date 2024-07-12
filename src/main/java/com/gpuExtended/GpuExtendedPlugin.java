@@ -23,6 +23,7 @@ import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
 import com.gpuExtended.util.deserializers.ColorDeserializer;
+import com.gpuExtended.util.deserializers.LightDeserializer;
 import com.gpuExtended.util.deserializers.VectorDeserializer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -505,6 +506,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		GsonBuilder builder = new GsonBuilder();
 		builder.registerTypeAdapter(Color.class, new ColorDeserializer());
 		builder.registerTypeAdapter(Vector4.class, new VectorDeserializer());
+		builder.registerTypeAdapter(Light.class, new LightDeserializer());
 		gson = builder.create();
 	}
 
@@ -922,7 +924,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
 		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 24);
-		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 11360);
+		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 12976);
 		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 144);
 		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 16);
 		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 7 * Float.BYTES);
@@ -1402,7 +1404,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			long currentTime = System.currentTimeMillis();
 			DeltaTime = currentTime - (StartTime + Time);
 			Time = currentTime - StartTime;
-			environmentManager.UpdateEnvironment(DeltaTime);
+			environmentManager.Update(DeltaTime);
 			updateUniformBlocks();
 
 			int renderWidthOff = viewportOffsetX;
@@ -1617,11 +1619,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 
 			// Pack Main Light
+			// Pos
 			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[2]);
 			bBufferEnvironmentBlock.putFloat(-environmentManager.lightViewMatrix[6]);
 			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[10]);
 			bBufferEnvironmentBlock.putFloat(1); // light type / directional
 
+			// Offset
+			bBufferEnvironmentBlock.putFloat(0);
+			bBufferEnvironmentBlock.putFloat(0);
+			bBufferEnvironmentBlock.putFloat(0);
+			bBufferEnvironmentBlock.putFloat(0); // pad
+
+			// Color
 			bBufferEnvironmentBlock.putFloat(env.LightColor.getRed() / 255f);
 			bBufferEnvironmentBlock.putFloat(env.LightColor.getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(env.LightColor.getBlue() / 255f);
@@ -1638,23 +1648,27 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 
 			// Pack Extra Lights
-			for(int i = 0; i < environmentManager.renderedLights.size(); i++)
+			for(Light light : environmentManager.sceneLights)
 			{
-				Light light = environmentManager.renderedLights.get(i);
 				bBufferEnvironmentBlock.putFloat(light.position.x);
 				bBufferEnvironmentBlock.putFloat(light.position.y);
 				bBufferEnvironmentBlock.putFloat(light.position.z);
-				bBufferEnvironmentBlock.putFloat(light.type.ordinal());
+				bBufferEnvironmentBlock.putFloat(light.position.w);
+
+				bBufferEnvironmentBlock.putFloat(light.offset.x);
+				bBufferEnvironmentBlock.putFloat(light.offset.y);
+				bBufferEnvironmentBlock.putFloat(light.offset.z);
+				bBufferEnvironmentBlock.putFloat(0);
 
 				bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
 				bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
 				bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
-				bBufferEnvironmentBlock.putFloat(0); // pad
+				bBufferEnvironmentBlock.putFloat(0);
 
 				bBufferEnvironmentBlock.putFloat(light.intensity);
 				bBufferEnvironmentBlock.putFloat(light.radius);
 				bBufferEnvironmentBlock.putInt(light.animation.ordinal());
-				bBufferEnvironmentBlock.putFloat(0); // pad
+				bBufferEnvironmentBlock.putInt(light.type.ordinal());
 
 				for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
 				{
@@ -2132,6 +2146,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
+		environmentManager.LoadSceneLights(scene);
 
 		checkGLErrors();
 	}
@@ -2461,7 +2476,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	private int getDrawDistance()
+	public int getDrawDistance()
 	{
 		final int limit = computeMode != ComputeMode.NONE ? MAX_DISTANCE : DEFAULT_DISTANCE;
 		return Ints.constrainToRange(config.drawDistance(), 0, limit);

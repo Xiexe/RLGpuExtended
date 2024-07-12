@@ -1,21 +1,19 @@
 package com.gpuExtended.scene;
 
-import com.google.gson.Gson;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.opengl.GLBuffer;
-import com.gpuExtended.rendering.*;
+import com.gpuExtended.rendering.Vector3;
+import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Constants;
-import net.runelite.api.Player;
+import net.runelite.api.*;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 
+import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -29,6 +27,9 @@ public class EnvironmentManager
 {
     private static final ResourcePath ENVIRONMENT_PATH = Props.getPathOrDefault(
             "environments-path", () -> path(GpuExtendedPlugin.class, "environment/environments.json"));
+
+    private static final ResourcePath LIGHTS_PATH = Props.getPathOrDefault(
+            "lights-path", () -> path(GpuExtendedPlugin.class, "environment/lights.json"));
 
     public enum EnvironmentType {
         DEFAULT(0),
@@ -66,27 +67,21 @@ public class EnvironmentManager
     @Inject
     private GpuExtendedConfig config;
 
-
-    public int drawDistance = -1;
-
-    public HashMap<int[], Light> tileLights = new HashMap<>();
-    public HashMap<Integer, Light> decorationLights = new HashMap<>();
-    public HashMap<Integer, Light> gameObjectLights = new HashMap<>();
-    public HashMap<Integer, Light> projectileLights = new HashMap<>();
-    public ArrayList<Light> renderedLights = new ArrayList<>();
+    public float[] lightProjectionMatrix;
+    public float[] lightViewMatrix;
 
     public Environment[] environments;
     public HashMap<String, Environment> environmentMap = new HashMap<>();
     public Environment currentEnvironment;
 
-    public float[] lightProjectionMatrix;
-    public float[] lightViewMatrix;
+    public Light[] lightsDefinitions;
+    public ArrayList<Light> renderedLights = new ArrayList<>();
+    public ArrayList<Light> sceneLights = new ArrayList<>();
+    public HashMap<int[], Light> tileLights = new HashMap<>();
+    public HashMap<Integer, Light> decorationLights = new HashMap<>();
+    public HashMap<Integer, Light> gameObjectLights = new HashMap<>();
+    public HashMap<Integer, Light> projectileLights = new HashMap<>();
 
-    final int[] lightPitches = new int[] { 45, 60, 75, 90, 105, 120, 135 };
-    final int[] lightYaws = new int[] { 30, 60, 90, 120, 150, 180, 210 };
-    int dayNightCycleIndex = 0;
-    float interpolationSpeed = 0.01f; // Adjust this for smoother/faster transitions
-    float interpolationProgress = 0.0f;
 
     public void Initialize() {
         environments = new Environment[0];
@@ -94,9 +89,31 @@ public class EnvironmentManager
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
             LoadEnvironments();
         });
+
+        LIGHTS_PATH.watch("\\.(json)$", path -> {
+            LoadLights();
+            LoadSceneLights(client.getScene());
+        });
     }
 
-    public void LoadEnvironments()
+    public void Update(float deltaTime)
+    {
+        if(currentEnvironment == null) {
+            currentEnvironment = GetDefaultEnvironment();
+        }
+
+        Player player = client.getLocalPlayer();
+        if (player != null)
+        {
+            boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
+            Environment targetEnvironment = isInOverworld ? GetDefaultEnvironment() : GetDefaultUndergroundEnvironment();
+            currentEnvironment = targetEnvironment;
+        }
+
+        UpdateMainLightProjectionMatrix();
+    }
+
+    private void LoadEnvironments()
     {
         try {
             log.info("Fetching new environment information: " + ENVIRONMENT_PATH.resolve().toAbsolute());
@@ -115,28 +132,142 @@ public class EnvironmentManager
         }
     }
 
-    private float interpolate(float start, float end, float progress) {
-        return start + (end - start) * progress;
-    }
-
-    public void UpdateEnvironment(float deltaTime)
+    private void LoadLights()
     {
-        if(currentEnvironment == null) {
-            currentEnvironment = GetDefaultEnvironment();
-        }
+        try {
+            log.info("Fetching new light information: " + LIGHTS_PATH.resolve().toAbsolute());
+            lightsDefinitions = LIGHTS_PATH.loadJson(plugin.getGson(), Light[].class);
 
-        Player player = client.getLocalPlayer();
-        if (player != null)
-        {
-            boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
-            Environment targetEnvironment = isInOverworld ? GetDefaultEnvironment() : GetDefaultUndergroundEnvironment();
-            currentEnvironment = targetEnvironment;
-        }
+            tileLights.clear();
+            decorationLights.clear();
+            gameObjectLights.clear();
+            projectileLights.clear();
 
-        UpdateMainLightProjectionMatrix();
+            int uniqueLightAssignements = 0;
+            for(int i = 0; i < lightsDefinitions.length; i++) {
+                Light light = lightsDefinitions[i];
+                log.info("Processing Light: {}", light);
+
+                int[][] tiles = light.tiles;
+                if(tiles != null) {
+                    for(int j = 0; j < tiles.length; j++) {
+                        tileLights.put(tiles[j], light);
+                        uniqueLightAssignements++;
+                    }
+                }
+
+                int[] decorations = light.decorations;
+                if(decorations != null) {
+                    for(int j = 0; j < decorations.length; j++) {
+                        decorationLights.put(decorations[j], light);
+                        uniqueLightAssignements++;
+                    }
+                }
+
+                int[] gameObjects = light.gameObjects;
+                if(gameObjects != null) {
+                    for(int j = 0; j < gameObjects.length; j++) {
+                        gameObjectLights.put(gameObjects[j], light);
+                        uniqueLightAssignements++;
+                    }
+                }
+
+                int[] projectiles = light.projectiles;
+                if(projectiles != null) {
+                    for(int j = 0; j < projectiles.length; j++) {
+                        projectileLights.put(projectiles[j], light);
+                        uniqueLightAssignements++;
+                    }
+                }
+            }
+
+            log.info("Loaded {} lights across {} objects", lightsDefinitions.length, uniqueLightAssignements);
+        } catch (Exception e) {
+            log.error("Failed to load lights: " + LIGHTS_PATH, e);
+        }
     }
 
-    public void UpdateMainLightProjectionMatrix()
+    public void LoadSceneLights(Scene scene)
+    {
+        sceneLights.clear();
+        int[] tilePosition = new int[3];
+        for (int z = 0; z < Constants.MAX_Z; ++z)
+        {
+            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x)
+            {
+                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y)
+                {
+                    Tile tile = scene.getExtendedTiles()[z][x][y];
+                    if(tile == null)
+                        continue;
+
+                    WorldPoint tileWorldLocation = tile.getWorldLocation();
+                    tilePosition[0] = tileWorldLocation.getX();
+                    tilePosition[1] = tileWorldLocation.getY();
+                    tilePosition[2] = tileWorldLocation.getPlane();
+
+                    if(tileLights.containsKey(tilePosition))
+                    {
+                        Light tileLight = tileLights.get(tilePosition);
+                        Vector4 position = new Vector4(tileWorldLocation.getX(), tileWorldLocation.getY(), tileWorldLocation.getPlane(), 0);
+                        sceneLights.add(Light.CreateLightFromTemplate(tileLight, position));
+                    }
+
+                    DecorativeObject decorativeObject = tile.getDecorativeObject();
+                    if (decorativeObject != null)
+                    {
+                        Light decorationLight = decorationLights.get(decorativeObject.getId());
+                        if(decorationLight != null) {
+
+                            LocalPoint location = decorativeObject.getLocalLocation();
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), decorativeObject.getConfig() >> 6 & 3);
+                            sceneLights.add(Light.CreateLightFromTemplate(decorationLight, position));
+                        }
+                    }
+
+                    for (GameObject gameObject : tile.getGameObjects())
+                    {
+                        if (gameObject == null || gameObject.getRenderable() instanceof Actor)
+                            continue;
+
+                        Light gameObjectLight = gameObjectLights.get(gameObject.getId());
+                        if(gameObjectLight != null) {
+                            LocalPoint location = gameObject.getLocalLocation();
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), gameObject.getConfig() >> 6 & 3);
+                            sceneLights.add(Light.CreateLightFromTemplate(gameObjectLight, position));
+                        }
+                    }
+                }
+            }
+        }
+
+        log.info("Loaded {} lights", sceneLights.size());
+//
+//        for(Light light : sceneLights) {
+//            log.info("Light: {}", light);
+//        }
+    }
+
+    private void DetermineRenderedLights()
+    {
+        Player player = client.getLocalPlayer();
+        if (player == null)
+        {
+            return;
+        }
+
+        int localX = player.getLocalLocation().getX();
+        int localY = player.getLocalLocation().getY();
+        int plane = client.getPlane();
+
+        int drawDistance = plugin.getDrawDistance() * LOCAL_TILE_SIZE;
+
+
+
+
+    }
+
+    private void UpdateMainLightProjectionMatrix()
     {
         // Calculate light matrix
         boolean overrideLightDirection = config.customLightRotation();

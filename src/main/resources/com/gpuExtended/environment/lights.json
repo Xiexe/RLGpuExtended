@@ -1,12 +1,12 @@
 [
   {
     "TORCHES": {
-      "type": 2,
-      "color": [1.00, 0.52, 0.00, 1.00],
-      "position": [0, 0, 0],
-      "intensity": 3,
-      "radius": 3,
-      "animation": 1,
+      "type": "point",
+      "color": [1.00, 0.52, 0.00],
+      "offset": [0.2, 0, 1.5],
+      "intensity": 2,
+      "radius": 6,
+      "animation": "flicker",
       "decorations": [
         196,
         197
