@@ -16,7 +16,7 @@
     "LightColor":   [0.67, 0.64, 0.58, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
-    "FogDepth": 10,
+    "FogDepth": 5,
     "Type": 0
   },
   {
@@ -26,7 +26,7 @@
     "LightColor":   [0.40, 0.40, 0.40, 1.00],
     "LightPitch": 90,
     "LightYaw": 0,
-    "FogDepth": 20,
+    "FogDepth": 10,
     "Type": 1
   }
 ]

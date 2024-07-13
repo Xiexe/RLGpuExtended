@@ -73,7 +73,7 @@ float GetShadowMap(vec3 fragPos, float ndl) {
     projCoords = projCoords * 0.5 + 0.5;
 
     vec2 uv = projCoords.xy * 2.0 - 1.0;
-    float fadeOut = smoothstep(0.75, 1.0, dot(uv, uv));
+    float fadeOut = smoothstep(0.5, 1.0, dot(uv, uv));
     if (fadeOut >= 1.0)
         return 1.0;
 
