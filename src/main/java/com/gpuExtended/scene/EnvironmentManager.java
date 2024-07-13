@@ -77,8 +77,8 @@ public class EnvironmentManager
     public Environment currentEnvironment;
 
     public Light[] lightsDefinitions;
-    public ArrayList<Light> renderedLights = new ArrayList<>();
     public ArrayList<Light> sceneLights = new ArrayList<>();
+    public HashMap<Light, Boolean> sceneLightVisibility = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> tileLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> decorationLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> gameObjectLights = new HashMap<>();
@@ -211,6 +211,7 @@ public class EnvironmentManager
     public void LoadSceneLights(Scene scene)
     {
         sceneLights.clear();
+        sceneLightVisibility.clear();
 
         HashMap<Vector4, ArrayList<TileObject>> processedObjects = new HashMap<>();
 
@@ -246,7 +247,8 @@ public class EnvironmentManager
                         LocalPoint location = tile.getLocalLocation();
                         Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
                         for(int i = 0; i < lightsForTile.size(); i++) {
-                            sceneLights.add(Light.CreateLightFromTemplate(lightsForTile.get(i), position));
+                            Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position);
+                            sceneLights.add(light);
                         }
                     }
 
@@ -270,7 +272,8 @@ public class EnvironmentManager
                         }
 
                         for(int i = 0; i < lightsForDecoration.size(); i++) {
-                            sceneLights.add(Light.CreateLightFromTemplate(lightsForDecoration.get(i), position));
+                            Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position);
+                            sceneLights.add(light);
                         }
 
                         processedObjects.get(position).add(decorativeObject);
@@ -298,7 +301,8 @@ public class EnvironmentManager
 
                         for(int i = 0; i < lightsForGameobject.size(); i++)
                         {
-                            sceneLights.add(Light.CreateLightFromTemplate(lightsForGameobject.get(i), position));
+                            Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position);
+                            sceneLights.add(light);
                         }
 
                         processedObjects.get(position).add(gameObject);
@@ -310,7 +314,7 @@ public class EnvironmentManager
         log.info("Loaded {} lights across scene total.", sceneLights.size());
     }
 
-    private void DetermineRenderedLights()
+    public void DetermineRenderedLights()
     {
         Player player = client.getLocalPlayer();
         if (player == null)
@@ -318,11 +322,22 @@ public class EnvironmentManager
             return;
         }
 
+        if(sceneLights.size() < 2) {
+            return;
+        }
+
         int localX = player.getLocalLocation().getX();
         int localY = player.getLocalLocation().getY();
-        int plane = client.getPlane();
 
-        int drawDistance = plugin.getDrawDistance() * LOCAL_TILE_SIZE;
+        sceneLights.sort((a, b) -> {
+            float distanceA = (localX - a.position.x) * (localX - a.position.x) +
+                    (localY - a.position.y) * (localY - a.position.y);
+
+            float distanceB = (localX - b.position.x) * (localX - b.position.x) +
+                    (localY - b.position.y) * (localY - b.position.y);
+
+            return Float.compare(distanceA, distanceB);
+        });
     }
 
     private void UpdateMainLightProjectionMatrix()

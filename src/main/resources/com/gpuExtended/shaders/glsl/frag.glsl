@@ -42,9 +42,9 @@ void main() {
     float shadowTex = GetShadowMap(fPosition, ndl);
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
-    float shadow = shadowTex * ndl;
+    float shadow = (shadowTex * ndl);
 
-    vec3 litFragment = s.albedo.rgb * (ndl * shadowTex * mainLight.color.rgb + ambientColor.rgb);
+    vec3 litFragment = s.albedo.rgb * (shadow * mainLight.color.rgb + ambientColor.rgb);
 
     float fog = fFogAmount;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
@@ -61,5 +61,6 @@ void main() {
         DrawTileMarker(finalColor, fPosition, vec4(hoveredTile.xy, fPlane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer);
         DrawTileMarker(finalColor, fPosition, vec4(currentTile.xy, fPlane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
+
     FragColor = vec4(finalColor, s.albedo.a);
 }

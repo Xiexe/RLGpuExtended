@@ -294,9 +294,37 @@ public class SceneUploader
 
 		boolean isRoof = false;
 		if (1 <= tileX && tileX < EXTENDED_SCENE_SIZE-1 && 1 <= tileY && tileY < EXTENDED_SCENE_SIZE-1) {
-			int belowPlane = Math.max(0, tileZ - 1);
-			int belowTileSettings = scene.getExtendedTileSettings()[belowPlane][tileX][tileY];
-			isRoof = (belowTileSettings & TILE_FLAG_UNDER_ROOF) != 0 && tileZ > 0;
+			for(int i = 0; i < MAX_Z; i++)
+			{
+				int belowPlane = Math.max(0, tileZ - i);
+				int cSettings = scene.getExtendedTileSettings()[belowPlane][tileX][tileY];
+				int nSettings = scene.getExtendedTileSettings()[belowPlane][tileX][tileY + 1];
+				int sSettings = scene.getExtendedTileSettings()[belowPlane][tileX][tileY - 1];
+				int eSettings = scene.getExtendedTileSettings()[belowPlane][tileX + 1][tileY];
+				int wSettings = scene.getExtendedTileSettings()[belowPlane][tileX - 1][tileY];
+
+				int neSettings = scene.getExtendedTileSettings()[belowPlane][tileX + 1][tileY + 1];
+				int seSettings = scene.getExtendedTileSettings()[belowPlane][tileX + 1][tileY - 1];
+				int nwSettings = scene.getExtendedTileSettings()[belowPlane][tileX - 1][tileY + 1];
+				int swSettings = scene.getExtendedTileSettings()[belowPlane][tileX - 1][tileY - 1];
+
+				boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+
+				isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
+
+				if(belowPlane == 0 || isRoof)
+				{
+					break;
+				}
+			}
 		}
 
 		int swHeight = tileHeights[tileZ][tileX    ][tileY    ];
@@ -403,10 +431,37 @@ public class SceneUploader
 
 		boolean isRoof = false;
 		if (1 <= worldTileX && worldTileX < EXTENDED_SCENE_SIZE-1 && 1 <= worldTileY && worldTileY < EXTENDED_SCENE_SIZE-1) {
-			int belowPlane = Math.max(0, tileZ - 1);
-			int belowTileSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX][worldTileY];
+			for(int i = 0; i < MAX_Z; i++)
+			{
+				int belowPlane = Math.max(0, tileZ - i);
+				int cSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX][worldTileY];
+				int nSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX][worldTileY + 1];
+				int sSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX][worldTileY - 1];
+				int eSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX + 1][worldTileY];
+				int wSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX - 1][worldTileY];
 
-			isRoof = (belowTileSettings & TILE_FLAG_UNDER_ROOF) != 0 && tileZ > 0;
+				int neSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX + 1][worldTileY + 1];
+				int seSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX + 1][worldTileY - 1];
+				int nwSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX - 1][worldTileY + 1];
+				int swSettings = scene.getExtendedTileSettings()[belowPlane][worldTileX - 1][worldTileY - 1];
+
+				boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+
+				isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
+
+				if(belowPlane == 0 || isRoof)
+				{
+					break;
+				}
+			}
 		}
 
 		final int[] faceX = sceneTileModel.getFaceX();

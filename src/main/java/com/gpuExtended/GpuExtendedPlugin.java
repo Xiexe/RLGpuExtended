@@ -1648,43 +1648,67 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				bBufferEnvironmentBlock.putFloat(environmentManager.lightProjectionMatrix[i]);
 			}
 
-			// Pack Extra Lights
-			int packedLights = 0;
-			for(Light light : environmentManager.sceneLights)
+			// Pack Lights
+			environmentManager.DetermineRenderedLights();
+			for(int i = 0; i < 100; i++)
 			{
-				if(light == null || packedLights >= 100)
+				boolean lightExists = environmentManager.sceneLights.size() > i;
+				if(!lightExists)
 				{
-					break;
-				}
-
-				bBufferEnvironmentBlock.putFloat(light.position.x);
-				bBufferEnvironmentBlock.putFloat(light.position.y);
-				bBufferEnvironmentBlock.putFloat(light.position.z);
-				bBufferEnvironmentBlock.putFloat(light.position.w);
-
-				bBufferEnvironmentBlock.putFloat(light.offset.x);
-				bBufferEnvironmentBlock.putFloat(light.offset.y);
-				bBufferEnvironmentBlock.putFloat(light.offset.z);
-				bBufferEnvironmentBlock.putFloat(0);
-
-				bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
-				bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
-				bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
-				bBufferEnvironmentBlock.putFloat(0);
-
-				bBufferEnvironmentBlock.putFloat(light.intensity);
-				bBufferEnvironmentBlock.putFloat(light.radius);
-				bBufferEnvironmentBlock.putInt(light.animation.ordinal());
-				bBufferEnvironmentBlock.putInt(light.type.ordinal());
-
-				for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
-				{
-					// TODO:: these lights don't actually have projection matricies at the moment.
-					// Pad it. Future stuff.
+					// push an empty light
 					bBufferEnvironmentBlock.putFloat(0);
-				}
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
 
-				packedLights++;
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putInt(0);
+					bBufferEnvironmentBlock.putInt(0);
+
+					for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
+					{
+						bBufferEnvironmentBlock.putFloat(0);
+					}
+				} else {
+					Light light = environmentManager.sceneLights.get(i);
+					bBufferEnvironmentBlock.putFloat(light.position.x);
+					bBufferEnvironmentBlock.putFloat(light.position.y);
+					bBufferEnvironmentBlock.putFloat(light.position.z);
+					bBufferEnvironmentBlock.putFloat(light.position.w);
+
+					bBufferEnvironmentBlock.putFloat(light.offset.x);
+					bBufferEnvironmentBlock.putFloat(light.offset.y);
+					bBufferEnvironmentBlock.putFloat(light.offset.z);
+					bBufferEnvironmentBlock.putFloat(0);
+
+					bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
+					bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
+					bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
+					bBufferEnvironmentBlock.putFloat(0);
+
+					bBufferEnvironmentBlock.putFloat(light.intensity);
+					bBufferEnvironmentBlock.putFloat(light.radius);
+					bBufferEnvironmentBlock.putInt(light.animation.ordinal());
+					bBufferEnvironmentBlock.putInt(light.type.ordinal());
+
+					for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
+					{
+						// TODO:: these lights don't actually have projection matricies at the moment.
+						// Pad it. Future stuff.
+						bBufferEnvironmentBlock.putFloat(0);
+					}
+				}
 			}
 
 			bBufferEnvironmentBlock.flip();
@@ -2364,34 +2388,42 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 		if (1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE-1 && 1 <= tileExY && tileExY < EXTENDED_SCENE_SIZE-1) {
 			Scene scene = client.getScene();
-			int belowPlane = Math.max(0, plane - 1);
-
 			int tileHeight = scene.getTileHeights()[plane][tileExX][tileExY];
-			int belowTileHeight = scene.getTileHeights()[belowPlane][tileExX][tileExY];
 
 			Tile tile = scene.getExtendedTiles()[plane][tileExX][tileExY];
 			int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
-			int belowTileSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY];
+			int belowTileSettings = scene.getExtendedTileSettings()[Math.max(0, plane - 1)][tileExX][tileExY];
 
-			int nSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY + 1];
-			int sSettings = scene.getExtendedTileSettings()[0][tileExX][tileExY - 1];
-			int eSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY];
-			int wSettings = scene.getExtendedTileSettings()[0][tileExX - 1][tileExY];
+			boolean detectedRoof = false;
+			for(int i = 0; i < MAX_Z; i++) {
+				int belowPlane = Math.max(0, plane - i);
+				int cSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY];
+				int nSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY + 1];
+				int sSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY - 1];
+				int eSettings = scene.getExtendedTileSettings()[belowPlane][tileExX + 1][tileExY];
+				int wSettings = scene.getExtendedTileSettings()[belowPlane][tileExX - 1][tileExY];
 
-			int neSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY + 1];
-			int seSettings = scene.getExtendedTileSettings()[0][tileExX + 1][tileExY - 1];
-			int nwSettings = scene.getExtendedTileSettings()[0][tileExX - 1][tileExY + 1];
-			int swSettings = scene.getExtendedTileSettings()[0][tileExX - 1][tileExY - 1];
+				int neSettings = scene.getExtendedTileSettings()[belowPlane][tileExX + 1][tileExY + 1];
+				int seSettings = scene.getExtendedTileSettings()[belowPlane][tileExX + 1][tileExY - 1];
+				int nwSettings = scene.getExtendedTileSettings()[belowPlane][tileExX - 1][tileExY + 1];
+				int swSettings = scene.getExtendedTileSettings()[belowPlane][tileExX - 1][tileExY - 1];
 
-			boolean centerRoof = (currentTileSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
-			boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+				boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+
+				detectedRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
+
+				if (belowPlane == 0 || detectedRoof) {
+					break;
+				}
+			}
 
 			if(!isDynamicModel) {
 				if(tile != null) {
@@ -2400,8 +2432,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 
 			isOnBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0 || (belowTileSettings & TILE_FLAG_BRIDGE) != 0;
-
-			isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof) &&
+			isRoof = detectedRoof &&
 					plane > client.getPlane() &&
 					!isOnBridge &&
 					tileHeight != 0;

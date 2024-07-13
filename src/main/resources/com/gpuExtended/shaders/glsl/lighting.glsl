@@ -2,7 +2,7 @@ const float bias = 0.00065;
 const float lightSize = 0.0035;
 const int shadowSamples = 64;
 
-float LinearExponentialAttenuation(float dist, float maxDistance) {
+float LinearAttenuation(float dist, float maxDistance) {
     float linearAttenuation = max(1.0 - dist / maxDistance, 0.0);
     return linearAttenuation;
 }
@@ -134,13 +134,13 @@ void ApplyLightAnimation(inout Light light)
     switch(light.animation)
     {
         case LIGHT_ANIM_FLICKER:
-        float flicker = sin((time / 100) - hashXY) * 0.1 + 0.9;
+        float flicker = sin((time / 75) - hashXY) * 0.05 + 0.95;
         float flicker2 = sin((time / 30) - hashHZ) * 0.05 + 0.95;
         light.intensity *= flicker * flicker2;
         break;
 
         case LIGHT_ANIM_PULSE:
-        float pulse = sin((time / 100) - offset) * 0.5 + 0.5;
+        float pulse = sin((time / 500) - offset) * 0.5 + 1.5;
         light.intensity *= pulse;
         break;
     }
@@ -156,16 +156,23 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
         ApplyLightAnimation(light);
         light.pos.xyz = OffsetLight(light);
 
+        float playerDistanceToLight = length(playerPosition.xyz - light.pos.xyz) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
+
         vec3 toLight = (light.pos.xyz - fragPos.xzy);
         float distToLight = length(toLight) / TILE_SIZE;
 
+        float lightRangeAdjustment = smoothstep(25.0 / TILE_SIZE, 20.0 / TILE_SIZE, playerDistanceToLight);
+        light.intensity *=  lightRangeAdjustment;
+        light.radius *= lightRangeAdjustment;
+
+        if(light.intensity <= 0) continue;
         if(distToLight > light.radius) continue;
 
         toLight = normalize(toLight);
         toLight.z = -toLight.z;
 
-        float atten = LinearExponentialAttenuation(distToLight, light.radius) * light.intensity;
+        float atten = LinearAttenuation(distToLight, light.radius);
         float ndl = max(dot(normal.xzy, toLight), 0);
-        image += albedo.rgb * light.color.rgb * ndl * atten;
+        image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
     }
 }
