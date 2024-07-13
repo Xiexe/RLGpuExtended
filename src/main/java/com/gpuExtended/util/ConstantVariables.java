@@ -9,4 +9,5 @@ public class ConstantVariables {
     public static int BIT_ISDYNAMICMODEL = 30;
 
     public static int MAX_LIGHTS = 100;
+    public static int MAX_LIGHT_RENDER_DISTANCE = 30;
 }

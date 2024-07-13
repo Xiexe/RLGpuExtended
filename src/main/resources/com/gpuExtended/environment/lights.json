@@ -72,7 +72,8 @@
       "radius": 3,
       "animation": "flicker",
       "gameObjects": [
-        202
+        202,
+        203
       ]
     }
   },

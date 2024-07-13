@@ -27,6 +27,10 @@ public class Utils {
         return new Color(r, g, b, a);
     }
 
+    public static float InverseLerp(float a, float b, float value) {
+        return (value - a) / (b - a);
+    }
+
     public static int GenerateTileHash(int[] worldPosition) {
         if (worldPosition == null || worldPosition.length != 3) {
             throw new IllegalArgumentException("World position must be an array of 3 integers");

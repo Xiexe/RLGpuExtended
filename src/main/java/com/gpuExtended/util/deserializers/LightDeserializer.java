@@ -42,6 +42,6 @@ public class LightDeserializer implements JsonDeserializer<Light> {
         int[] gameObjects = context.deserialize(lightObject.get("gameObjects"), int[].class);
         int[] projectiles = context.deserialize(lightObject.get("projectiles"), int[].class);
 
-        return new Light(name, type, animation, color, new Vector4(0,0,0,0), offset, intensity, radius, tiles, decorations, gameObjects, projectiles);
+        return new Light(name, type, animation, color, new Vector4(0,0,0,0), offset, intensity, radius, tiles, decorations, gameObjects, projectiles, 0);
     }
 }

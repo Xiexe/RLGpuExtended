@@ -214,7 +214,7 @@ public class EnvironmentManager
         sceneLightVisibility.clear();
 
         HashMap<Vector4, ArrayList<TileObject>> processedObjects = new HashMap<>();
-
+        // TODO:: something causes duplicate lights sometimes. Fix it.
         for (int z = 0; z < Constants.MAX_Z; ++z)
         {
             for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x)
@@ -335,6 +335,9 @@ public class EnvironmentManager
 
             float distanceB = (localX - b.position.x) * (localX - b.position.x) +
                     (localY - b.position.y) * (localY - b.position.y);
+
+            a.distanceSquared = distanceA;
+            b.distanceSquared = distanceB;
 
             return Float.compare(distanceA, distanceB);
         });

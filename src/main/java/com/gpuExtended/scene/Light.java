@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import javax.annotation.Nullable;
 import java.awt.*;
 
 @Data
@@ -87,6 +88,9 @@ public class Light
     public int[] decorations = new int[0];
     public int[] gameObjects = new int[0];
     public int[] projectiles = new int[0];
+
+    @Nullable
+    public float distanceSquared = 0;
 
     public static Light CreateLightFromTemplate(Light template, Vector4 position)
     {

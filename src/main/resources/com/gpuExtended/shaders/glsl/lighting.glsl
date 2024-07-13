@@ -73,7 +73,8 @@ float GetShadowMap(vec3 fragPos, float ndl) {
     projCoords = projCoords * 0.5 + 0.5;
 
     vec2 uv = projCoords.xy * 2.0 - 1.0;
-    float fadeOut = smoothstep(0.5, 1.0, dot(uv, uv));
+    float fadeOut = smoothstep(0.85, 1.0, dot(uv, uv));
+
     if (fadeOut >= 1.0)
         return 1.0;
 
@@ -84,8 +85,7 @@ float GetShadowMap(vec3 fragPos, float ndl) {
         case ENV_TYPE_UNDERGROUND:
             return 1.0 - PCFShadows(projCoords, fadeOut, bias);
         default:
-            return 1.0;
-
+            return 0.0;
     }
 }
 
@@ -152,20 +152,14 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
     {
         Light light = additiveLights[i];
         if(light.type == LIGHT_TYPE_INVALID) break;
+        if(light.intensity <= 0) continue;
 
         ApplyLightAnimation(light);
         light.pos.xyz = OffsetLight(light);
 
-        float playerDistanceToLight = length(playerPosition.xyz - light.pos.xyz) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
-
         vec3 toLight = (light.pos.xyz - fragPos.xzy);
         float distToLight = length(toLight) / TILE_SIZE;
 
-        float lightRangeAdjustment = smoothstep(25.0 / TILE_SIZE, 20.0 / TILE_SIZE, playerDistanceToLight);
-        light.intensity *=  lightRangeAdjustment;
-        light.radius *= lightRangeAdjustment;
-
-        if(light.intensity <= 0) continue;
         if(distToLight > light.radius) continue;
 
         toLight = normalize(toLight);

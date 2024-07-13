@@ -75,6 +75,7 @@ import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ConstantVariables.*;
 import static com.gpuExtended.util.ResourcePath.path;
+import static com.gpuExtended.util.Utils.InverseLerp;
 import static net.runelite.api.Constants.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
@@ -1656,35 +1657,38 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			for(int i = 0; i < MAX_LIGHTS; i++)
 			{
 				boolean lightExists = environmentManager.sceneLights.size() > i;
+				// TODO:: check visibility of light from frustum.
 				if(!lightExists)
 				{
-					// push an empty light
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putFloat(0);
-					bBufferEnvironmentBlock.putInt(0);
-					bBufferEnvironmentBlock.putInt(0);
-
-					for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
-					{
-						bBufferEnvironmentBlock.putFloat(0);
-					}
-				} else {
+					PushEmptyLightToBuffer();
+				}
+				else
+				{
 					Light light = environmentManager.sceneLights.get(i);
+					float dx = playerX - light.position.x;
+					float dy = playerY - light.position.y;
+					float distanceSquared = dx * dx + dy * dy;
+					float renderDistance = MAX_LIGHT_RENDER_DISTANCE * LOCAL_TILE_SIZE;
+					float maxDistanceSquared = renderDistance * renderDistance;
+					//log.info("Light Distance: {}", distanceSquared);
+					if(distanceSquared > maxDistanceSquared)
+					{
+						PushEmptyLightToBuffer();
+						continue;
+					}
+
+					float normalizedDistance = InverseLerp(0.0f, maxDistanceSquared, distanceSquared);
+					float fadeMultiplier = (float) (1.0f - Math.pow(normalizedDistance, 5.0));
+					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
+
+					float intensity = light.intensity * fadeMultiplier;
+
+					if(intensity <= 0)
+					{
+						PushEmptyLightToBuffer();
+						continue;
+					}
+
 					bBufferEnvironmentBlock.putFloat(light.position.x);
 					bBufferEnvironmentBlock.putFloat(light.position.y);
 					bBufferEnvironmentBlock.putFloat(light.position.z);
@@ -1700,7 +1704,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
 					bBufferEnvironmentBlock.putFloat(0);
 
-					bBufferEnvironmentBlock.putFloat(light.intensity);
+					bBufferEnvironmentBlock.putFloat(intensity);
 					bBufferEnvironmentBlock.putFloat(light.radius);
 					bBufferEnvironmentBlock.putInt(light.animation.ordinal());
 					bBufferEnvironmentBlock.putInt(light.type.ordinal());
@@ -1857,6 +1861,35 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
 		// </editor-fold>
+	}
+
+	private void PushEmptyLightToBuffer()
+	{
+		// push an empty light
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putFloat(0);
+		bBufferEnvironmentBlock.putInt(0);
+		bBufferEnvironmentBlock.putInt(0);
+
+		for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
+		{
+			bBufferEnvironmentBlock.putFloat(0);
+		}
 	}
 
 	private void drawMainPass()
