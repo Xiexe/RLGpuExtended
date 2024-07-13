@@ -28,6 +28,7 @@ import com.gpuExtended.util.deserializers.VectorDeserializer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.Constants;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
@@ -69,8 +70,10 @@ import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.shader.Uniforms;
+import com.gpuExtended.util.ConstantVariables;
 import com.gpuExtended.util.*;
 
+import static com.gpuExtended.util.ConstantVariables.*;
 import static com.gpuExtended.util.ResourcePath.path;
 import static net.runelite.api.Constants.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
@@ -1650,7 +1653,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			// Pack Lights
 			environmentManager.DetermineRenderedLights();
-			for(int i = 0; i < 100; i++)
+			for(int i = 0; i < MAX_LIGHTS; i++)
 			{
 				boolean lightExists = environmentManager.sceneLights.size() > i;
 				if(!lightExists)
@@ -2438,11 +2441,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					tileHeight != 0;
 		}
 
-		return  (plane << 24) 					 |
-				(hillskew ? (1 << 26) : 0)  	 |
-				(isBridge ? (1<<27) : 0) 		 |
-				(isRoof ? (1<<28) : 0) 			 |
-				(isDynamicModel ? (1 << 30) : 0) |
+		return  (plane << BIT_ZHEIGHT) 					 |
+				(hillskew ? (1 << BIT_HILLSKEW) : 0)  	 |
+				(isBridge ? (1 << BIT_ISBRIDGE) : 0) 		 |
+				(isRoof ? (1 << BIT_ISROOF) : 0) 			 |
+				(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0) |
 				orientation;
 	}
 

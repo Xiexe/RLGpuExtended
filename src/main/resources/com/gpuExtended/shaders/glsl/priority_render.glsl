@@ -258,10 +258,8 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
     int myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
-    int plane = (flags >> 24) & 3;
-    int hillskew = (flags >> 26) & 1;
-    int isOnBridge = (flags >> 27) & 1;
-    int isRoofTile = (flags >> 28) & 1;
+    int plane = (flags >> BIT_ZHEIGHT) & 3;
+    int hillskew = (flags >> BIT_HILLSKEW) & 1;
 
     // calculate position this face will be in
     for (int i = start; i < end; ++i) {

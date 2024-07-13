@@ -72,11 +72,11 @@ void main() {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
 
-    fPlane = (int(gNormal[0].w) >> 24) & 3;
-    fIsBridge = (int(gNormal[0].w) >> 27) & 1;
-    fIsRoof = (int(gNormal[0].w) >> 28) & 1;
-    fIsTerrain = (int(gNormal[0].w) >> 29) & 1;
-    fIsDyanmicModel = (int(gNormal[0].w) >> 30) & 1;
+    fPlane = (int(gNormal[0].w) >> BIT_ZHEIGHT) & 3;
+    fIsBridge = (int(gNormal[0].w) >> BIT_ISBRIDGE) & 1;
+    fIsRoof = (int(gNormal[0].w) >> BIT_ISROOF) & 1;
+    fIsTerrain = (int(gNormal[0].w) >> BIT_ISTERRAIN) & 1;
+    fIsDyanmicModel = (int(gNormal[0].w) >> BIT_ISDYNAMICMODEL) & 1;
 
     fPosition = gPosition[i];
     fColor = gColor[i];

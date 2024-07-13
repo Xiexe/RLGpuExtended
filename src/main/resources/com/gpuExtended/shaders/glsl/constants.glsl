@@ -34,6 +34,13 @@
 #define INFERNAL_CAPE 60
 
 #define MAX_Z_HEIGHT 4 // 4 tiles high
+#define BIT_ZHEIGHT 24
+#define BIT_HILLSKEW 26
+#define BIT_ISBRIDGE 27
+#define BIT_ISROOF 28
+#define BIT_ISTERRAIN 29
+#define BIT_ISDYNAMICMODEL 30
+
 #define MAX_SHADOW_DISTANCE 100 // 100 tiles.
 
 #define ENV_TYPE_DEFAULT 0

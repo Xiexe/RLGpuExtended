@@ -31,8 +31,8 @@ import net.runelite.api.WallObject;
 import com.gpuExtended.regions.Regions;
 import net.runelite.api.coords.WorldPoint;
 
+import static com.gpuExtended.util.ConstantVariables.*;
 import static net.runelite.api.Constants.*;
-import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 
 @Singleton
 @Slf4j
@@ -397,7 +397,7 @@ public class SceneUploader
 		Vector3 normB = CalculateBaseNormal(vertexDx, vertexDz, vertexDy, vertexCx, vertexCz, vertexCy, vertexBx, vertexBz, vertexBy);
 
 		// Pack plane and if its terrain into the flags
-		int flags = (tileZ << 24) | (isRoof ? (1 << 28) : 0) | (hasBridge ? (1 << 27) : 0) | (!isUnderBridge ? (1 << 29) : 0);
+		int flags = (tileZ << BIT_ZHEIGHT) | (isRoof ? (1 << BIT_ISROOF) : 0) | (hasBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 		int startOfTileBufferIndex = normalBuffer.getBuffer().position();
 		normalBuffer.put(normA.x, normA.y, normA.z, flags);
 		normalBuffer.put(normA.x, normA.y, normA.z, flags);
@@ -537,7 +537,7 @@ public class SceneUploader
 			}
 
 			// Pack plane and if its terrain into the flags
-			int flags = (tileZ << 24) | (isRoof ? (1 << 28) : 0) | (hasBridge ? (1 << 27) : 0) | (!isUnderBridge ? (1 << 29) : 0);
+			int flags = (tileZ << BIT_ZHEIGHT) | (isRoof ? (1 << BIT_ISROOF) : 0) | (hasBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 			int startOfTileBufferIndex = normalBuffer.getBuffer().position();
 			Vector3 norm = CalculateBaseNormal(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, vertexXB + offsetX, vertexYB, vertexZB + offsetZ, vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
 			normalBuffer.put(norm.x, norm.y, norm.z, flags);
