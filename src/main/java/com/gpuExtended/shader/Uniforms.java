@@ -33,6 +33,7 @@ public class Uniforms
         public int TileMarkerBorderColorMap;
         public int TileMarkerFillColorMap;
         public int TileMarkerSettingsMap;
+        public int TileMaskTexture;
     }
 
     public HashMap<Integer, ShaderVariables> map;
@@ -51,6 +52,7 @@ public class Uniforms
         shaderVariables.TileMarkerFillColorMap = glGetUniformLocation(shader, "tileFillColorMap");
         shaderVariables.TileMarkerBorderColorMap = glGetUniformLocation(shader, "tileBorderColorMap");
         shaderVariables.TileMarkerSettingsMap = glGetUniformLocation(shader, "tileSettingsMap");
+        shaderVariables.TileMaskTexture = glGetUniformLocation(shader, "tileMaskTexture");
 
         shaderVariables.ColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
         shaderVariables.Textures = glGetUniformLocation(shader, "textures");

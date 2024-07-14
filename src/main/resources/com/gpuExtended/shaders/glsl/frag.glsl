@@ -30,16 +30,42 @@ vec3 TranslatePositionToScene(vec3 position)
     return vec3(normalizedPositionXZ, position.y);
 }
 
+vec4 boxBlur(sampler2D tex, vec2 uv, vec2 texelSize) {
+    vec4 color = vec4(0.0);
+
+    // Sample the surrounding texels
+    color += texture(tex, uv + vec2(-texelSize.x, -texelSize.y));
+    color += texture(tex, uv + vec2(0.0, -texelSize.y));
+    color += texture(tex, uv + vec2(texelSize.x, -texelSize.y));
+
+    color += texture(tex, uv + vec2(-texelSize.x, 0.0));
+    color += texture(tex, uv);
+    color += texture(tex, uv + vec2(texelSize.x, 0.0));
+
+    color += texture(tex, uv + vec2(-texelSize.x, texelSize.y));
+    color += texture(tex, uv + vec2(0.0, texelSize.y));
+    color += texture(tex, uv + vec2(texelSize.x, texelSize.y));
+
+    // Average the colors
+    color /= 9.0;
+
+    return color;
+}
+
 void main() {
     Surface s;
     PopulateSurfaceColor(s);
     PopulateSurfaceNormal(s, fNormal);
 
+    vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
+
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
 
+   // vec4 tileMask = boxBlur(tileMaskTexture, sceneUV - 0.00001, 0.5 / textureSize(tileMaskTexture, 0).xy);
     float shadowTex = GetShadowMap(fPosition, ndl);
+
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
     float shadow = (shadowTex * ndl);

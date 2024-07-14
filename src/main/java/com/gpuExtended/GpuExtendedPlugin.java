@@ -19,9 +19,13 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
+import com.gpuExtended.overlays.RegionOverlay;
+import com.gpuExtended.overlays.SceneTileMaskOverlay;
+import com.gpuExtended.regions.Area;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
+import com.gpuExtended.util.deserializers.AreaDeserializer;
 import com.gpuExtended.util.deserializers.ColorDeserializer;
 import com.gpuExtended.util.deserializers.LightDeserializer;
 import com.gpuExtended.util.deserializers.VectorDeserializer;
@@ -208,6 +212,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			.chroot();
 
 	public boolean enableShadowMapOverlay = false;
+	public boolean enableTileMaskOverlay = false;
+	public boolean showRegionOverlay = false;
 	private int glProgram;
 	private int glShadowProgram;
 	private int glDepthProgram;
@@ -339,7 +345,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private ShadowMapOverlay shadowMapOverlay;
 
 	@Inject
+	private SceneTileMaskOverlay sceneTileMaskOverlay;
+
+	@Inject
 	private TileMarkerManager tileMarkerManager;
+
+	@Inject
+	private RegionOverlay regionOverlay;
+
 
 	@Override
 	protected void startUp()
@@ -475,6 +488,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					swapScene(scene);
 				}
 
+				environmentManager.LoadAreas();
 				checkGLErrors();
 			}
 			catch (Throwable e)
@@ -511,6 +525,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		builder.registerTypeAdapter(Color.class, new ColorDeserializer());
 		builder.registerTypeAdapter(Vector4.class, new VectorDeserializer());
 		builder.registerTypeAdapter(Light.class, new LightDeserializer());
+		builder.registerTypeAdapter(Area.class, new AreaDeserializer());
 		gson = builder.create();
 	}
 
@@ -674,6 +689,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			.define("THREAD_COUNT", threadCount)
 			.define("FACES_PER_THREAD", facesPerThread)
 			.define("SHADOW_MAP_OVERLAY", enableShadowMapOverlay)
+			.define("TILE_MASK_OVERLAY", enableTileMaskOverlay)
 			.addIncludePath(SHADER_PATH);
 
 		return template;
@@ -706,7 +722,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		});
 	}
 
-	private void waitUntilIdle() {
+	public void waitUntilIdle() {
 		if (computeMode == ComputeMode.OPENCL)
 			openCLManager.finish();
 		glFinish();
@@ -1337,6 +1353,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		shadowMapOverlay.setActive(config.showShadowMap());
+		sceneTileMaskOverlay.setActive(config.showTileMask());
+		regionOverlay.setActive(config.showRegionOverlay());
 
 		final int canvasHeight = client.getCanvasHeight();
 		final int canvasWidth = client.getCanvasWidth();
@@ -1917,6 +1935,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uni.TileMarkerSettingsMap, 5);
 		glActiveTexture(GL_TEXTURE0);
 
+		glActiveTexture(GL_TEXTURE6);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileMaskTexture.getId());
+		glUniform1i(uni.TileMaskTexture, 6);
+		glActiveTexture(GL_TEXTURE0);
+
 		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
@@ -2216,6 +2239,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
+		tileMarkerManager.InitializeSceneTileMask(scene);
 		environmentManager.LoadSceneLights(scene);
 
 		checkGLErrors();

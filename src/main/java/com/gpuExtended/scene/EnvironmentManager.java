@@ -2,20 +2,27 @@ package com.gpuExtended.scene;
 
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.regions.Area;
+import com.gpuExtended.regions.Region;
+import com.gpuExtended.regions.SubArea;
 import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 
 import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
 import static com.gpuExtended.util.ResourcePath.path;
@@ -32,6 +39,9 @@ public class EnvironmentManager
 
     private static final ResourcePath LIGHTS_PATH = Props.getPathOrDefault(
             "lights-path", () -> path(GpuExtendedPlugin.class, "environment/lights.json"));
+
+    private static final ResourcePath AREAS_PATH = Props.getPathOrDefault(
+            "areas-path", () -> path(GpuExtendedPlugin.class, "environment/areaDefinitions.json"));
 
     public enum EnvironmentType {
         DEFAULT(0),
@@ -76,6 +86,11 @@ public class EnvironmentManager
     public HashMap<String, Environment> environmentMap = new HashMap<>();
     public Environment currentEnvironment;
 
+    public Area[] areas;
+    public HashMap<Integer, Area> areaMap = new HashMap<>();
+    public Area currentArea;
+    public SubArea currentSubArea;
+
     public Light[] lightsDefinitions;
     public ArrayList<Light> sceneLights = new ArrayList<>();
     public HashMap<Light, Boolean> sceneLightVisibility = new HashMap<>();
@@ -87,6 +102,7 @@ public class EnvironmentManager
 
     public void Initialize() {
         environments = new Environment[0];
+        areas = new Area[0];
 
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
             LoadEnvironments();
@@ -95,6 +111,10 @@ public class EnvironmentManager
         LIGHTS_PATH.watch("\\.(json)$", path -> {
             LoadLights();
             LoadSceneLights(client.getScene());
+        });
+
+        AREAS_PATH.watch("\\.(json)$", path -> {
+            LoadAreas();
         });
     }
 
@@ -113,6 +133,30 @@ public class EnvironmentManager
         }
 
         UpdateMainLightProjectionMatrix();
+        CheckRegion();
+    }
+
+    public void LoadAreas()
+    {
+        try {
+            log.info("Fetching new area information: " + AREAS_PATH.resolve().toAbsolute());
+            areas = AREAS_PATH.loadJson(plugin.getGson(), Area[].class);
+            log.info("Loaded " + areas.length + " areas");
+
+            for(int i = 0; i < areas.length; i++) {
+                Area area = areas[i];
+                if(area.getRegions() != null) {
+                    for (int x = 0; x < area.getRegions().length; x++) {
+                        Region region = area.getRegions()[x];
+                        int regionId = (region.getX() << 8) | region.getY();
+                        areaMap.put(regionId, area);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to load areas: " + AREAS_PATH, e);
+        }
     }
 
     private void LoadEnvironments()
@@ -210,6 +254,11 @@ public class EnvironmentManager
 
     public void LoadSceneLights(Scene scene)
     {
+        if(client.getGameState() != GameState.LOGGED_IN)
+        {
+            return;
+        }
+
         sceneLights.clear();
         sceneLightVisibility.clear();
 
@@ -341,6 +390,41 @@ public class EnvironmentManager
 
             return Float.compare(distanceA, distanceB);
         });
+    }
+
+    public SubArea CheckRegion()
+    {
+        currentArea = null;
+        currentSubArea = null;
+
+        Player player = client.getLocalPlayer();
+        if (player == null)
+        {
+            return null;
+        };
+
+        WorldPoint playerLocation = player.getWorldLocation();
+        LocalPoint localPoint = client.getLocalPlayer().getLocalLocation();
+
+        if (client.isInInstancedRegion())
+        {
+            playerLocation = WorldPoint.fromLocalInstance(client, localPoint);
+        }
+
+        int regionId = playerLocation.getRegionID();
+        if(areaMap.containsKey(regionId)) {
+            currentArea = areaMap.get(regionId);
+
+            for(int i=0; i < currentArea.getSubAreas().length; i++) {
+                SubArea subArea = currentArea.getSubAreas()[i];
+                if(subArea.isInside(playerLocation)) {
+                    currentSubArea = subArea;
+                    break;
+                }
+            }
+        }
+
+        return currentSubArea;
     }
 
     private void UpdateMainLightProjectionMatrix()

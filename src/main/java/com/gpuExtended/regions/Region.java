@@ -24,11 +24,18 @@
  */
 package com.gpuExtended.regions;
 
-class Region
+import com.gpuExtended.rendering.Vector2;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class Region
 {
-	int id;
-	int cx1;
-	int cy1;
-	int cx2;
-	int cy2;
+	int x;
+    int y;
 }

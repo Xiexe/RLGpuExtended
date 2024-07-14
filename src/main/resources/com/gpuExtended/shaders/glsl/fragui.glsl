@@ -5,6 +5,7 @@
 #define SAMPLING_CATROM 2
 #define SAMPLING_XBR 3
 #include "SHADOW_MAP_OVERLAY"
+#include "TILE_MASK_OVERLAY"
 
 uniform sampler2D tex;
 
@@ -17,6 +18,11 @@ uniform vec4 alphaOverlay;
 #if SHADOW_MAP_OVERLAY
 uniform sampler2D shadowMap;
 uniform ivec4 shadowMapOverlayDimensions;
+#endif
+
+#if TILE_MASK_OVERLAY
+uniform sampler2D tileMask;
+uniform ivec4 tileMaskOverlayDimensions;
 #endif
 
 #include "scale/bicubic.glsl"
@@ -39,6 +45,14 @@ void main() {
     if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
       FragColor = texture(shadowMap, uv);
       return;
+    }
+  #endif
+
+  #if TILE_MASK_OVERLAY
+    vec2 uv = (gl_FragCoord.xy - tileMaskOverlayDimensions.xy) / tileMaskOverlayDimensions.zw;
+    if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
+      FragColor = texture(tileMask, uv);
+      FragColor = vec4(1);
     }
   #endif
 

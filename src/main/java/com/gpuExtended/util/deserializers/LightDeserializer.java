@@ -7,16 +7,13 @@ import com.gpuExtended.scene.Light;
 
 import java.awt.Color;
 import java.lang.reflect.Type;
-import java.util.Map;
 
 public class LightDeserializer implements JsonDeserializer<Light> {
     @Override
     public Light deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        JsonObject jsonObject = json.getAsJsonObject();
-        Map.Entry<String, JsonElement> entry = jsonObject.entrySet().iterator().next();
-        JsonObject lightObject = entry.getValue().getAsJsonObject();
+        JsonObject lightObject = json.getAsJsonObject();
 
-        String name = entry.getKey();
+        String name = lightObject.get("name").getAsString();
         Light.LightType type = context.deserialize(lightObject.get("type"), Light.LightType.class);
         Light.LightAnimation animation = context.deserialize(lightObject.get("animation"), Light.LightAnimation.class);
 

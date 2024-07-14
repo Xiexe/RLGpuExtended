@@ -65,6 +65,7 @@ public class TileMarkerManager {
     public Texture2D tileSettingsTexture;
     public Texture2D tileFillColorTexture;
     public Texture2D tileBorderColorTexture;
+    public Texture2D tileMaskTexture;
 
     Texture2D.TextureSettings textureSettings;
 
@@ -88,6 +89,9 @@ public class TileMarkerManager {
 
         tileBorderColorTexture = new Texture2D(textureSettings);
         tileBorderColorTexture.floodPixels(0, 0, 0, 0);
+
+        tileMaskTexture = new Texture2D(textureSettings);
+        tileMaskTexture.floodPixels(0, 0, 0, 0);
     }
 
     public void Reset()
@@ -105,6 +109,49 @@ public class TileMarkerManager {
         if (tileBorderColorTexture != null)
         {
             tileBorderColorTexture.floodPixels(0, 0, 0, 0);
+        }
+
+        if (tileMaskTexture != null)
+        {
+            tileMaskTexture.floodPixels(0, 0, 0, 0);
+        }
+    }
+
+    public void InitializeSceneTileMask(Scene scene)
+    {
+        tileMaskTexture.floodPixels(0,0,0,0);
+
+        Tile[][][] tiles = scene.getExtendedTiles();
+        for (int z = 0; z < Constants.MAX_Z; ++z) {
+            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+                    Tile tile = tiles[z][x][y];
+
+                    if (tile != null) {
+                        boolean onSamePlane = tile.getPlane() == client.getPlane();
+                        DecorativeObject decorativeObject = tile.getDecorativeObject();
+                        WallObject wallObject = tile.getWallObject();
+                        SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
+                        SceneTileModel sceneTileModel = tile.getSceneTileModel();
+                        GroundObject groundObject = tile.getGroundObject();
+                        Tile bridge = tile.getBridge();
+                        GameObject[] gameObjects = tile.getGameObjects();
+
+                        boolean shouldRenderToTileMask =
+                                        decorativeObject    != null ||
+                                        wallObject          != null ||
+                                        sceneTilePaint      != null ||
+                                        sceneTileModel      != null ||
+                                        groundObject        != null ||
+                                        bridge              != null ||
+                                        gameObjects.length != 0 && !onSamePlane;
+
+                        if(shouldRenderToTileMask) {
+                            tileMaskTexture.setPixel(x, y, 255, 0, 0, 255);
+                        }
+                    }
+                }
+            }
         }
     }
 

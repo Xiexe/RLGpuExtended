@@ -11,6 +11,7 @@ import javax.inject.Singleton;
 import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.regions.SubArea;
 import com.gpuExtended.rendering.*;
 import com.gpuExtended.scene.EnvironmentManager;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,6 @@ import net.runelite.api.SceneTileModel;
 import net.runelite.api.SceneTilePaint;
 import net.runelite.api.Tile;
 import net.runelite.api.WallObject;
-import com.gpuExtended.regions.Regions;
 import net.runelite.api.coords.WorldPoint;
 
 import static com.gpuExtended.util.ConstantVariables.*;
@@ -40,8 +40,7 @@ public class SceneUploader
 {
 	private final Client client;
 	private final GpuExtendedConfig gpuConfig;
-
-	private Regions regions;
+	private final EnvironmentManager enviornmentManager;
 
 	public int sceneId = (int) System.nanoTime();
 	private int offset;
@@ -53,19 +52,11 @@ public class SceneUploader
 	public ArrayListMultimap<Vector3, Integer> dynamicSharedVertexMap;
 
 	@Inject
-	SceneUploader(Client client, GpuExtendedConfig config)
+	SceneUploader(Client client, GpuExtendedConfig config, EnvironmentManager environmentManager)
 	{
 		this.client = client;
 		this.gpuConfig = config;
-
-		try (var in = SceneUploader.class.getResourceAsStream("/com/gpuExtended/regions/regions.txt"))
-		{
-			regions = new Regions(in, "regions.txt");
-		}
-		catch (IOException ex)
-		{
-			throw new RuntimeException(ex);
-		}
+		this.enviornmentManager = environmentManager;
 	}
 
 	public void UploadScene(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
@@ -845,23 +836,27 @@ public class SceneUploader
 			return;
 		}
 
-		int baseX = scene.getBaseX() / 8;
-		int baseY = scene.getBaseY() / 8;
-		int centerX = baseX + 6;
-		int centerY = baseY + 6;
-		int centerId = regions.getRegionId(centerX, centerY);
-
-		int r = Constants.EXTENDED_SCENE_SIZE / 16;
-		for (int offx = -r; offx <= r; ++offx)
+		if(enviornmentManager == null)
 		{
-			for (int offy = -r; offy <= r; ++offy)
-			{
-				int cx = centerX + offx;
-				int cy = centerY + offy;
-				int id = regions.getRegionId(cx, cy);
-				if (id != centerId)
-				{
-					removeChunk(scene, cx, cy);
+			return;
+		}
+
+		SubArea currentSubArea = enviornmentManager.CheckRegion();
+		if(currentSubArea != null) {
+			Tile[][][] tiles = scene.getExtendedTiles();
+			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+				for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+
+					for (int z = 0; z < Constants.MAX_Z; ++z) {
+						Tile tile = tiles[z][x][y];
+						if (tile == null) continue;
+
+						WorldPoint tileLocation = tile.getWorldLocation();
+						boolean insideCurrentSubarea = currentSubArea.isInside(tileLocation);
+						if (!insideCurrentSubarea) {
+							scene.removeTile(tile);
+						}
+					}
 				}
 			}
 		}

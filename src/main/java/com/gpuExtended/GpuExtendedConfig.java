@@ -557,5 +557,29 @@ public interface GpuExtendedConfig extends Config
 		{
 			return false;
 		}
+
+		@ConfigItem(
+				keyName = "showTileMask",
+				name = "Show Tile Mask",
+				description = "",
+				position = 0,
+				section = debugging
+		)
+		default boolean showTileMask()
+		{
+			return false;
+		}
+
+		@ConfigItem(
+				keyName = "showRegionOverlay",
+				name = "Show Location Overlay",
+				description = "",
+				position = 0,
+				section = debugging
+		)
+		default boolean showRegionOverlay()
+		{
+			return false;
+		}
 	// </editor-fold>
 }
