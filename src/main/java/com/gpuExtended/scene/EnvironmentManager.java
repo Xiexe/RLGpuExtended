@@ -4,27 +4,20 @@ import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Region;
-import com.gpuExtended.regions.SubArea;
-import com.gpuExtended.rendering.Vector3;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
-import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.ui.overlay.components.LineComponent;
 
-import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Objects;
 
-import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.Utils.GenerateTileHash;
 import static net.runelite.api.Constants.SCENE_SIZE;
@@ -87,9 +80,10 @@ public class EnvironmentManager
     public Environment currentEnvironment;
 
     public Area[] areas;
-    public HashMap<Integer, Area> areaMap = new HashMap<>();
+    public HashMap<Bounds, Area> areaMap = new HashMap<>();
+    public HashMap<WorldPoint, Bounds> boundsMap = new HashMap<>();
     public Area currentArea;
-    public SubArea currentSubArea;
+    public Bounds currentBounds;
 
     public Light[] lightsDefinitions;
     public ArrayList<Light> sceneLights = new ArrayList<>();
@@ -143,17 +137,33 @@ public class EnvironmentManager
             areas = AREAS_PATH.loadJson(plugin.getGson(), Area[].class);
             log.info("Loaded " + areas.length + " areas");
 
-            for(int i = 0; i < areas.length; i++) {
-                Area area = areas[i];
-                if(area.getRegions() != null) {
-                    for (int x = 0; x < area.getRegions().length; x++) {
-                        Region region = area.getRegions()[x];
-                        int regionId = (region.getX() << 8) | region.getY();
-                        areaMap.put(regionId, area);
+            // holy fuck
+            for(Area area : areas) {
+                if(area.getBounds() == null) continue;
+                for (Bounds bounds : area.getBounds()) {
+                    int startX = (int)bounds.getStart().x;
+                    int startY = (int)bounds.getStart().y;
+                    int endX =   (int)bounds.getEnd().x;
+                    int endY =   (int)bounds.getEnd().y;
+                    for (int x = startX; x <= endX; x++) {
+                        for (int y = startY; y <= endY; y++) {
+                            if(bounds.getStart().z != -1 && bounds.getEnd().z != -1) {
+                                for (int z = (int)bounds.getStart().z; z <= (int)bounds.getEnd().z; z++) {
+                                    WorldPoint point = new WorldPoint(x, y, z);
+                                    boundsMap.put(point, bounds);
+                                }
+                            } else {
+                                for(int z = 0; z < Constants.MAX_Z; z++) {
+                                    WorldPoint point = new WorldPoint(x, y, z);
+                                    boundsMap.put(point, bounds);
+                                }
+                            }
+                        }
                     }
+                    areaMap.put(bounds, area);
+                    log.info("Loaded area: " + area.getName() + " with bounds: " + bounds);
                 }
             }
-
         } catch (Exception e) {
             log.error("Failed to load areas: " + AREAS_PATH, e);
         }
@@ -392,39 +402,55 @@ public class EnvironmentManager
         });
     }
 
-    public SubArea CheckRegion()
+    public void CheckRegion()
     {
+        if(client.getGameState() != GameState.LOGGED_IN)
+        {
+            return;
+        }
+
+        Bounds lastBounds = currentBounds;
+        Area lastArea = currentArea;
         currentArea = null;
-        currentSubArea = null;
+        currentBounds = null;
 
         Player player = client.getLocalPlayer();
-        if (player == null)
+        if (player == null || client.getScene() == null)
         {
-            return null;
+            return;
         };
 
         WorldPoint playerLocation = player.getWorldLocation();
-        LocalPoint localPoint = client.getLocalPlayer().getLocalLocation();
+        LocalPoint localPoint = player.getLocalLocation();
 
         if (client.isInInstancedRegion())
         {
             playerLocation = WorldPoint.fromLocalInstance(client, localPoint);
         }
 
-        int regionId = playerLocation.getRegionID();
-        if(areaMap.containsKey(regionId)) {
-            currentArea = areaMap.get(regionId);
+        if(boundsMap.containsKey(playerLocation)) {
+            currentBounds = boundsMap.get(playerLocation);
+            if(currentBounds == null)
+                return;
 
-            for(int i=0; i < currentArea.getSubAreas().length; i++) {
-                SubArea subArea = currentArea.getSubAreas()[i];
-                if(subArea.isInside(playerLocation)) {
-                    currentSubArea = subArea;
-                    break;
-                }
-            }
+            currentArea = areaMap.get(currentBounds);
         }
 
-        return currentSubArea;
+        if(plugin.loadingScene) {
+            return;
+        }
+
+        if(currentBounds != lastBounds || currentArea != lastArea) {
+            if(client.getGameState() == GameState.LOGGED_IN) {
+                clientThread.invoke(() -> {
+                    client.setGameState(GameState.LOADING);
+                    plugin.loadScene(client.getScene());
+                    plugin.swapScene(client.getScene());
+                });
+            }
+
+            log.info("Player entered new area: " + currentBounds.getName());
+        }
     }
 
     private void UpdateMainLightProjectionMatrix()

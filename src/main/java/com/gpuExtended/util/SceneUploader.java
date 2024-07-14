@@ -2,7 +2,7 @@
 package com.gpuExtended.util;
 
 import com.google.common.base.Stopwatch;
-import java.io.IOException;
+
 import java.nio.FloatBuffer;
 import java.util.Collection;
 import javax.inject.Inject;
@@ -11,7 +11,7 @@ import javax.inject.Singleton;
 import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.regions.SubArea;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.*;
 import com.gpuExtended.scene.EnvironmentManager;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +31,7 @@ import net.runelite.api.Tile;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
 
+import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
 import static com.gpuExtended.util.ConstantVariables.*;
 import static net.runelite.api.Constants.*;
 
@@ -75,10 +76,6 @@ public class SceneUploader
 		vertexBuffer.clear();
 		normalBuffer.clear();
 		uvBuffer.clear();
-
-		PrepareScene(scene);
-		stopwatch.stop();
-		log.debug("Scene Preparation time: {}", stopwatch);
 
 		stopwatch = Stopwatch.createStarted();
 		PopulateSceneGeometry(scene, vertexBuffer, uvBuffer, normalBuffer);
@@ -224,11 +221,6 @@ public class SceneUploader
 			{
 				PushStaticModel((Model) gameObject.getRenderable(), tile, vertexBuffer, uvBuffer, normalBuffer);
 			}
-
-			if(env.gameObjectLights.containsKey(gameObject.getId()))
-			{
-				log.debug("Found Game Object that should have a light!");
-			}
 		}
 	}
 
@@ -280,8 +272,8 @@ public class SceneUploader
 		final int localX = offsetX;
 		final int localY = offsetY;
 
-		tileX += GpuExtendedPlugin.SCENE_OFFSET;
-		tileY += GpuExtendedPlugin.SCENE_OFFSET;
+		tileX += SCENE_OFFSET;
+		tileY += SCENE_OFFSET;
 
 		boolean isRoof = false;
 		if (1 <= tileX && tileX < EXTENDED_SCENE_SIZE-1 && 1 <= tileY && tileY < EXTENDED_SCENE_SIZE-1) {
@@ -417,8 +409,8 @@ public class SceneUploader
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
-		final int worldTileX = tileX + GpuExtendedPlugin.SCENE_OFFSET;
-		final int worldTileY = tileY + GpuExtendedPlugin.SCENE_OFFSET;
+		final int worldTileX = tileX + SCENE_OFFSET;
+		final int worldTileY = tileY + SCENE_OFFSET;
 
 		boolean isRoof = false;
 		if (1 <= worldTileX && worldTileX < EXTENDED_SCENE_SIZE-1 && 1 <= worldTileY && worldTileY < EXTENDED_SCENE_SIZE-1) {
@@ -535,8 +527,8 @@ public class SceneUploader
 			normalBuffer.put(norm.x, norm.y, norm.z, flags);
 			normalBuffer.put(norm.x, norm.y, norm.z, flags);
 
-			int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-			int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
+			int tx = (tileX + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
+			int tz = (tileY + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
 			terrainSharedVertexMap.put(new Vector3(vertexXA + tx, vertexYA, vertexZA + tz), startOfTileBufferIndex + 0*4);
 			terrainSharedVertexMap.put(new Vector3(vertexXB + tx, vertexYB, vertexZB + tz), startOfTileBufferIndex + 1*4);
 			terrainSharedVertexMap.put(new Vector3(vertexXC + tx, vertexYC, vertexZC + tz), startOfTileBufferIndex + 2*4);
@@ -696,8 +688,8 @@ public class SceneUploader
 				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 0);
 				normalBuffer.put(triangleNormal.x, triangleNormal.y, triangleNormal.z, 0);
 
-				int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-				int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
+				int tx = (tileX + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
+				int tz = (tileY + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
 				sharedVertexMap.put(new Vector3(vertexX[i0] + tx, vertexY[i0], vertexZ[i0] + tz), currentNormalBufferOffset + 0*4);
 				sharedVertexMap.put(new Vector3(vertexX[i1] + tx, vertexY[i1], vertexZ[i1] + tz), currentNormalBufferOffset + 1*4);
 				sharedVertexMap.put(new Vector3(vertexX[i2] + tx, vertexY[i2], vertexZ[i2] + tz), currentNormalBufferOffset + 2*4);
@@ -828,21 +820,22 @@ public class SceneUploader
 		return alpha | priority;
 	}
 
-	// remove tiles from the scene that are outside the current region
-	private void PrepareScene(Scene scene)
+	public void PrepareScene(Scene scene)
 	{
 		if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps())
 		{
 			return;
 		}
 
-		if(enviornmentManager == null)
-		{
-			return;
-		}
+		Bounds currentBounds = enviornmentManager.currentBounds;
+		if(currentBounds != null) {
+			if(!currentBounds.isHideOtherAreas())
+			{
+				return;
+			}
 
-		SubArea currentSubArea = enviornmentManager.CheckRegion();
-		if(currentSubArea != null) {
+			log.info("Hiding unrelated maps to: {}", currentBounds.getName());
+
 			Tile[][][] tiles = scene.getExtendedTiles();
 			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
 				for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
@@ -852,7 +845,7 @@ public class SceneUploader
 						if (tile == null) continue;
 
 						WorldPoint tileLocation = tile.getWorldLocation();
-						boolean insideCurrentSubarea = currentSubArea.isInside(tileLocation);
+						boolean insideCurrentSubarea = currentBounds.isInside(tileLocation, 2);
 						if (!insideCurrentSubarea) {
 							scene.removeTile(tile);
 						}
@@ -868,8 +861,8 @@ public class SceneUploader
 		int wy = cy * 8;
 		int sx = wx - scene.getBaseX();
 		int sy = wy - scene.getBaseY();
-		int cmsx = sx + GpuExtendedPlugin.SCENE_OFFSET;
-		int cmsy = sy + GpuExtendedPlugin.SCENE_OFFSET;
+		int cmsx = sx + SCENE_OFFSET;
+		int cmsy = sy + SCENE_OFFSET;
 		Tile[][][] tiles = scene.getExtendedTiles();
 		for (int x = 0; x < 8; ++x)
 		{

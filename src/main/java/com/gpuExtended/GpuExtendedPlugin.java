@@ -377,8 +377,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				}
 
 				setupCustomGsonSerializers();
-				//environment.AddDirectionalLight(new Vector3(0.5f, 0.75f, 0.5f), new Color(1, 1, 1), 1);
-				//environment.ReloadLights();
 
 				fboSceneHandle = rboSceneHandle = -1; // AA FBO
 				targetBufferOffset = 0;
@@ -2142,9 +2140,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
+	public boolean loadingScene = false;
 	@Override
 	public void loadScene(Scene scene)
 	{
+		loadingScene = true;
 		GpuIntBuffer vertexBuffer = new GpuIntBuffer();
 		GpuFloatBuffer uvBuffer = new GpuFloatBuffer();
 		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
@@ -2217,6 +2217,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void swapScene(Scene scene)
 	{
+		SwapSceneInternal(scene);
+	}
+
+	private void SwapSceneInternal(Scene scene)
+	{
 		if (computeMode == ComputeMode.OPENCL)
 		{
 			openCLManager.uploadTileHeights(scene);
@@ -2241,6 +2246,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		tileMarkerManager.LoadTileMarkers();
 		tileMarkerManager.InitializeSceneTileMask(scene);
 		environmentManager.LoadSceneLights(scene);
+		environmentManager.CheckRegion();
+		sceneUploader.PrepareScene(scene);
+		loadingScene = false;
 
 		checkGLErrors();
 	}

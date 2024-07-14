@@ -3,7 +3,7 @@ package com.gpuExtended.util.deserializers;
 import com.google.gson.*;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Region;
-import com.gpuExtended.regions.SubArea;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector3;
 
 import java.lang.reflect.Type;
@@ -14,45 +14,43 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
         JsonObject jsonObject = json.getAsJsonObject();
 
         String name = jsonObject.get("name").getAsString();
-        Region[] regions = null;
-        SubArea[] subAreas = null;
+        Bounds[] bounds = null;
 
-        if (jsonObject.has("regions")) {
-            JsonArray regionsArray = jsonObject.getAsJsonArray("regions");
-            regions = new Region[regionsArray.size()];
-            for (int i = 0; i < regionsArray.size(); i++) {
-                JsonArray regionCoordinates = regionsArray.get(i).getAsJsonArray();
-                int x = regionCoordinates.get(0).getAsInt();
-                int y = regionCoordinates.get(1).getAsInt();
-                regions[i] = new Region(x, y);
-            }
-        }
+        if(jsonObject.has("bounds")) {
+            JsonArray boundsArray = jsonObject.getAsJsonArray("bounds");
+            bounds = new Bounds[boundsArray.size()];
+            for (int i = 0; i < boundsArray.size(); i++) {
+                JsonObject boundObject = boundsArray.get(i).getAsJsonObject();
 
-        if (jsonObject.has("subAreas")) {
-            JsonArray subAreasArray = jsonObject.getAsJsonArray("subAreas");
-            subAreas = new SubArea[subAreasArray.size()];
-            for (int i = 0; i < subAreasArray.size(); i++) {
-                JsonObject subAreaObject = subAreasArray.get(i).getAsJsonObject();
-                String subAreaName = subAreaObject.get("name").getAsString();
+                String boundName = name;
+                if(boundObject.has("name")) {
+                    boundName = boundObject.get("name").getAsString();
+                }
 
-                JsonArray startArray = subAreaObject.getAsJsonArray("start");
+                JsonArray startArray = boundObject.getAsJsonArray("start");
                 Vector3 start = new Vector3(
                         startArray.get(0).getAsInt(),
                         startArray.get(1).getAsInt(),
                         startArray.get(2).getAsInt()
                 );
 
-                JsonArray endArray = subAreaObject.getAsJsonArray("end");
+                JsonArray endArray = boundObject.getAsJsonArray("end");
                 Vector3 end = new Vector3(
                         endArray.get(0).getAsInt(),
                         endArray.get(1).getAsInt(),
                         endArray.get(2).getAsInt()
                 );
 
-                subAreas[i] = new SubArea(subAreaName, start, end);
+                boolean hideOtherAreas = false;
+                if(boundObject.has("hideOtherAreas"))
+                {
+                    hideOtherAreas = boundObject.get("hideOtherAreas").getAsBoolean();
+                }
+
+                bounds[i] = new Bounds(boundName, start, end, hideOtherAreas);
             }
         }
 
-        return new Area(name, regions, subAreas);
+        return new Area(name, bounds);
     }
 }

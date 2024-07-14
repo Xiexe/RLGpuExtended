@@ -13,8 +13,5 @@ import javax.annotation.Nullable;
 @ToString
 public class Area {
     String name;
-    @Nullable
-    Region[] regions;
-    @Nullable
-    SubArea[] subAreas;
+    Bounds[] bounds;
 }

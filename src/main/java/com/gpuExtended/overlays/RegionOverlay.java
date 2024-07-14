@@ -2,13 +2,11 @@ package com.gpuExtended.overlays;
 
 import com.google.inject.Inject;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.shader.ShaderException;
 import net.runelite.api.Client;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.plugins.devtools.DevToolsPlugin;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -16,10 +14,6 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
 
 import java.awt.*;
-import java.io.IOException;
-
-import static net.runelite.api.Constants.CHUNK_SIZE;
-import static net.runelite.api.Constants.SCENE_SIZE;
 
 public class RegionOverlay extends OverlayPanel {
 
@@ -116,10 +110,10 @@ public class RegionOverlay extends OverlayPanel {
                     .right(plugin.environmentManager.currentArea.getName())
                     .build());
 
-            if(plugin.environmentManager.currentSubArea != null) {
+            if(plugin.environmentManager.currentBounds != null) {
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("Area")
-                        .right(plugin.environmentManager.currentSubArea.getName())
+                        .right(plugin.environmentManager.currentBounds.getName())
                         .build());
             }
         }

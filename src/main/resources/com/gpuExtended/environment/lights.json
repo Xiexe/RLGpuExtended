@@ -184,5 +184,105 @@
     "gameObjects": [
       46068
     ]
+  },
+  {
+    "name": "TOA_DESERT_ENTRANCE",
+    "type": "point",
+    "color": [1.00, 0.3, 0.3],
+    "offset": [0, 0, 7],
+    "intensity": 1,
+    "radius": 10,
+    "animation": "none",
+    "tiles": [
+      [3359, 2710, 0]
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_LOBBY",
+    "type": "point",
+    "color": [0.85, 0.85, 1.00],
+    "offset": [0, 0, 8],
+    "intensity": 2,
+    "radius": 15,
+    "animation": "none",
+    "gameObjects": [
+      51379
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_TORCHES_ECLIPSE",
+    "type": "point",
+    "color": [1.00, 1.00, 0.6],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      51345
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_TORCHES_BLUE",
+    "type": "point",
+    "color": [0.6, 0.6, 1.00],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      51344
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_TORCHES_BLOOD",
+    "type": "point",
+    "color": [1.00, 0.40, 0.40],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      51343
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_STREAMBOUND_CAVERN_AMBIANCE",
+    "type": "point",
+    "color": [0.90, 1.00, 0.90],
+    "offset": [0, 0, 5],
+    "intensity": 2,
+    "radius": 8,
+    "animation": "none",
+    "tiles": [
+      [1485, 9697, 0],
+      [1484, 9679, 0],
+      [1501, 9699, 0],
+      [1513, 9699, 0]
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_STREAMBOUND_CAVERN_MUSHROOMS",
+    "type": "point",
+    "color": [0.90, 1.00, 0.90],
+    "offset": [0, 0, 1],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "none",
+    "gameObjects": [
+      14619,
+      51365
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_COOKING_STOVE",
+    "type": "point",
+    "color": [0.90, 0.60, 0.30],
+    "offset": [0, 0, 1],
+    "intensity": 3,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      51362
+    ]
   }
 ]
