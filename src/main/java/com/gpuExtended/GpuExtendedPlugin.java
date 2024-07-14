@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 import com.gpuExtended.overlays.RegionOverlay;
 import com.gpuExtended.overlays.SceneTileMaskOverlay;
 import com.gpuExtended.regions.Area;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
@@ -2454,6 +2455,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		int tileExX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 		int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+
+		int groundPlane = 0;
+		if(environmentManager != null)
+		{
+			WorldPoint wp = WorldPoint.fromLocal(client.getTopLevelWorldView(), x, z, plane);
+			Bounds bounds = environmentManager.CheckTileRegion(wp);
+			if(bounds != null)
+			{
+				groundPlane = bounds.getGroundPlane();
+			}
+		}
+
 		if (1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE-1 && 1 <= tileExY && tileExY < EXTENDED_SCENE_SIZE-1) {
 			Scene scene = client.getScene();
 			int tileHeight = scene.getTileHeights()[plane][tileExX][tileExY];
@@ -2464,7 +2477,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			boolean detectedRoof = false;
 			for(int i = 0; i < MAX_Z; i++) {
-				int belowPlane = Math.max(0, plane - i);
+				int belowPlane = Math.min(groundPlane, Math.max(0, plane - i));
 				int cSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY];
 				int nSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY + 1];
 				int sSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY - 1];
@@ -2488,7 +2501,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				detectedRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
 
-				if (belowPlane == 0 || detectedRoof) {
+				if (belowPlane == groundPlane || detectedRoof) {
 					break;
 				}
 			}

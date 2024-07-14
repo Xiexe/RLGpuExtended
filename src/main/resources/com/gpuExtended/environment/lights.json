@@ -198,6 +198,55 @@
     ]
   },
   {
+    "name": "CAM_TORUM_CENTER_BRAZIER",
+    "type": "point",
+    "color": [1, 0.7, 0.5],
+    "offset": [0, 0, 10],
+    "intensity": 2,
+    "radius": 15,
+    "animation": "flicker",
+    "tiles": [
+      [1439, 9567, 1]
+    ]
+  },
+  {
+    "name": "CAM_TORUM_STATUE_TORCHES",
+    "type": "point",
+    "color": [1, 0.6, 0.3],
+    "offset": [-1, 0, 1],
+    "intensity": 2,
+    "radius": 2,
+    "animation": "flicker",
+    "decorations": [
+      51040
+    ]
+  },
+  {
+    "name": "CAM_TORUM_TABLE_CANDLES",
+    "type": "point",
+    "color": [1, 0.6, 0.3],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      51534,
+      51532
+    ]
+  },
+  {
+    "name": "CAM_TORUM_FURNACE",
+    "type": "point",
+    "color": [1, 0.7, 0.5],
+    "offset": [0, 0, 3],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "flicker",
+    "gameObjects": [
+      51496
+    ]
+  },
+  {
     "name": "PERILOUS_MOONS_LOBBY",
     "type": "point",
     "color": [0.85, 0.85, 1.00],

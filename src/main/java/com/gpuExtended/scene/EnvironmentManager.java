@@ -456,6 +456,15 @@ public class EnvironmentManager
         }
     }
 
+    public Bounds CheckTileRegion(WorldPoint tileWorldPosition)
+    {
+        if(boundsMap.containsKey(tileWorldPosition)) {
+            return boundsMap.get(tileWorldPosition);
+        }
+
+        return null;
+    }
+
     private void UpdateMainLightProjectionMatrix()
     {
         // Calculate light matrix

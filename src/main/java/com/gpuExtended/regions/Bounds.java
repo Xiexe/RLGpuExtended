@@ -23,6 +23,9 @@ public class Bounds {
     @Nullable
     boolean hideOtherAreas;
 
+    @Nullable
+    int groundPlane;
+
     public int getWidth() {
         return (int)this.end.x - (int)this.start.x;
     }

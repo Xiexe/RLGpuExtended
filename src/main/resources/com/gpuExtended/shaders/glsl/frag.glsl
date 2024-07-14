@@ -88,5 +88,17 @@ void main() {
         DrawTileMarker(finalColor, fPosition, vec4(currentTile.xy, fPlane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
+//    bool isOnBridge = fIsBridge > 0;
+//    float realPlane = max(0, fPlane - (isOnBridge ? 1 : 0));
+//
+//    bool isOnSamePlane = approximatelyEqual(realPlane, playerPosition.z, 0.001);
+//    bool isAbovePlayer = realPlane > playerPosition.z;
+//    bool isUnderPlayer = realPlane < playerPosition.z;
+//
+//    bool isTerrainRoof = fIsRoof > 0 && fIsTerrain > 0 && !isOnSamePlane && !isUnderPlayer;
+//    bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
+//
+//    finalColor = vec3(fIsRoof > 0);
+
     FragColor = vec4(finalColor, s.albedo.a);
 }

@@ -93,5 +93,70 @@
         "end": [2967, 3828, -1]
       }
     ]
+  },
+  {
+    "name": "CAM_TORUM",
+    "bounds": [
+      {
+        "start": [1376, 9506, -1],
+        "end": [1525, 9606, -1],
+        "groundPlane": 1,
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "PERIOULS_MOONS",
+    "bounds": [
+      {
+        "name": "ANTECHAMBER",
+        "start": [1416, 9609, 1],
+        "end": [1463, 9654, 2],
+        "groundPlane": 1,
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ECLIPSE_MOON",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "BLUE_MOON",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "BLOOD_MOON",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "STREAMBOUND_CAVERN",
+        "start": [1471, 9665, 0],
+        "end": [1534, 9726, 2],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "EARTHBOUND_CAVERN",
+        "start": [1342, 9666, 0],
+        "end": [1408, 9742, 2],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ANCIENT_PRISON",
+        "start": [1345, 9535, 0],
+        "end": [1391, 9596, 2],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ANCIENT_SHRINE",
+        "start": [1494, 9561, 0],
+        "end": [1531, 9598, 2],
+        "hideOtherAreas": true
+      }
+    ]
   }
 ]
