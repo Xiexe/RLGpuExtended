@@ -95,10 +95,10 @@ void main() {
 //    bool isAbovePlayer = realPlane > playerPosition.z;
 //    bool isUnderPlayer = realPlane < playerPosition.z;
 //
-//    bool isTerrainRoof = fIsRoof > 0 && fIsTerrain > 0 && !isOnSamePlane && !isUnderPlayer;
+//    bool isRoof = (fIsRoof > 0) && !isOnSamePlane && !isUnderPlayer;
 //    bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
-//
-//    finalColor = vec3(fIsRoof > 0);
+////
+//    finalColor = vec3(fPlane / 4);
 
     FragColor = vec4(finalColor, s.albedo.a);
 }

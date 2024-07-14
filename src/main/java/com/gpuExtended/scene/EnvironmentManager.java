@@ -428,13 +428,8 @@ public class EnvironmentManager
             playerLocation = WorldPoint.fromLocalInstance(client, localPoint);
         }
 
-        if(boundsMap.containsKey(playerLocation)) {
-            currentBounds = boundsMap.get(playerLocation);
-            if(currentBounds == null)
-                return;
-
-            currentArea = areaMap.get(currentBounds);
-        }
+        currentBounds = boundsMap.get(playerLocation);
+        currentArea = currentBounds == null ? null : areaMap.getOrDefault(currentBounds, null);
 
         if(plugin.loadingScene) {
             return;

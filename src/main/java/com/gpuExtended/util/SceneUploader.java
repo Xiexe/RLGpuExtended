@@ -374,12 +374,7 @@ public class SceneUploader
 	// Map tiles with extra geometry
 	public int PushTerrainDetailedTile(Scene scene, SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetZ)
 	{
-		final int[][][] tileHeights = scene.getTileHeights();
-
-		final int worldTileX = tileX + SCENE_OFFSET;
-		final int worldTileY = tileY + SCENE_OFFSET;
-		boolean isRoof = CheckTileIsRoof(tileX, tileY, tileZ, scene);
-
+		boolean isRoof = CheckTileIsRoof(tileX + SCENE_OFFSET, tileY + SCENE_OFFSET, tileZ, scene);
 
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();

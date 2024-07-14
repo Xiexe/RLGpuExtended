@@ -249,21 +249,11 @@ void FadeRoofs(float dither, float distanceToPlayer)
     bool isAbovePlayer = realPlane > playerPosition.z;
     bool isUnderPlayer = realPlane < playerPosition.z;
 
-    bool isTerrainRoof = fIsRoof > 0 && fIsTerrain > 0 && !isOnSamePlane && !isUnderPlayer;
-    bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
+    bool isRoof = (fIsRoof > 0) && !isOnSamePlane && !isUnderPlayer;
+    float roofClip = dither - 0.001 - distanceToPlayer;
+    roofClip *= int(isRoof);
 
-
-    // TODO:: cull roofs this way if in PoH
-    //    if(isAbovePlayer)
-    //    {
-    //        distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
-    //        clip(dither - 0.001 - distanceToPlayer);
-    //    }
-    //    finalColor = mix(finalColor, vec3(1), fIsRoof);
-    if(isTerrainRoof || isNonTerrainRoof)
-    {
-        clip(dither - 0.001 - distanceToPlayer);
-    }
+    clip(roofClip);
 }
 
 // Pre-defined set of sample points for blocker search and PCF

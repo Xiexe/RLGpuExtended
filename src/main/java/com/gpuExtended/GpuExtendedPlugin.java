@@ -1,5 +1,6 @@
 package com.gpuExtended;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Ints;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -15,6 +16,8 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
@@ -75,7 +78,6 @@ import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.shader.Uniforms;
-import com.gpuExtended.util.ConstantVariables;
 import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ConstantVariables.*;
@@ -341,6 +343,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int[] lastPlayerPosition = new int[2];
 
 	private int[] currentViewport = new int[4];
+	HashMap<Long, Boolean> modelRoofCache = new HashMap<>();
 
 	@Inject
 	private ShadowMapOverlay shadowMapOverlay;
@@ -353,7 +356,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	@Inject
 	private RegionOverlay regionOverlay;
-
 
 	@Override
 	protected void startUp()
@@ -2243,6 +2245,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneNormalBuffer = null;
 		nextSceneId = -1;
 
+		modelRoofCache.clear();
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
 		tileMarkerManager.InitializeSceneTileMask(scene);
@@ -2453,31 +2456,34 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		boolean isRoof = false;
 		boolean hillskew = offsetModel != model;
 
-		int tileExX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-		int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-
-		int groundPlane = 0;
-//		if(environmentManager != null)
-//		{
-//			WorldPoint wp = WorldPoint.fromLocal(client.getTopLevelWorldView(), x, z, plane);
-//			Bounds bounds = environmentManager.CheckTileRegion(wp);
-//			if(bounds != null)
-//			{
-//				groundPlane = bounds.getGroundPlane();
-//			}
-//		}
-
 		if(config.roofFading())
 		{
-			if (1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE-1 && 1 <= tileExY && tileExY < EXTENDED_SCENE_SIZE-1) {
-				Scene scene = client.getScene();
-				int tileHeight = scene.getTileHeights()[plane][tileExX][tileExY];
+			int tileExX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+			int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+			Scene scene = client.getScene();
+
+			Boolean detectedRoof = modelRoofCache.get(hash);
+			if (detectedRoof == null) // We failed to retreive the object from cache
+			{
+				boolean withinX = 1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE - 1;
+				boolean withinY = 1 <= tileExY && tileExY < EXTENDED_SCENE_SIZE - 1;
+				if(!withinX || !withinY)
+				{
+					return 0;
+				}
 
 				Tile tile = scene.getExtendedTiles()[plane][tileExX][tileExY];
-				int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
-				int belowTileSettings = scene.getExtendedTileSettings()[Math.max(0, plane - 1)][tileExX][tileExY];
+				int groundPlane = 0;
+				if(environmentManager != null)
+				{
+					WorldPoint wp = WorldPoint.fromLocal(client.getTopLevelWorldView(), x, z, plane);
+					Bounds bounds = environmentManager.CheckTileRegion(wp);
+					if(bounds != null)
+					{
+						groundPlane = bounds.getGroundPlane();
+					}
+				}
 
-				boolean detectedRoof = false;
 				for (int i = 0; i < MAX_Z; i++) {
 					int belowPlane = Math.min(groundPlane, Math.max(0, plane - i));
 					int cSettings = scene.getExtendedTileSettings()[belowPlane][tileExX][tileExY];
@@ -2501,7 +2507,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
 					boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
 
-					detectedRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
+					detectedRoof = (centerRoof || nRoof || sRoof || eRoof || wRoof || neRoof || seRoof || nwRoof || swRoof);
 
 					if (belowPlane == groundPlane || detectedRoof) {
 						break;
@@ -2514,20 +2520,23 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					}
 				}
 
-				isOnBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0 || (belowTileSettings & TILE_FLAG_BRIDGE) != 0;
-				isRoof = detectedRoof &&
-						plane > client.getPlane() &&
-						!isOnBridge &&
-						tileHeight != 0;
+				modelRoofCache.put(hash, detectedRoof);
 			}
+
+			int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
+			int belowTileSettings = scene.getExtendedTileSettings()[Math.max(0, plane - 1)][tileExX][tileExY];
+
+			isOnBridge = (currentTileSettings & TILE_FLAG_BRIDGE) != 0 || (belowTileSettings & TILE_FLAG_BRIDGE) != 0;
+			isRoof = detectedRoof && !isOnBridge && plane > client.getPlane();
 		}
 
-		return  (plane << BIT_ZHEIGHT) 					 |
-				(hillskew ? (1 << BIT_HILLSKEW) : 0)  	 |
-				(isBridge ? (1 << BIT_ISBRIDGE) : 0) 		 |
-				(isRoof ? (1 << BIT_ISROOF) : 0) 			 |
-				(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0) |
-				orientation;
+		int flags = (plane << BIT_ZHEIGHT) 					 		|
+					(hillskew ? (1 << BIT_HILLSKEW) : 0)  	 		|
+					(isBridge ? (1 << BIT_ISBRIDGE) : 0) 			|
+					(isRoof ? (1 << BIT_ISROOF) : 0) 			 	|
+					(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0)|
+					orientation;
+		return flags;
 	}
 
 	private void CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash)
