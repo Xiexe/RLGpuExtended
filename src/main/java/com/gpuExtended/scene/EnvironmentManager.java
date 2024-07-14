@@ -440,16 +440,19 @@ public class EnvironmentManager
             return;
         }
 
-        if(currentBounds != lastBounds || currentArea != lastArea) {
-            if(client.getGameState() == GameState.LOGGED_IN) {
-                clientThread.invoke(() -> {
-                    client.setGameState(GameState.LOADING);
-                    plugin.loadScene(client.getScene());
-                    plugin.swapScene(client.getScene());
-                });
-            }
+        if(currentBounds != null && currentArea != null) {
+            if (currentBounds != lastBounds || currentArea != lastArea) {
+                log.info("Player entered area: {}, {}", currentArea.getName(), currentBounds.getName());
+                if (!currentBounds.isHideOtherAreas()) return;
 
-            log.info("Player entered new area: " + currentBounds.getName());
+                if (client.getGameState() == GameState.LOGGED_IN) {
+                    clientThread.invoke(() -> {
+                        client.setGameState(GameState.LOADING);
+                        plugin.loadScene(client.getScene());
+                        plugin.swapScene(client.getScene());
+                    });
+                }
+            }
         }
     }
 

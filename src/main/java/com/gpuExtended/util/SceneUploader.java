@@ -845,7 +845,7 @@ public class SceneUploader
 						if (tile == null) continue;
 
 						WorldPoint tileLocation = tile.getWorldLocation();
-						boolean insideCurrentSubarea = currentBounds.isInside(tileLocation, 2);
+						boolean insideCurrentSubarea = currentBounds.contains(tileLocation, 2);
 						if (!insideCurrentSubarea) {
 							scene.removeTile(tile);
 						}

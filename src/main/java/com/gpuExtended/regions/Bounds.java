@@ -31,7 +31,7 @@ public class Bounds {
         return (int)this.end.y - (int)this.start.y;
     }
 
-    public boolean isInside(WorldPoint point, int padding) {
+    public boolean contains(WorldPoint point, int padding) {
         boolean isInsideZ = true;
 
         boolean isInsideXY =

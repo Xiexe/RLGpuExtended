@@ -50,10 +50,47 @@
         "end": [3310, 9954, -1]
       },
       {
+        "name": "GRAND_EXCHANGE",
+        "start": [3147, 3472, -1],
+        "end": [3182, 3507, -1]
+      },
+      {
+        "name": "WEST_BANK",
+        "start": [3179, 3432, 0],
+        "end": [3191, 3448, 3]
+      },
+      {
         "name": "BANK_VAULT",
         "start": [3184, 9815, -1],
         "end": [3199, 9837, -1],
         "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "FALADOR",
+    "bounds": [
+      {
+        "start": [2934, 3309, -1],
+        "end": [3066, 3396, -1]
+      },
+      {
+        "start": [3011, 3280, -1],
+        "end": [3068, 3308, -1]
+      }
+    ]
+  },
+  {
+    "name": "WILDERNESS",
+    "bounds": [
+      {
+        "start": [2945, 3522, -1],
+        "end": [3394, 3971, -1]
+      },
+      {
+        "name": "CHAOS_ALTAR",
+        "start": [2944, 3813, -1],
+        "end": [2967, 3828, -1]
       }
     ]
   }

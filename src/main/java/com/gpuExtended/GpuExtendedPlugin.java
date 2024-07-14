@@ -1849,7 +1849,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// <editor-fold defaultstate="collapsed" desc="Populate System Info Block">
 			bBufferSystemInfoBlock.clear();
 
-			bBufferSystemInfoBlock.putInt(client.getGameCycle());
+			bBufferSystemInfoBlock.putInt(client.getGameState() == GameState.LOGGED_IN ? (client.getGameCycle() & 127) : 0);
 			bBufferSystemInfoBlock.putInt(currentViewport[2]);
 			bBufferSystemInfoBlock.putInt(currentViewport[3]);
 			bBufferSystemInfoBlock.putFloat(DeltaTime);
