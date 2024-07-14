@@ -476,49 +476,48 @@ public class SceneUploader
 	private boolean CheckTileIsRoof(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
 	{
 		boolean isRoof = false;
-		int groundPlane = 0;
 
-		if(enviornmentManager != null)
-		{
-			WorldPoint wp = WorldPoint.fromLocal(scene, sceneTileX, sceneTileY, tileZ);
-			log.info("Checking Tile : {} {} {}", wp.getX(), wp.getY(), wp.getPlane());
-			Bounds bounds = enviornmentManager.CheckTileRegion(wp);
-			if(bounds != null)
-			{
-				groundPlane = bounds.getGroundPlane();
+		if(gpuConfig.roofFading()) {
+			int groundPlane = 0;
+
+			if (enviornmentManager != null) {
+				WorldPoint wp = WorldPoint.fromLocal(scene, sceneTileX, sceneTileY, tileZ);
+				log.info("Checking Tile : {} {} {}", wp.getX(), wp.getY(), wp.getPlane());
+				Bounds bounds = enviornmentManager.CheckTileRegion(wp);
+				if (bounds != null) {
+					groundPlane = bounds.getGroundPlane();
+				}
 			}
-		}
 
-		if (1 <= sceneTileX && sceneTileX < EXTENDED_SCENE_SIZE-1 && 1 <= sceneTileY && sceneTileY < EXTENDED_SCENE_SIZE-1) {
-			for(int i = 0; i < MAX_Z; i++)
-			{
-				int belowPlane = Math.max(0, tileZ - i);
-				int cSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY];
-				int nSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY + 1];
-				int sSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY - 1];
-				int eSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY];
-				int wSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY];
+			if (1 <= sceneTileX && sceneTileX < EXTENDED_SCENE_SIZE - 1 && 1 <= sceneTileY && sceneTileY < EXTENDED_SCENE_SIZE - 1) {
+				for (int i = 0; i < MAX_Z; i++) {
+					int belowPlane = Math.max(0, tileZ - i);
+					int cSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY];
+					int nSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY + 1];
+					int sSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY - 1];
+					int eSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY];
+					int wSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY];
 
-				int neSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY + 1];
-				int seSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY - 1];
-				int nwSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY + 1];
-				int swSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY - 1];
+					int neSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY + 1];
+					int seSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY - 1];
+					int nwSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY + 1];
+					int swSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY - 1];
 
-				boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
-				boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+					boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
 
-				isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
+					isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
 
-				if(belowPlane == groundPlane || isRoof)
-				{
-					break;
+					if (belowPlane == groundPlane || isRoof) {
+						break;
+					}
 				}
 			}
 		}
