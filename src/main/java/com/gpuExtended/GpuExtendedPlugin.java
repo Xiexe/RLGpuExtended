@@ -169,7 +169,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		OPENCL
 	}
 
-	private ComputeMode computeMode = ComputeMode.NONE;
+	private ComputeMode computeMode = ComputeMode.OPENGL;
 
 	private Canvas canvas;
 	private AWTContext awtContext;
@@ -217,6 +217,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public boolean enableShadowMapOverlay = false;
 	public boolean enableTileMaskOverlay = false;
 	public boolean showRegionOverlay = false;
+	public boolean showPerformanceOverlay = false;
 	private int glProgram;
 	private int glShadowProgram;
 	private int glDepthProgram;
@@ -343,7 +344,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int[] lastPlayerPosition = new int[2];
 
 	private int[] currentViewport = new int[4];
-	HashMap<Long, Boolean> modelRoofCache = new HashMap<>();
+	HashMap<Integer, Boolean> modelRoofCache = new HashMap<>();
 
 	@Inject
 	private ShadowMapOverlay shadowMapOverlay;
@@ -356,6 +357,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	@Inject
 	private RegionOverlay regionOverlay;
+
+//	Stopwatch dynamicModelUpload = Stopwatch.createUnstarted();
+//	Stopwatch staticModelUpload = Stopwatch.createUnstarted();
+//	Stopwatch uniformsStopwatch = Stopwatch.createUnstarted();
 
 	@Override
 	protected void startUp()
@@ -1550,6 +1555,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void updateUniformBlocks()
 	{
+//		uniformsStopwatch.reset();
+//		uniformsStopwatch.start();
 		if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
 		{
 			return;
@@ -1880,6 +1887,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
 		// </editor-fold>
+
+//		uniformsStopwatch.stop();
 	}
 
 	private void PushEmptyLightToBuffer()
@@ -2395,13 +2404,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void PackStaticModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
+		//staticModelUpload.start();
 		assert model == renderable;
 
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
 
 		int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 		int uvOffset = offsetModel.getUvBufferOffset();
-		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, false);
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, false, false);
 
 		GpuIntBuffer b = bufferForTriangles(tc);
 
@@ -2415,18 +2425,24 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		buffer.put(x).put(y).put(z);
 
 		targetBufferOffset += tc * 3;
+		//staticModelUpload.stop();
 	}
 
 	private void PackDynamicModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
+		//dynamicModelUpload.start();
 		// Apply height to renderable from the model
 		if (model != renderable)
 		{
 			renderable.setModelHeight(model.getModelHeight());
 		}
 
+		boolean isPlayer = renderable instanceof Player;
+		boolean isNpc = renderable instanceof NPC;
+		boolean isProjectile = renderable instanceof Projectile;
+
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, true);
+		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation, x, y, z, true, isPlayer || isNpc || isProjectile);
 		boolean hasUv = model.getFaceTextures() != null;
 
 		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer);
@@ -2446,9 +2462,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		if(hasUv) {
 			tempUvOffset += len;
 		}
+		//dynamicModelUpload.stop();
 	}
 
-	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z, boolean isDynamicModel)
+	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation, int x, int y, int z, boolean isDynamicModel, boolean cantBeRoof)
 	{
 		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
 		boolean isBridge = false;
@@ -2456,13 +2473,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		boolean isRoof = false;
 		boolean hillskew = offsetModel != model;
 
-		if(config.roofFading())
+		int hillskewFlag = hillskew ? (1 << BIT_HILLSKEW) : 0;
+		if(config.roofFading() && !cantBeRoof)
 		{
 			int tileExX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 			int tileExY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 			Scene scene = client.getScene();
 
-			Boolean detectedRoof = modelRoofCache.get(hash);
+			int modelHash = Utils.GenerateHashFromPosition(x, y, plane, orientation, hillskewFlag, isDynamicModel);
+			Boolean detectedRoof = modelRoofCache.get(modelHash);
 			if (detectedRoof == null) // We failed to retreive the object from cache
 			{
 				boolean withinX = 1 <= tileExX && tileExX < EXTENDED_SCENE_SIZE - 1;
@@ -2520,7 +2539,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					}
 				}
 
-				modelRoofCache.put(hash, detectedRoof);
+				modelRoofCache.put(modelHash, detectedRoof);
 			}
 
 			int currentTileSettings = scene.getExtendedTileSettings()[plane][tileExX][tileExY];
@@ -2531,7 +2550,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		int flags = (plane << BIT_ZHEIGHT) 					 		|
-					(hillskew ? (1 << BIT_HILLSKEW) : 0)  	 		|
+					hillskewFlag  	 								|
 					(isBridge ? (1 << BIT_ISBRIDGE) : 0) 			|
 					(isRoof ? (1 << BIT_ISROOF) : 0) 			 	|
 					(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0)|

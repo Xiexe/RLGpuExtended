@@ -43,6 +43,20 @@ public class Utils {
         return murmurHash3(byteBuffer.array(), 0, byteBuffer.array().length, 0);
     }
 
+    public static int GenerateHashFromPosition(int x, int y, int z, int orientation, int hillskew, boolean isDynamic)
+    {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(24);
+        IntBuffer intBuffer = byteBuffer.asIntBuffer();
+        intBuffer.put(x);
+        intBuffer.put(y);
+        intBuffer.put(z);
+        intBuffer.put(orientation);
+        intBuffer.put(hillskew);
+        intBuffer.put(isDynamic ? 1 : 0);
+
+        return murmurHash3(byteBuffer.array(), 0, byteBuffer.array().length, 0);
+    }
+
     public static int murmurHash3(byte[] data, int offset, int len, int seed) {
         final int c1 = 0xcc9e2d51;
         final int c2 = 0x1b873593;
