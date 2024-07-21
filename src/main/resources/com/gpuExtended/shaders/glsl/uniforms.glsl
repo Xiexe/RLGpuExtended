@@ -61,5 +61,5 @@ uniform sampler2D shadowMap;
 uniform sampler2D tileFillColorMap; // holds colors of tiles
 uniform sampler2D tileBorderColorMap; // holds textures of tiles
 uniform sampler2D tileSettingsMap; // holds settings of tiles
-uniform sampler2D tileMaskTexture; // holds mask of tiles
+uniform sampler3D roofMaskMap;
 uniform vec2 textureAnimations[128];

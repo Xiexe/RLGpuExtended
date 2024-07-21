@@ -18,6 +18,11 @@ bool CheckIsInfernalCapeFireCape(int texId)
     return (texId == FIRE_CAPE) || (texId == INFERNAL_CAPE);
 }
 
+bool CheckIsWater(int texId)
+{
+    return texId == WATER;
+}
+
 bool CheckIsUnlitTexture(int texId)
 {
     return CheckIsInfernalCapeFireCape(texId);
@@ -51,12 +56,17 @@ void PopulateSurfaceColor(inout Surface s)
 
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
-        // This error is fake.
+        // This error is fake news.
         vec4 textureColor = texture(textures, vec3(uv, float(textureIdx)));
         if(CheckIsInfernalCapeFireCape(fTextureId))
         {
             textureColor *= 1.2;
         }
+
+//        if(CheckIsWater(fTextureId))
+//        {
+//            textureColor = vec4(1, 1, 1, 1);
+//        }
 
         color = textureColor;
     } else {
@@ -72,6 +82,16 @@ void PopulateSurfaceNormal(inout Surface s, vec4 normal)
 {
     normal.y = -normal.y; // runescape uses -y as up by default. Lets make that more sane.
     s.normal.rgb = normalize(normal.rgb);
+}
+
+void PopulateVertexFlags(inout VertexFlags flags, ivec4 fFlags)
+{
+    flags.tileX             = ((fFlags.x >> BIT_XPOS) & 255);
+    flags.tileY             = ((fFlags.x >> BIT_YPOS) & 255);
+    flags.plane             = ((fFlags.x >> BIT_ZHEIGHT) & 3);
+    flags.isBridge          = ((fFlags.x >> BIT_ISBRIDGE) & 1) > 0;
+    flags.isTerrain         = ((fFlags.x >> BIT_ISTERRAIN) & 1) > 0;
+    flags.isDynamicModel    = ((fFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
 }
 
 // Function to adjust saturation
@@ -131,7 +151,7 @@ vec4 unpackColor(vec4 packedColor) {
     return vec4(r, g, b, a);
 }
 
-void DrawMarkedTilesFromMap(inout vec3 image, vec3 fragPos, float fPlane, float distanceToPlayer)
+void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, float distanceToPlayer)
 {
     int tileMapCellX = int(floor(fragPos.x / TILE_SIZE));
     int tileMapCellZ = int(floor(fragPos.z / TILE_SIZE));
@@ -149,12 +169,10 @@ void DrawMarkedTilesFromMap(inout vec3 image, vec3 fragPos, float fPlane, float 
     vec4 fillColor = unpackColor(packedFillColor);
     vec4 outlineColor = unpackColor(packedOutlineColor);
 
-    bool isBridge = fIsBridge > 0;
-    bool isTerrain = fIsTerrain > 0;
-    float realPlane = max(0, fPlane - (isBridge ? 1 : 0));
+    float realPlane = max(0, flags.plane - (flags.isBridge ? 1 : 0));
 
     bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
-    bool isTileWalkable = (isTerrain || isBridge) && tileValidPlane;
+    bool isTileWalkable = (flags.isTerrain || flags.isBridge) && tileValidPlane;
     if(isTileWalkable)
     {
         vec2 tileUv = vec2(mod(fragPos.x, TILE_SIZE) / TILE_SIZE, mod(fragPos.z, TILE_SIZE) / TILE_SIZE);
@@ -182,7 +200,7 @@ void DrawMarkedTilesFromMap(inout vec3 image, vec3 fragPos, float fPlane, float 
 
 // TilePosition.w = corner length
 // TilePosition.z = plane
-void DrawTileMarker(inout vec3 image, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer)
+void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer)
 {
     float x = fragPos.x;
     float z = fragPos.z;
@@ -192,12 +210,10 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec4 tilePosition, vec4 fill
     int cellX = int(floor(x / TILE_SIZE) * TILE_SIZE);
     int cellZ = int(floor(z / TILE_SIZE) * TILE_SIZE);
 
-    bool isBridge = fIsBridge > 0;
-    bool isTerrain = fIsTerrain > 0;
-    float realPlane = max(0, fPlane - (isBridge ? 1 : 0));
+    float realPlane = max(0, flags.plane - (flags.isBridge ? 1 : 0));
 
     bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
-    bool isTileWalkable = (isTerrain || isBridge) && tileValidPlane;
+    bool isTileWalkable = (flags.isTerrain || flags.isBridge) && tileValidPlane;
     if (cellX >= int(tilePosition.x - TILE_SIZE) &&
         cellZ >= int(tilePosition.y - TILE_SIZE) &&
         cellX <= int(tilePosition.x) &&
@@ -233,27 +249,42 @@ void DrawTileMarker(inout vec3 image, vec3 fragPos, vec4 tilePosition, vec4 fill
     }
 }
 
-void FadeRoofs(float dither, float distanceToPlayer)
+void FadeRoofs(VertexFlags flags, vec3 fragPos, float dither, float distanceToPlayer)
 {
     if(!(roofFading > 0))
     {
         return;
     }
 
+    int tileMapCellX = int(floor(fragPos.x / TILE_SIZE));
+    int tileMapCellZ = int(floor(fragPos.z / TILE_SIZE));
+    int cellX = int(tileMapCellX * TILE_SIZE);
+    int cellZ = int(tileMapCellZ * TILE_SIZE);
+
+    ivec2 cellUv = ivec2(tileMapCellX + SCENE_OFFSET, tileMapCellZ + SCENE_OFFSET);
     distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
 
-    bool isOnBridge = fIsBridge > 0;
-    float realPlane = max(0, fPlane - (isOnBridge ? 1 : 0));
+    vec4 roofTextureP0 = texelFetch(roofMaskMap, ivec3(cellUv, 0), 0);
+    vec4 roofTextureP1 = texelFetch(roofMaskMap, ivec3(cellUv, 1), 0);
+    vec4 roofTextureP2 = texelFetch(roofMaskMap, ivec3(cellUv, 2), 0);
+    vec4 roofTextureP3 = texelFetch(roofMaskMap, ivec3(cellUv, 3), 0);
 
-    bool isOnSamePlane = approximatelyEqual(realPlane, playerPosition.z, 0.001);
-    bool isAbovePlayer = realPlane > playerPosition.z;
-    bool isUnderPlayer = realPlane < playerPosition.z;
+    float roofMask = 0;
+    switch(int(round(flags.plane - playerPosition.z + 1)))
+    {
+        case 1:
+        roofMask = roofTextureP0.a;
+        break;
+        case 2:
+        roofMask = roofTextureP0.a + roofTextureP1.a;
+        break;
+        case 3:
+        roofMask = roofTextureP0.a + roofTextureP1.a + roofTextureP2.a;
+        break;
+    }
+    roofMask = clamp(roofMask, 0, 1);
 
-    bool isRoof = (fIsRoof > 0) && !isOnSamePlane && !isUnderPlayer;
-    float roofClip = dither - 0.001 - distanceToPlayer;
-    roofClip *= int(isRoof);
-
-    clip(roofClip);
+    clip(0 - roofMask);
 }
 
 // Pre-defined set of sample points for blocker search and PCF

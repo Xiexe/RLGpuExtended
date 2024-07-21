@@ -7,6 +7,7 @@ struct modelinfo {
   int x;        // scene position x
   int y;        // scene position y
   int z;        // scene position z
+  ivec4 exFlags; //
 };
 
 struct Vertex {
@@ -24,7 +25,6 @@ layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform CameraBlock {
   int centerX;                        // 4 bytes
   int centerY;                        // 4 bytes
 };                                     // 128 bytes
-
 
 layout(std430, binding = MODEL_BUFFER_IN_BINDING_ID) readonly buffer modelbuffer_in {
   modelinfo ol[];
@@ -67,4 +67,17 @@ layout(std430, binding = NORMAL_BUFFER_IN_BINDING_ID) readonly buffer normalbuff
 
 layout(std430, binding = TEMP_NORMAL_BUFFER_IN_BINDING_ID) readonly buffer tempnormalbuffer_in {
   vec4 tempnormal[];
+};
+
+// flags data
+layout(std430, binding = FLAGS_BUFFER_OUT_BINDING_ID) writeonly buffer flags_out {
+  ivec4 flagsout[];
+};
+
+layout(std430, binding = FLAGS_BUFFER_IN_BINDING_ID) readonly buffer flagsbuffer_in {
+  ivec4 flagsin[];
+};
+
+layout(std430, binding = TEMP_FLAGS_BUFFER_IN_BINDING_ID) readonly buffer tempflagsbuffer_in {
+  ivec4 tempflags[];
 };

@@ -438,7 +438,21 @@ public class EnvironmentManager
         if(currentBounds != null && currentArea != null) {
             if (currentBounds != lastBounds || currentArea != lastArea) {
                 log.info("Player entered area: {}, {}", currentArea.getName(), currentBounds.getName());
-                if (!currentBounds.isHideOtherAreas()) return;
+
+                if(lastBounds != null)
+                {
+                    if(!lastBounds.isHideOtherAreas() && !currentBounds.isHideOtherAreas())
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    if(!currentBounds.isHideOtherAreas())
+                    {
+                        return;
+                    }
+                }
 
                 if (client.getGameState() == GameState.LOGGED_IN) {
                     clientThread.invoke(() -> {

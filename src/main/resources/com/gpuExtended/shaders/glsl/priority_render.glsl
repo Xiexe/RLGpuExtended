@@ -300,18 +300,13 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
     normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
 
-    normA.w = flags;
-    normB.w = flags;
-    normC.w = flags;
-
-    // undo shading
-//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
-
     normalout[outOffset + myOffset * 3]     = normA;
     normalout[outOffset + myOffset * 3 + 1] = normB;
     normalout[outOffset + myOffset * 3 + 2] = normC;
+
+    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
+    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
+    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
 
     // write to out buffer
     vout[outOffset + myOffset * 3] = Vertex(vertA.xyz, thisrvA.ahsl);

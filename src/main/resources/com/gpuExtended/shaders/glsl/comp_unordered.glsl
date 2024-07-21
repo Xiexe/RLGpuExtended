@@ -69,6 +69,10 @@ void main() {
   normalout[outOffset + myOffset * 3 + 1] = normB;
   normalout[outOffset + myOffset * 3 + 2] = normC;
 
+  flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
+  flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
+  flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
+
   if(toffset < 0)
   {
     texA = vec4(0);

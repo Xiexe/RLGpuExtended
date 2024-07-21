@@ -24,6 +24,7 @@ in int gTextureId[3];
 in vec3 gTexPos[3];
 in int gFarClip[3];
 in float gFogAmount[3];
+in ivec4 gFlags[3];
 
 out vec4 fColor;
 out vec4 fNormal;
@@ -32,11 +33,7 @@ flat out int fTextureId;
 out vec2 fUv;
 out vec3 fPosition;
 out float fFogAmount;
-out float fPlane;
-out float fIsBridge;
-out float fIsRoof;
-out float fIsTerrain;
-out float fIsDyanmicModel;
+out flat ivec4 fFlags;
 
 void main() {
   int textureId = gTextureId[0];
@@ -72,12 +69,6 @@ void main() {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
 
-    fPlane = (int(gNormal[0].w) >> BIT_ZHEIGHT) & 3;
-    fIsBridge = (int(gNormal[0].w) >> BIT_ISBRIDGE) & 1;
-    fIsRoof = (int(gNormal[0].w) >> BIT_ISROOF) & 1;
-    fIsTerrain = (int(gNormal[0].w) >> BIT_ISTERRAIN) & 1;
-    fIsDyanmicModel = (int(gNormal[0].w) >> BIT_ISDYNAMICMODEL) & 1;
-
     fPosition = gPosition[i];
     fColor = gColor[i];
     fFogAmount = gFogAmount[i];
@@ -85,6 +76,7 @@ void main() {
     fTextureId = gTextureId[i];
     fNormal = normal;
     fUv = uv[i];
+    fFlags = gFlags[i];
     gl_Position = cameraProjectionMatrix * vec4(gVertex[i], 1);
     EmitVertex();
   }

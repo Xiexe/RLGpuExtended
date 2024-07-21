@@ -60,7 +60,7 @@ public class SceneUploader
 		this.enviornmentManager = environmentManager;
 	}
 
-	public void UploadScene(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	public void UploadScene(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		Stopwatch stopwatchEntire = Stopwatch.createStarted();
 		Stopwatch stopwatch = Stopwatch.createStarted();
@@ -78,7 +78,7 @@ public class SceneUploader
 		uvBuffer.clear();
 
 		stopwatch = Stopwatch.createStarted();
-		PopulateSceneGeometry(scene, vertexBuffer, uvBuffer, normalBuffer);
+		PopulateSceneGeometry(scene, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 		stopwatch.stop();
 		log.debug("Scene Generate Meshes: {}", stopwatch);
 
@@ -91,7 +91,7 @@ public class SceneUploader
 		log.debug("Scene Upload Total Time: {}", stopwatchEntire);
 	}
 
-	private void PopulateSceneGeometry(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	private void PopulateSceneGeometry(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		for (int z = 0; z < Constants.MAX_Z; ++z)
 		{
@@ -102,14 +102,14 @@ public class SceneUploader
 					Tile tile = scene.getExtendedTiles()[z][x][y];
 					if (tile != null)
 					{
-						GenerateSceneGeometry(scene, tile, vertexBuffer, uvBuffer, normalBuffer, false);
+						GenerateSceneGeometry(scene, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, false);
 					}
 				}
 			}
 		}
 	}
 
-	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean isUnderBridge)
+	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean isUnderBridge)
 	{
 		EnvironmentManager env = GpuExtendedPlugin.Instance.environmentManager;
 		WorldPoint worldLocation = tile.getWorldLocation();
@@ -118,7 +118,7 @@ public class SceneUploader
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
 		{   // draw the tile underneath the bridge.
-			GenerateSceneGeometry(scene, bridge, vertexBuffer, uvBuffer, normalBuffer, true);
+			GenerateSceneGeometry(scene, bridge, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, true);
 		}
 
 		SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
@@ -134,7 +134,7 @@ public class SceneUploader
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
 
-			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
 			sceneTilePaint.setBufferLen(vertexCount);
 			offset += vertexCount;
 			if (sceneTilePaint.getTexture() != -1)
@@ -156,7 +156,7 @@ public class SceneUploader
 				sceneTileModel.setUvBufferOffset(-1);
 			}
 
-			int vertexCount = PushTerrainDetailedTile(scene, sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainDetailedTile(scene, sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
 			sceneTileModel.setBufferLen(vertexCount);
 			offset += vertexCount;
 			if (sceneTileModel.getTriangleTextureId() != null)
@@ -171,13 +171,13 @@ public class SceneUploader
 			Renderable renderable1 = wallObject.getRenderable1();
 			if (renderable1 instanceof Model)
 			{
-				PushStaticModel((Model) renderable1, tile, vertexBuffer, uvBuffer, normalBuffer);
+				PushStaticModel((Model) renderable1, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 
 			Renderable renderable2 = wallObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				PushStaticModel((Model) renderable2, tile, vertexBuffer, uvBuffer, normalBuffer);
+				PushStaticModel((Model) renderable2, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -187,7 +187,7 @@ public class SceneUploader
 			Renderable renderable = groundObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				PushStaticModel((Model) renderable, tile, vertexBuffer, uvBuffer, normalBuffer);
+				PushStaticModel((Model) renderable, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -197,13 +197,13 @@ public class SceneUploader
 			Renderable renderable = decorativeObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				PushStaticModel((Model) renderable, tile, vertexBuffer, uvBuffer, normalBuffer);
+				PushStaticModel((Model) renderable, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 
 			Renderable renderable2 = decorativeObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				PushStaticModel((Model) renderable2, tile, vertexBuffer, uvBuffer, normalBuffer);
+				PushStaticModel((Model) renderable2, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -219,12 +219,12 @@ public class SceneUploader
 			Renderable renderable = gameObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				PushStaticModel((Model) gameObject.getRenderable(), tile, vertexBuffer, uvBuffer, normalBuffer);
+				PushStaticModel((Model) gameObject.getRenderable(), tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 	}
 
-	private void PushStaticModel(Model model, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	private void PushStaticModel(Model model, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		// deduplicate hillskewed models
 		if (model.getUnskewedModel() != null)
@@ -250,7 +250,7 @@ public class SceneUploader
 		uniqueModels++;
 
 		Point tilePoint = tile.getSceneLocation();
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, tilePoint.getX(), tilePoint.getY(), false, false, staticSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, tilePoint.getX(), tilePoint.getY(), false, false, staticSharedVertexMap);
 		offset += vertexCount;
 		if (model.getFaceTextures() != null)
 		{
@@ -258,14 +258,14 @@ public class SceneUploader
 		}
 	}
 
-	public int PushDynamicModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	public int PushDynamicModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, 0, 0, false, false, dynamicSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, 0, 0, false, false, dynamicSharedVertexMap);
 		return vertexCount;
 	}
 
 	// Map Tiles
-	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
+	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
@@ -275,7 +275,7 @@ public class SceneUploader
 		tileX += SCENE_OFFSET;
 		tileY += SCENE_OFFSET;
 
-		boolean isRoof = CheckTileIsRoof(tileX, tileY, tileZ, scene);
+		int realPlane = GetTileRealPlane(tileX, tileY, tileZ, scene);
 
 		int swHeight = tileHeights[tileZ][tileX    ][tileY    ];
 		int seHeight = tileHeights[tileZ][tileX + 1][tileY    ];
@@ -319,6 +319,7 @@ public class SceneUploader
 		vertexBuffer.ensureCapacity(24);
 		normalBuffer.ensureCapacity(24);
 		uvBuffer.ensureCapacity(24);
+		flagsBuffer.ensureCapacity(24);
 
 		vertexBuffer.put(vertexAx, vertexAz, vertexAy, c3);
 		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
@@ -327,6 +328,20 @@ public class SceneUploader
 		vertexBuffer.put(vertexDx, vertexDz, vertexDy, c1);
 		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
 		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+
+		int flags = (realPlane << BIT_PLANE) |
+					(tileX << BIT_XPOS) |
+					(tileY << BIT_YPOS) |
+					(hasBridge ? (1 << BIT_ISBRIDGE) : 0) |
+					(!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
+
+		flagsBuffer.put(flags, 0, 0, 0);
+		flagsBuffer.put(flags, 0, 0, 0);
+		flagsBuffer.put(flags, 0, 0, 0);
+
+		flagsBuffer.put(flags, 0, 0, 0);
+		flagsBuffer.put(flags, 0, 0, 0);
+		flagsBuffer.put(flags, 0, 0, 0);
 
 		if (tile.getTexture() != -1)
 		{
@@ -346,16 +361,14 @@ public class SceneUploader
 		Vector3 normA = CalculateBaseNormal(vertexAx, vertexAz, vertexAy, vertexBx, vertexBz, vertexBy, vertexCx, vertexCz, vertexCy);
 		Vector3 normB = CalculateBaseNormal(vertexDx, vertexDz, vertexDy, vertexCx, vertexCz, vertexCy, vertexBx, vertexBz, vertexBy);
 
-		// Pack plane and if its terrain into the flags
-		int flags = (tileZ << BIT_ZHEIGHT) | (isRoof ? (1 << BIT_ISROOF) : 0) | (hasBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 		int startOfTileBufferIndex = normalBuffer.getBuffer().position();
-		normalBuffer.put(normA.x, normA.y, normA.z, flags);
-		normalBuffer.put(normA.x, normA.y, normA.z, flags);
-		normalBuffer.put(normA.x, normA.y, normA.z, flags);
+		normalBuffer.put(normA.x, normA.y, normA.z, 0);
+		normalBuffer.put(normA.x, normA.y, normA.z, 0);
+		normalBuffer.put(normA.x, normA.y, normA.z, 0);
 
-		normalBuffer.put(normB.x, normB.y, normB.z, flags);
-		normalBuffer.put(normB.x, normB.y, normB.z, flags);
-		normalBuffer.put(normB.x, normB.y, normB.z, flags);
+		normalBuffer.put(normB.x, normB.y, normB.z, 0);
+		normalBuffer.put(normB.x, normB.y, normB.z, 0);
+		normalBuffer.put(normB.x, normB.y, normB.z, 0);
 
 		terrainSharedVertexMap.put(new Vector3(vertexAx + tx, vertexAz, vertexAy + ty), startOfTileBufferIndex + 0*4);
 		terrainSharedVertexMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), startOfTileBufferIndex + 1*4);
@@ -372,9 +385,9 @@ public class SceneUploader
 	}
 
 	// Map tiles with extra geometry
-	public int PushTerrainDetailedTile(Scene scene, SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetZ)
+	public int PushTerrainDetailedTile(Scene scene, SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetZ)
 	{
-		boolean isRoof = CheckTileIsRoof(tileX + SCENE_OFFSET, tileY + SCENE_OFFSET, tileZ, scene);
+		int realPlane = GetTileRealPlane(tileX + SCENE_OFFSET, tileY + SCENE_OFFSET, tileZ, scene);
 
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -394,6 +407,7 @@ public class SceneUploader
 		vertexBuffer.ensureCapacity(faceCount * 12);
 		normalBuffer.ensureCapacity(faceCount * 12);
 		uvBuffer.ensureCapacity(faceCount * 12);
+		flagsBuffer.ensureCapacity(faceCount * 12);
 
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
@@ -431,6 +445,16 @@ public class SceneUploader
 			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
 			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
 
+			int flags = (realPlane << BIT_PLANE) |
+						(tileX << BIT_XPOS) |
+						(tileY << BIT_YPOS) |
+						(hasBridge ? (1 << BIT_ISBRIDGE) : 0) |
+						(!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
+
+			flagsBuffer.put(flags, 0, 0, 0);
+			flagsBuffer.put(flags, 0, 0, 0);
+			flagsBuffer.put(flags, 0, 0, 0);
+
 			if (triangleTextures != null)
 			{
 				if (triangleTextures[i] != -1)
@@ -448,13 +472,11 @@ public class SceneUploader
 				}
 			}
 
-			// Pack plane and if its terrain into the flags
-			int flags = (tileZ << BIT_ZHEIGHT) | (isRoof ? (1 << BIT_ISROOF) : 0) | (hasBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 			int startOfTileBufferIndex = normalBuffer.getBuffer().position();
 			Vector3 norm = CalculateBaseNormal(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, vertexXB + offsetX, vertexYB, vertexZB + offsetZ, vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
-			normalBuffer.put(norm.x, norm.y, norm.z, flags);
-			normalBuffer.put(norm.x, norm.y, norm.z, flags);
-			normalBuffer.put(norm.x, norm.y, norm.z, flags);
+			normalBuffer.put(norm.x, norm.y, norm.z, 0);
+			normalBuffer.put(norm.x, norm.y, norm.z, 0);
+			normalBuffer.put(norm.x, norm.y, norm.z, 0);
 
 			int tx = (tileX + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
 			int tz = (tileY + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
@@ -468,59 +490,35 @@ public class SceneUploader
 		return vertexCount;
 	}
 
-	private boolean CheckTileIsRoof(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
+	public static int GetTileRealPlane(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
 	{
-		boolean isRoof = false;
+		int realPlane = tileZ;
 
-		if(gpuConfig.roofFading()) {
-			int groundPlane = 0;
+		boolean isOnBridge = false;
 
-			if (enviornmentManager != null) {
-				WorldPoint wp = WorldPoint.fromLocal(scene, sceneTileX, sceneTileY, tileZ);
-				log.info("Checking Tile : {} {} {}", wp.getX(), wp.getY(), wp.getPlane());
-				Bounds bounds = enviornmentManager.CheckTileRegion(wp);
-				if (bounds != null) {
-					groundPlane = bounds.getGroundPlane();
-				}
-			}
+		byte[][][] tileSettings = scene.getExtendedTileSettings();
+		if (1 <= sceneTileX && sceneTileX < EXTENDED_SCENE_SIZE - 1 && 1 <= sceneTileY && sceneTileY < EXTENDED_SCENE_SIZE - 1) {
+			for (int i = 0; i < MAX_Z; i++) {
+				int belowPlane = Math.max(0, tileZ - i);
 
-			if (1 <= sceneTileX && sceneTileX < EXTENDED_SCENE_SIZE - 1 && 1 <= sceneTileY && sceneTileY < EXTENDED_SCENE_SIZE - 1) {
-				for (int i = 0; i < MAX_Z; i++) {
-					int belowPlane = Math.max(0, tileZ - i);
-					int cSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY];
-					int nSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY + 1];
-					int sSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX][sceneTileY - 1];
-					int eSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY];
-					int wSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY];
+				int tileSetting = tileSettings[belowPlane][sceneTileX][sceneTileY];
+				isOnBridge = (tileSetting & TILE_FLAG_BRIDGE) != 0;
 
-					int neSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY + 1];
-					int seSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX + 1][sceneTileY - 1];
-					int nwSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY + 1];
-					int swSettings = scene.getExtendedTileSettings()[belowPlane][sceneTileX - 1][sceneTileY - 1];
-
-					boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
-					boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
-
-					isRoof = (centerRoof | nRoof | sRoof | eRoof | wRoof | neRoof | seRoof | nwRoof | swRoof);
-
-					if (belowPlane == groundPlane || isRoof) {
-						break;
-					}
+				if (isOnBridge) {
+					break;
 				}
 			}
 		}
 
-		return isRoof;
+		if(isOnBridge)
+		{
+			realPlane -= 1;
+		}
+
+		return realPlane;
 	}
 
-	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, int tileX, int tileY, boolean recomputeNormals, boolean forceFlatNormals, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
+	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileX, int tileY, boolean recomputeNormals, boolean forceFlatNormals, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
 	{
 		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
 		vertexBuffer.ensureCapacity(triCount * 12);
@@ -573,6 +571,7 @@ public class SceneUploader
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
+
 				normalBuffer.put(0, 0, 0, 0);
 				normalBuffer.put(0, 0, 0, 0);
 				normalBuffer.put(0, 0, 0, 0);
@@ -594,9 +593,11 @@ public class SceneUploader
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
 				vertexBuffer.put(0, 0, 0, 0);
+
 				normalBuffer.put(0, 0, 0, 0);
 				normalBuffer.put(0, 0, 0, 0);
 				normalBuffer.put(0, 0, 0, 0);
+
 				if (faceTextures != null)
 				{
 					uvBuffer.put(0, 0, 0, 0);

@@ -581,5 +581,17 @@ public interface GpuExtendedConfig extends Config
 		{
 			return false;
 		}
+
+		@ConfigItem(
+				keyName = "showPerformanceOverlay",
+				name = "Show Performance Overlay",
+				description = "",
+				position = 0,
+				section = debugging
+		)
+		default boolean showPerformanceOverlay()
+		{
+			return false;
+		}
 	// </editor-fold>
 }

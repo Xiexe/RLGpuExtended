@@ -7,7 +7,11 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.regions.Area;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Texture2D;
+import com.gpuExtended.rendering.Texture3D;
+import com.gpuExtended.scene.EnvironmentManager;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +33,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
+import static net.runelite.api.Constants.MAX_Z;
+import static net.runelite.api.Constants.TILE_FLAG_UNDER_ROOF;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL12C.*;
 
@@ -50,6 +56,8 @@ public class TileMarkerManager {
     @Inject
     private GpuExtendedPlugin plugin;
     @Inject
+    EnvironmentManager environmentManager;
+    @Inject
     private Gson gson;
     @Inject
     private ConfigManager configManager;
@@ -65,7 +73,7 @@ public class TileMarkerManager {
     public Texture2D tileSettingsTexture;
     public Texture2D tileFillColorTexture;
     public Texture2D tileBorderColorTexture;
-    public Texture2D tileMaskTexture;
+    public Texture3D roofMaskTexture;
 
     Texture2D.TextureSettings textureSettings;
 
@@ -90,8 +98,20 @@ public class TileMarkerManager {
         tileBorderColorTexture = new Texture2D(textureSettings);
         tileBorderColorTexture.floodPixels(0, 0, 0, 0);
 
-        tileMaskTexture = new Texture2D(textureSettings);
-        tileMaskTexture.floodPixels(0, 0, 0, 0);
+        Texture3D.TextureSettings textureSettings_3d = new Texture3D.TextureSettings();
+        textureSettings_3d.minFilter = GL_NEAREST;
+        textureSettings_3d.magFilter = GL_NEAREST;
+        textureSettings_3d.wrapS = GL_CLAMP_TO_EDGE;
+        textureSettings_3d.wrapT = GL_CLAMP_TO_EDGE;
+        textureSettings_3d.internalFormat = GL_RGBA8;
+        textureSettings_3d.format = GL_RGBA;
+        textureSettings_3d.type = GL_UNSIGNED_BYTE;
+        textureSettings_3d.width = extendedSceneSize;
+        textureSettings_3d.height = extendedSceneSize;
+        textureSettings_3d.depth = 4;
+
+        roofMaskTexture = new Texture3D(textureSettings_3d);
+        roofMaskTexture.floodPixels(0, 0, 0, 0);
     }
 
     public void Reset()
@@ -111,43 +131,79 @@ public class TileMarkerManager {
             tileBorderColorTexture.floodPixels(0, 0, 0, 0);
         }
 
-        if (tileMaskTexture != null)
+        if (roofMaskTexture != null)
         {
-            tileMaskTexture.floodPixels(0, 0, 0, 0);
+            roofMaskTexture.floodPixels(0, 0, 0, 0);
         }
     }
 
-    public void InitializeSceneTileMask(Scene scene)
+    public int clampCoords(int c)
     {
-        tileMaskTexture.floodPixels(0,0,0,0);
+        if(c < 0)
+            return 0;
 
+        if(c >= Constants.EXTENDED_SCENE_SIZE)
+            return Constants.EXTENDED_SCENE_SIZE - 1;
+
+        return c;
+    }
+
+    public void InitializeSceneRoofMask(Scene scene)
+    {
+        roofMaskTexture.floodPixels(0,0,0,0);
+
+        //TODO:: if going from login screen, this will fail for some reason in some places.
         Tile[][][] tiles = scene.getExtendedTiles();
-        for (int z = 0; z < Constants.MAX_Z; ++z) {
-            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
-                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+        byte[][][] settings = scene.getExtendedTileSettings();
+
+        for (int z = 0; z < Constants.MAX_Z; z++) {
+            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
+                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
+
                     Tile tile = tiles[z][x][y];
+                    boolean hasBridge = false;
+                    if(tile != null) {
+//                        Tile bridge = tiles[z][x][y].getBridge();
+//                        hasBridge = bridge != null;
 
-                    if (tile != null) {
-                        boolean onSamePlane = tile.getPlane() == client.getPlane();
-                        DecorativeObject decorativeObject = tile.getDecorativeObject();
-                        WallObject wallObject = tile.getWallObject();
-                        SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
-                        SceneTileModel sceneTileModel = tile.getSceneTileModel();
-                        GroundObject groundObject = tile.getGroundObject();
-                        Tile bridge = tile.getBridge();
-                        GameObject[] gameObjects = tile.getGameObjects();
+                        Bounds bounds = environmentManager.CheckTileRegion(tile.getWorldLocation());
+                        if(bounds != null) {
+                            if (z < bounds.getGroundPlane()) {
+                                log.info("Skipping tile because it is below the ground plane");
+                                continue;
+                            }
+                        }
 
-                        boolean shouldRenderToTileMask =
-                                        decorativeObject    != null ||
-                                        wallObject          != null ||
-                                        sceneTilePaint      != null ||
-                                        sceneTileModel      != null ||
-                                        groundObject        != null ||
-                                        bridge              != null ||
-                                        gameObjects.length != 0 && !onSamePlane;
+                        int cSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 0)];
+                        int nSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 1)];
+                        int sSettings = settings[z][clampCoords(x + 0)][clampCoords(y - 1)];
+                        int eSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 0)];
+                        int wSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 0)];
 
-                        if(shouldRenderToTileMask) {
-                            tileMaskTexture.setPixel(x, y, 255, 0, 0, 255);
+                        int neSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 1)];
+                        int seSettings = settings[z][clampCoords(x + 1)][clampCoords(y - 1)];
+                        int nwSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 1)];
+                        int swSettings = settings[z][clampCoords(x - 1)][clampCoords(y - 1)];
+
+                        boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                        boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+
+                        boolean tileIsUnderRoof = centerRoof || nRoof || sRoof || eRoof || wRoof || neRoof || seRoof || nwRoof || swRoof;
+                        if (tileIsUnderRoof) {
+                            // todo:: use color channels to mask groups of roofs
+
+                            if (hasBridge) {
+                                roofMaskTexture.setPixel(x, y, Math.min(MAX_Z - 1, z + 1), 0, 0, 0, 255);
+                            } else {
+                                roofMaskTexture.setPixel(x, y, z, 0, 0, 0, 255);
+                            }
                         }
                     }
                 }

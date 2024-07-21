@@ -15,7 +15,7 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 
 import java.awt.*;
 
-public class RegionOverlay extends OverlayPanel {
+public class PerformanceOverlay extends OverlayPanel {
 
     @Inject
     private Client client;
@@ -34,7 +34,7 @@ public class RegionOverlay extends OverlayPanel {
 
     public boolean isActive;
 
-    public RegionOverlay()
+    public PerformanceOverlay()
     {
         setLayer(OverlayLayer.ABOVE_WIDGETS);
         setPosition(OverlayPosition.TOP_LEFT);
@@ -65,58 +65,20 @@ public class RegionOverlay extends OverlayPanel {
             return null;
         }
 
-        panelComponent.setWrap(true);
-        panelComponent.setPreferredSize(new Dimension(1000, 200));
-
-        WorldPoint worldPoint = client.getLocalPlayer().getWorldLocation();
-        LocalPoint localPoint = client.getLocalPlayer().getLocalLocation();
-
-        if (client.isInInstancedRegion())
-        {
-            worldPoint = WorldPoint.fromLocalInstance(client, localPoint);
-
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Instance")
-                    .build());
-        }
-
         panelComponent.getChildren().add(LineComponent.builder()
-                .left("Local")
-                .right(localPoint.getX() + ", " + localPoint.getY())
+                .left("Static Upload")
+                .right("" + "ms")
                 .build());
 
         panelComponent.getChildren().add(LineComponent.builder()
-                .left("World")
-                .right(worldPoint.getX() + ", " + worldPoint.getY() + ", " + client.getPlane())
+                .left("Dynamic Upload")
+                .right("" + "ms")
                 .build());
 
         panelComponent.getChildren().add(LineComponent.builder()
-                .left("Scene")
-                .right(localPoint.getSceneX() + ", " + localPoint.getSceneY())
+                .left("Shader Uniform")
+                .right("" + "ms")
                 .build());
-
-        int region = worldPoint.getRegionID();
-        int mx = region >> 8;
-        int my = region & 0xff;
-
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left("Region ID")
-                .right(mx + ", " + my)
-                .build());
-
-        if(plugin.environmentManager.currentArea != null) {
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Region")
-                    .right(plugin.environmentManager.currentArea.getName())
-                    .build());
-
-            if(plugin.environmentManager.currentBounds != null) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Area")
-                        .right(plugin.environmentManager.currentBounds.getName())
-                        .build());
-            }
-        }
 
         return super.render(graphics);
     }

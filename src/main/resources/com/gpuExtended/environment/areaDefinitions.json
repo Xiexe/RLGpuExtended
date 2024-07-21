@@ -100,15 +100,8 @@
       {
         "name": "CITY",
         "start": [1376, 9506, 0],
-        "end": [1525, 9606, 3],
+        "end": [1525, 9606, 4],
         "groundPlane": 1,
-        "hideOtherAreas": true
-      },
-      {
-        "name": "UNDER_CITY",
-        "start": [1376, 9506, 0],
-        "end": [1525, 9606, 0],
-        "groundPlane": 0,
         "hideOtherAreas": true
       }
     ]

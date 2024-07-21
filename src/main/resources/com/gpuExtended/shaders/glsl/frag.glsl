@@ -8,12 +8,7 @@ in vec2 fUv;
 in vec3 fPosition;
 in float fFogAmount;
 
-in float fPlane;
-in float fIsBridge;
-in float fIsRoof;
-in float fIsTerrain;
-in float fIsDyanmicModel;
-
+in flat ivec4 fFlags;
 out vec4 FragColor;
 
 #include "shaders/glsl/constants.glsl"
@@ -54,6 +49,9 @@ vec4 boxBlur(sampler2D tex, vec2 uv, vec2 texelSize) {
 
 void main() {
     Surface s;
+    VertexFlags flags;
+
+    PopulateVertexFlags(flags, fFlags);
     PopulateSurfaceColor(s);
     PopulateSurfaceNormal(s, fNormal);
 
@@ -76,29 +74,20 @@ void main() {
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
     ApplyAdditiveLighting(finalColor, s.albedo.rgb, s.normal.xyz, fPosition);
-    FadeRoofs(dither, distanceToPlayer);
+    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog);
     finalColor = mix(finalColor, skyColor.rgb, fog);
 
-    if(!(fIsDyanmicModel > 0))
+    if(!flags.isDynamicModel)
     {
-        DrawMarkedTilesFromMap(finalColor, fPosition, fPlane, distanceToPlayer);
-        DrawTileMarker(finalColor, fPosition, vec4(targetTile.xy, fPlane, targetTile.w), targetTileFillColor, targetTileOutlineColor, targetTile.z, distanceToPlayer);
-        DrawTileMarker(finalColor, fPosition, vec4(hoveredTile.xy, fPlane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer);
-        DrawTileMarker(finalColor, fPosition, vec4(currentTile.xy, fPlane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
+        DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
+        DrawTileMarker(finalColor, flags, fPosition, vec4(targetTile.xy, flags.plane, targetTile.w), targetTileFillColor, targetTileOutlineColor, targetTile.z, distanceToPlayer);
+        DrawTileMarker(finalColor, flags, fPosition, vec4(hoveredTile.xy, flags.plane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer);
+        DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
-//    bool isOnBridge = fIsBridge > 0;
-//    float realPlane = max(0, fPlane - (isOnBridge ? 1 : 0));
-//
-//    bool isOnSamePlane = approximatelyEqual(realPlane, playerPosition.z, 0.001);
-//    bool isAbovePlayer = realPlane > playerPosition.z;
-//    bool isUnderPlayer = realPlane < playerPosition.z;
-//
-//    bool isRoof = (fIsRoof > 0) && !isOnSamePlane && !isUnderPlayer;
-//    bool isNonTerrainRoof = fIsRoof > 0 && !(fIsTerrain > 0) && isAbovePlayer;
-////
-//    finalColor = vec3(fPlane / 4);
-
-    FragColor = vec4(finalColor, s.albedo.a);
+//    finalColor = vec3(fFlags.z == 1);
+    //finalColor = vec3(float(flags.tileX) / 184.);
+    finalColor = vec3(float(flags.plane) / 4.);
+    FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

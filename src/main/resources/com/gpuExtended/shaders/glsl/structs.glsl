@@ -15,3 +15,13 @@ struct Surface
     vec4 albedo;
     vec4 normal;
 };
+
+struct VertexFlags
+{
+    int tileX;
+    int tileY;
+    int plane;
+    bool isBridge;
+    bool isTerrain;
+    bool isDynamicModel;
+};
