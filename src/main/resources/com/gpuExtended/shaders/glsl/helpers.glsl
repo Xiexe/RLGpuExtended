@@ -88,7 +88,7 @@ void PopulateVertexFlags(inout VertexFlags flags, ivec4 fFlags)
 {
     flags.tileX             = ((fFlags.x >> BIT_XPOS) & 255);
     flags.tileY             = ((fFlags.x >> BIT_YPOS) & 255);
-    flags.plane             = ((fFlags.x >> BIT_ZHEIGHT) & 3);
+    flags.plane             = ((fFlags.x >> BIT_PLANE) & 3);
     flags.isBridge          = ((fFlags.x >> BIT_ISBRIDGE) & 1) > 0;
     flags.isTerrain         = ((fFlags.x >> BIT_ISTERRAIN) & 1) > 0;
     flags.isDynamicModel    = ((fFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;

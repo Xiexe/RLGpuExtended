@@ -69,9 +69,14 @@ void main() {
   normalout[outOffset + myOffset * 3 + 1] = normB;
   normalout[outOffset + myOffset * 3 + 2] = normC;
 
-  flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
-  flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
-  flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
+//  ivec4 modelFlags;
+//  int plane = (minfo.exFlags.x >> BIT_ZHEIGHT) & 3;
+//  int isBridge = (minfo.exFlags.x >> BIT_ISBRIDGE) & 1;
+//  modelFlags.x = (plane << BIT_PLANE) | (int((pos.x / TILE_SIZE) + SCENE_OFFSET) << BIT_XPOS) | (int((pos.z / TILE_SIZE) + SCENE_OFFSET) << BIT_YPOS) | (isBridge << BIT_ISBRIDGE);
+
+  flagsout[outOffset + myOffset * 3]     = minfo.exFlags;;
+  flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;;
+  flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;;
 
   if(toffset < 0)
   {

@@ -15,20 +15,7 @@ import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.*;
 import com.gpuExtended.scene.EnvironmentManager;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Constants;
-import net.runelite.api.DecorativeObject;
-import net.runelite.api.GameObject;
-import net.runelite.api.GroundObject;
-import net.runelite.api.Model;
-import net.runelite.api.Perspective;
-import net.runelite.api.Point;
-import net.runelite.api.Renderable;
-import net.runelite.api.Scene;
-import net.runelite.api.SceneTileModel;
-import net.runelite.api.SceneTilePaint;
-import net.runelite.api.Tile;
-import net.runelite.api.WallObject;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 
 import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
@@ -135,7 +122,10 @@ public class SceneUploader
 			}
 
 			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
-			sceneTilePaint.setBufferLen(vertexCount);
+			int plane = tile.getRenderLevel();
+			int isBridge = tile.getBridge() != null ? 1 : 0;
+
+			sceneTilePaint.setBufferLen(isBridge << 5 | plane << 3 | (vertexCount / 3));
 			offset += vertexCount;
 			if (sceneTilePaint.getTexture() != -1)
 			{
@@ -157,7 +147,10 @@ public class SceneUploader
 			}
 
 			int vertexCount = PushTerrainDetailedTile(scene, sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
-			sceneTileModel.setBufferLen(vertexCount);
+			int plane = tile.getRenderLevel();
+			int isBridge = tile.getBridge() != null ? 1 : 0;
+
+			sceneTileModel.setBufferLen(isBridge << 5 | plane << 3 | (vertexCount / 3));
 			offset += vertexCount;
 			if (sceneTileModel.getTriangleTextureId() != null)
 			{
@@ -258,9 +251,9 @@ public class SceneUploader
 		}
 	}
 
-	public int PushDynamicModel(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
+	public int PushDynamicModel(Model model, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, 0, 0, false, false, dynamicSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, 0, 0, false, isNPC, dynamicSharedVertexMap);
 		return vertexCount;
 	}
 
@@ -518,12 +511,13 @@ public class SceneUploader
 		return realPlane;
 	}
 
-	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileX, int tileY, boolean recomputeNormals, boolean forceFlatNormals, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
+	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileX, int tileY, boolean recomputeNormals, boolean isNPC, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
 	{
 		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
 		vertexBuffer.ensureCapacity(triCount * 12);
 		normalBuffer.ensureCapacity(triCount * 12);
 		uvBuffer.ensureCapacity(triCount * 12);
+		flagsBuffer.ensureCapacity(triCount * 12);
 
 		final float[] vertexX = model.getVerticesX();
 		final float[] vertexY = model.getVerticesY();
@@ -587,25 +581,27 @@ public class SceneUploader
 				continue;
 			}
 
-			if(IsBakedGroundShading(model, tri))
-			{
-				color1 = color2 = color3 = 0x12345678;
-				vertexBuffer.put(0, 0, 0, 0);
-				vertexBuffer.put(0, 0, 0, 0);
-				vertexBuffer.put(0, 0, 0, 0);
-
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-
-				if (faceTextures != null)
+			if(isNPC) {
+				if(IsBakedGroundShading(model, tri))
 				{
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
+					color1 = color2 = color3 = 0x12345678;
+					vertexBuffer.put(0, 0, 0, 0);
+					vertexBuffer.put(0, 0, 0, 0);
+					vertexBuffer.put(0, 0, 0, 0);
+
+					normalBuffer.put(0, 0, 0, 0);
+					normalBuffer.put(0, 0, 0, 0);
+					normalBuffer.put(0, 0, 0, 0);
+
+					if (faceTextures != null)
+					{
+						uvBuffer.put(0, 0, 0, 0);
+						uvBuffer.put(0, 0, 0, 0);
+						uvBuffer.put(0, 0, 0, 0);
+					}
+					vertexCount += 3;
+					continue;
 				}
-				vertexCount += 3;
-				continue;
 			}
 
 			// HSL override is not applied to textured faces
@@ -628,6 +624,10 @@ public class SceneUploader
 			vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
 			vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
 			vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
+
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
 
 			if (faceTextures != null)
 			{

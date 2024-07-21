@@ -304,6 +304,10 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     normalout[outOffset + myOffset * 3 + 1] = normB;
     normalout[outOffset + myOffset * 3 + 2] = normC;
 
+//    ivec4 modelFlags;
+//    int isBridge = (minfo.exFlags.x >> BIT_ISBRIDGE) & 1;
+//    modelFlags.x = (plane << BIT_PLANE) | (int((minfo.x / TILE_SIZE) + SCENE_OFFSET) << BIT_XPOS) | (int((minfo.z / TILE_SIZE) + SCENE_OFFSET) << BIT_YPOS) | (isBridge << BIT_ISBRIDGE);
+
     flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
     flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
     flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;

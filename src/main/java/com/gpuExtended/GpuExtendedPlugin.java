@@ -1336,64 +1336,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	@Override
-	public void drawScenePaint(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY)
-	{
-		if (paint.getBufferLen() > 0)
-		{
-			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-			final int localY = 0;
-			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
-
-			GpuIntBuffer b = modelBufferUnordered;
-			++unorderedModels;
-
-			b.ensureCapacity(12);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(paint.getBufferOffset());
-			buffer.put(paint.getUvBufferOffset());
-			buffer.put(2);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER);
-			buffer.put(localX).put(localY).put(localZ);
-			buffer.put(0);
-			buffer.put(0);
-			buffer.put(0);
-			buffer.put(0);
-
-			targetBufferOffset += 2 * 3;
-		}
-	}
-
-	@Override
-	public void drawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY)
-	{
-		if (model.getBufferLen() > 0)
-		{
-			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-			final int localY = 0;
-			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
-
-			GpuIntBuffer b = modelBufferUnordered;
-			++unorderedModels;
-
-			b.ensureCapacity(12);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(model.getBufferOffset());
-			buffer.put(model.getUvBufferOffset());
-			buffer.put(model.getBufferLen() / 3);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER);
-			buffer.put(localX).put(localY).put(localZ);
-			buffer.put(0);
-			buffer.put(0);
-			buffer.put(0);
-			buffer.put(0);
-
-			targetBufferOffset += model.getBufferLen();
-		}
-	}
-
 	// MAIN DRAW
 	@Override
 	public void draw(int overlayColor)
@@ -2498,8 +2440,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
 		int exFlags = GetExFlags(hash, x, y, z, true);
 		boolean hasUv = model.getFaceTextures() != null;
+		boolean isNPC = renderable instanceof NPC;
 
-		int len = sceneUploader.PushDynamicModel(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+		int len = sceneUploader.PushDynamicModel(model, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 
 		GpuIntBuffer b = bufferForTriangles(len / 3);
 		b.ensureCapacity(12);
@@ -2539,11 +2482,83 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
 
+		int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+
 		int flags = (plane << BIT_PLANE) |
-					(x << BIT_XPOS) |
-					(y << BIT_YPOS) |
+					(tileX << BIT_XPOS) |
+					(tileY << BIT_YPOS) |
 					(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0);
 		return flags;
+	}
+
+	@Override
+	public void drawScenePaint(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY)
+	{
+		if (paint.getBufferLen() > 0)
+		{
+			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
+			final int localY = 0;
+			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
+
+			int len = paint.getBufferLen();
+			boolean isBridge = ((len >> 5) & 1) != 0;
+			int flags = (plane << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (1 << BIT_ISTERRAIN);
+
+			GpuIntBuffer b = modelBufferUnordered;
+			++unorderedModels;
+
+			b.ensureCapacity(12);
+			IntBuffer buffer = b.getBuffer();
+			buffer.put(paint.getBufferOffset());
+			buffer.put(paint.getUvBufferOffset());
+			buffer.put(2);
+			buffer.put(targetBufferOffset);
+			buffer.put(FLAG_SCENE_BUFFER);
+			buffer.put(localX).put(localY).put(localZ);
+			buffer.put(flags);
+			buffer.put(0);
+			buffer.put(0);
+			buffer.put(0);
+
+			targetBufferOffset += 2 * 3;
+		}
+	}
+
+	@Override
+	public void drawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY)
+	{
+		if (model.getBufferLen() > 0)
+		{
+			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
+			final int localY = 0;
+			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
+
+			int len = model.getBufferLen();
+			boolean isBridge = ((len >> 5) & 1) != 0;
+			int plane = (len >> 3) & 3;
+			len &= 7;
+
+			int flags = (plane << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (1 << BIT_ISTERRAIN);
+
+			GpuIntBuffer b = modelBufferUnordered;
+			++unorderedModels;
+
+			b.ensureCapacity(12);
+			IntBuffer buffer = b.getBuffer();
+			buffer.put(model.getBufferOffset());
+			buffer.put(model.getUvBufferOffset());
+			buffer.put(len);
+			buffer.put(targetBufferOffset);
+			buffer.put(FLAG_SCENE_BUFFER);
+			buffer.put(localX).put(localY).put(localZ);
+			buffer.put(flags);
+			buffer.put(0);
+			buffer.put(0);
+			buffer.put(0);
+
+			targetBufferOffset += len * 3;
+		}
 	}
 
 	private void CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash)
