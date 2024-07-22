@@ -153,12 +153,7 @@ vec4 unpackColor(vec4 packedColor) {
 
 void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, float distanceToPlayer)
 {
-    int tileMapCellX = int(floor(fragPos.x / TILE_SIZE));
-    int tileMapCellZ = int(floor(fragPos.z / TILE_SIZE));
-    int cellX = int(tileMapCellX * TILE_SIZE);
-    int cellZ = int(tileMapCellZ * TILE_SIZE);
-
-    ivec2 cellUv = ivec2(tileMapCellX + SCENE_OFFSET, tileMapCellZ + SCENE_OFFSET);
+    ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
     vec4 packedFillColor = texelFetch(tileFillColorMap, cellUv, 0);
     vec4 packedOutlineColor = texelFetch(tileBorderColorMap, cellUv, 0);
     vec4 packedSettings = texelFetch(tileSettingsMap, cellUv, 0);
@@ -256,35 +251,45 @@ void FadeRoofs(VertexFlags flags, vec3 fragPos, float dither, float distanceToPl
         return;
     }
 
-    int tileMapCellX = int(floor(fragPos.x / TILE_SIZE));
-    int tileMapCellZ = int(floor(fragPos.z / TILE_SIZE));
-    int cellX = int(tileMapCellX * TILE_SIZE);
-    int cellZ = int(tileMapCellZ * TILE_SIZE);
-
-    ivec2 cellUv = ivec2(tileMapCellX + SCENE_OFFSET, tileMapCellZ + SCENE_OFFSET);
+    ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
     distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
 
-    vec4 roofTextureP0 = texelFetch(roofMaskMap, ivec3(cellUv, 0), 0);
-    vec4 roofTextureP1 = texelFetch(roofMaskMap, ivec3(cellUv, 1), 0);
-    vec4 roofTextureP2 = texelFetch(roofMaskMap, ivec3(cellUv, 2), 0);
-    vec4 roofTextureP3 = texelFetch(roofMaskMap, ivec3(cellUv, 3), 0);
+    float roofTextureP0 = texelFetch(roofMaskMap, ivec3(cellUv, 0), 0).a;
+    float roofTextureP1 = texelFetch(roofMaskMap, ivec3(cellUv, 1), 0).a;
+    float roofTextureP2 = texelFetch(roofMaskMap, ivec3(cellUv, 2), 0).a;
+
+    float roofMaskIsOnPlane0 = roofTextureP0 + roofTextureP1 + roofTextureP2;
+    float roofMaskIsOnPlane1 = roofTextureP1 + roofTextureP2;
+    float roofMaskIsOnPlane2 = roofTextureP2;
 
     float roofMask = 0;
-    switch(int(round(flags.plane - playerPosition.z + 1)))
+    switch(int(playerPosition.z))
     {
+        case 0:
+        if(flags.plane > 0)
+        {
+            roofMask = roofMaskIsOnPlane0;
+        }
+        break;
+
         case 1:
-        roofMask = roofTextureP0.a;
+        if(flags.plane > 1)
+        {
+            roofMask = roofMaskIsOnPlane1;
+        }
         break;
+
         case 2:
-        roofMask = roofTextureP0.a + roofTextureP1.a;
-        break;
-        case 3:
-        roofMask = roofTextureP0.a + roofTextureP1.a + roofTextureP2.a;
+        if(flags.plane > 2)
+        {
+            roofMask = roofMaskIsOnPlane2;
+        }
         break;
     }
     roofMask = clamp(roofMask, 0, 1);
 
-    clip(0 - roofMask);
+    float roofClip = roofMask * (dither - 0.001 - distanceToPlayer);
+    clip(roofClip);
 }
 
 // Pre-defined set of sample points for blocker search and PCF

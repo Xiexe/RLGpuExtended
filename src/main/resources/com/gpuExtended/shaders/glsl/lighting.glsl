@@ -135,7 +135,7 @@ void ApplyLightAnimation(inout Light light)
     {
         case LIGHT_ANIM_FLICKER:
         float flicker = sin((time / 75) - hashXY) * 0.05 + 0.95;
-        float flicker2 = sin((time / 30) - hashHZ) * 0.05 + 0.95;
+        float flicker2 = sin((time / 45) - hashHZ) * 0.05 + 0.95;
         light.intensity *= flicker * flicker2;
         break;
 
@@ -154,17 +154,16 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
         if(light.type == LIGHT_TYPE_INVALID) break;
         if(light.intensity <= 0) continue;
 
-        ApplyLightAnimation(light);
         light.pos.xyz = OffsetLight(light);
 
         vec3 toLight = (light.pos.xyz - fragPos.xzy);
         float distToLight = length(toLight) / TILE_SIZE;
-
         if(distToLight > light.radius) continue;
 
         toLight = normalize(toLight);
         toLight.z = -toLight.z;
 
+        ApplyLightAnimation(light);
         float atten = LinearAttenuation(distToLight, light.radius);
         float ndl = max(dot(normal.xzy, toLight), 0);
         image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;

@@ -23,6 +23,7 @@ import javax.swing.SwingUtilities;
 import com.gpuExtended.overlays.RegionOverlay;
 import com.gpuExtended.overlays.SceneTileMaskOverlay;
 import com.gpuExtended.regions.Area;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
@@ -1672,15 +1673,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			environmentManager.DetermineRenderedLights();
 			for(int i = 0; i < MAX_LIGHTS; i++)
 			{
-				boolean lightExists = environmentManager.sceneLights.size() > i;
 				// TODO:: check visibility of light from frustum.
-				if(!lightExists)
+				Light light = environmentManager.GetLightAtIndex(i);
+				if(light == null)
 				{
 					PushEmptyLightToBuffer();
 				}
 				else
 				{
-					Light light = environmentManager.sceneLights.get(i);
 					float dx = playerX - light.position.x;
 					float dy = playerY - light.position.y;
 					float distanceSquared = dx * dx + dy * dy;
@@ -1698,12 +1698,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
 
 					float intensity = light.intensity * fadeMultiplier;
-
-					if(intensity <= 0)
-					{
-						PushEmptyLightToBuffer();
-						continue;
-					}
 
 					bBufferEnvironmentBlock.putFloat(light.position.x);
 					bBufferEnvironmentBlock.putFloat(light.position.y);

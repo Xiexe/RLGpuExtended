@@ -264,113 +264,101 @@ public class EnvironmentManager
 
     public void LoadSceneLights(Scene scene)
     {
-        if(client.getGameState() != GameState.LOGGED_IN)
-        {
-            return;
-        }
-
         sceneLights.clear();
         sceneLightVisibility.clear();
 
-        HashMap<Vector4, ArrayList<TileObject>> processedObjects = new HashMap<>();
-        // TODO:: something causes duplicate lights sometimes. Fix it.
-        for (int z = 0; z < Constants.MAX_Z; ++z)
-        {
-            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x)
-            {
-                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y)
-                {
-                    Tile tile = scene.getExtendedTiles()[z][x][y];
-                    if(tile == null) {
-                        continue;
-                    }
-
-                    if(tile.getPlane() != client.getPlane())
-                    {
-                        continue;
-                    }
-
-
-                    WorldPoint tileWorldLocation = tile.getWorldLocation();
-                    int[] worldLocation = new int[] {
-                            tileWorldLocation.getX(),
-                            tileWorldLocation.getY(),
-                            tileWorldLocation.getPlane()
-                    };
-
-                    int hash = GenerateTileHash(worldLocation);
-                    if(tileLights.containsKey(hash))
-                    {
-                        ArrayList<Light> lightsForTile = tileLights.get(hash);
-
-                        LocalPoint location = tile.getLocalLocation();
-                        Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
-                        for(int i = 0; i < lightsForTile.size(); i++) {
-                            Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position);
-                            sceneLights.add(light);
-                        }
-                    }
-
-                    DecorativeObject decorativeObject = tile.getDecorativeObject();
-                    if (decorativeObject != null)
-                    {
-                        ArrayList<Light> lightsForDecoration = decorationLights.get(decorativeObject.getId());
-                        if(lightsForDecoration == null) continue;
-
-                        LocalPoint location = decorativeObject.getLocalLocation();
-                        Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), decorativeObject.getConfig() >> 6 & 3);
-
-                        if(processedObjects.containsKey(position)) {
-                            if(processedObjects.get(position).contains(decorativeObject))
-                                continue;
+        GameState gameState = client.getGameState();
+        if(gameState == GameState.LOADING || gameState == GameState.LOGGED_IN) {
+            HashMap<Vector4, ArrayList<TileObject>> processedObjects = new HashMap<>();
+            // TODO:: something causes duplicate lights sometimes. Fix it.
+            for (int z = 0; z < Constants.MAX_Z; ++z) {
+                for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+                    for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+                        Tile tile = scene.getExtendedTiles()[z][x][y];
+                        if (tile == null) {
+                            continue;
                         }
 
-                        if(!processedObjects.containsKey(position))
-                        {
-                            processedObjects.put(position, new ArrayList<>());
+                        if (tile.getPlane() != client.getPlane()) {
+                            continue;
                         }
 
-                        for(int i = 0; i < lightsForDecoration.size(); i++) {
-                            Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position);
-                            sceneLights.add(light);
+
+                        WorldPoint tileWorldLocation = tile.getWorldLocation();
+                        int[] worldLocation = new int[]{
+                                tileWorldLocation.getX(),
+                                tileWorldLocation.getY(),
+                                tileWorldLocation.getPlane()
+                        };
+
+                        int hash = GenerateTileHash(worldLocation);
+                        if (tileLights.containsKey(hash)) {
+                            ArrayList<Light> lightsForTile = tileLights.get(hash);
+
+                            LocalPoint location = tile.getLocalLocation();
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
+                            for (int i = 0; i < lightsForTile.size(); i++) {
+                                Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position);
+                                sceneLights.add(light);
+                            }
                         }
 
-                        processedObjects.get(position).add(decorativeObject);
-                    }
+                        DecorativeObject decorativeObject = tile.getDecorativeObject();
+                        if (decorativeObject != null) {
+                            ArrayList<Light> lightsForDecoration = decorationLights.get(decorativeObject.getId());
+                            if (lightsForDecoration == null) continue;
 
-                    for (GameObject gameObject : tile.getGameObjects())
-                    {
-                        if (gameObject == null) continue;
+                            LocalPoint location = decorativeObject.getLocalLocation();
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), decorativeObject.getConfig() >> 6 & 3);
 
-                        ArrayList<Light> lightsForGameobject = gameObjectLights.get(gameObject.getId());
-                        if (lightsForGameobject == null) continue;
+                            if (processedObjects.containsKey(position)) {
+                                if (processedObjects.get(position).contains(decorativeObject))
+                                    continue;
+                            }
 
-                        LocalPoint location = gameObject.getLocalLocation();
-                        Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), gameObject.getConfig() >> 6 & 3);
+                            if (!processedObjects.containsKey(position)) {
+                                processedObjects.put(position, new ArrayList<>());
+                            }
 
-                        if(processedObjects.containsKey(position)) {
-                            if(processedObjects.get(position).contains(gameObject))
-                                continue;
+                            for (int i = 0; i < lightsForDecoration.size(); i++) {
+                                Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position);
+                                sceneLights.add(light);
+                            }
+
+                            processedObjects.get(position).add(decorativeObject);
                         }
 
-                        if(!processedObjects.containsKey(position))
-                        {
-                            processedObjects.put(position, new ArrayList<>());
-                        }
+                        for (GameObject gameObject : tile.getGameObjects()) {
+                            if (gameObject == null) continue;
 
-                        for(int i = 0; i < lightsForGameobject.size(); i++)
-                        {
-                            Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position);
-                            sceneLights.add(light);
-                        }
+                            ArrayList<Light> lightsForGameobject = gameObjectLights.get(gameObject.getId());
+                            if (lightsForGameobject == null) continue;
 
-                        processedObjects.get(position).add(gameObject);
+                            LocalPoint location = gameObject.getLocalLocation();
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), gameObject.getConfig() >> 6 & 3);
+
+                            if (processedObjects.containsKey(position)) {
+                                if (processedObjects.get(position).contains(gameObject))
+                                    continue;
+                            }
+
+                            if (!processedObjects.containsKey(position)) {
+                                processedObjects.put(position, new ArrayList<>());
+                            }
+
+                            for (int i = 0; i < lightsForGameobject.size(); i++) {
+                                Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position);
+                                sceneLights.add(light);
+                            }
+
+                            processedObjects.get(position).add(gameObject);
+                        }
                     }
                 }
             }
-        }
 
-        log.info("Loaded {} lights across scene total.", sceneLights.size());
+            log.info("Loaded {} lights across scene total.", sceneLights.size());
+        }
     }
 
     public void DetermineRenderedLights()
@@ -378,10 +366,6 @@ public class EnvironmentManager
         Player player = client.getLocalPlayer();
         if (player == null)
         {
-            return;
-        }
-
-        if(sceneLights.size() < 2) {
             return;
         }
 
@@ -400,6 +384,16 @@ public class EnvironmentManager
 
             return Float.compare(distanceA, distanceB);
         });
+    }
+
+    public Light GetLightAtIndex(int index)
+    {
+        if(index < 0 || index >= sceneLights.size())
+        {
+            return null;
+        }
+
+        return sceneLights.get(index);
     }
 
     public void CheckRegion()

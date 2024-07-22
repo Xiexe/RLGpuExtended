@@ -169,7 +169,6 @@ public class TileMarkerManager {
                         Bounds bounds = environmentManager.CheckTileRegion(tile.getWorldLocation());
                         if(bounds != null) {
                             if (z < bounds.getGroundPlane()) {
-                                log.info("Skipping tile because it is below the ground plane");
                                 continue;
                             }
                         }
