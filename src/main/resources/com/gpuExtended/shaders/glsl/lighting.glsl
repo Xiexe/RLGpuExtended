@@ -153,7 +153,6 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
     {
         Light light = additiveLights[i];
         if(light.type == LIGHT_TYPE_INVALID) break;
-        if(light.intensity <= 0) continue;
 
         light.pos.xyz = OffsetLight(light);
 

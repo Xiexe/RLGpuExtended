@@ -10,6 +10,7 @@
     "decorations": [],
     "gameObjects": [],
     "projectiles": [],
+    "walls": [],
     "tiles": []
   },
   {
@@ -25,24 +26,15 @@
       197,
       198,
       205,
+      2501,
       3474,
-      4694
+      4501,
+      4694,
+      7432
     ],
     "gameObjects": [
       724,
       17237
-    ]
-  },
-  {
-    "name": "GENERIC_TORCHES_WALL",
-    "type": "point",
-    "color": [1.00, 0.52, 0.00],
-    "offset": [0, 0, 4],
-    "intensity": 1,
-    "radius": 3,
-    "animation": "flicker",
-    "walls": [
-      51759
     ]
   },
   {
@@ -55,7 +47,8 @@
     "animation": "flicker",
     "gameObjects": [
       202,
-      203
+      203,
+      2458
     ]
   },
   {
@@ -65,9 +58,10 @@
     "offset": [0.5, -0.35, 0.6],
     "intensity": 1,
     "radius": 2,
-    "animation": "none",
+    "animation": "flicker",
     "gameObjects": [
-      114
+      114,
+      26181
     ]
   },
   {
@@ -127,10 +121,37 @@
     "radius": 4,
     "animation": "pulse",
     "decorations": [
-      8774
+      8774,
+      9992
     ],
     "gameObjects": [
       3918
+    ]
+  },
+  {
+    "name": "CRYSTALS_WHITE",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 8,
+    "animation": "pulse",
+    "decorations": [],
+    "gameObjects": [
+      10014
+    ]
+  },
+  {
+    "name": "CRYSTALS_BLACK",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": -0.25,
+    "radius": 8,
+    "animation": "pulse",
+    "decorations": [],
+    "gameObjects": [
+      9750
     ]
   },
   {

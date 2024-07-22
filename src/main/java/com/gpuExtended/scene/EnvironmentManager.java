@@ -438,62 +438,54 @@ public class EnvironmentManager
 
     public void CheckRegion()
     {
-        if(client.getGameState() != GameState.LOGGED_IN)
+        if(client.getGameState() == GameState.LOGGED_IN || client.getGameState() == GameState.LOADING)
         {
-            return;
-        }
+            Bounds lastBounds = currentBounds;
+            Area lastArea = currentArea;
+            currentArea = null;
+            currentBounds = null;
 
-        Bounds lastBounds = currentBounds;
-        Area lastArea = currentArea;
-        currentArea = null;
-        currentBounds = null;
+            Player player = client.getLocalPlayer();
+            if (player == null || client.getScene() == null) {
+                return;
+            }
+            ;
 
-        Player player = client.getLocalPlayer();
-        if (player == null || client.getScene() == null)
-        {
-            return;
-        };
+            WorldPoint playerLocation = player.getWorldLocation();
+            LocalPoint localPoint = player.getLocalLocation();
 
-        WorldPoint playerLocation = player.getWorldLocation();
-        LocalPoint localPoint = player.getLocalLocation();
+            if (client.isInInstancedRegion()) {
+                playerLocation = WorldPoint.fromLocalInstance(client, localPoint);
+            }
 
-        if (client.isInInstancedRegion())
-        {
-            playerLocation = WorldPoint.fromLocalInstance(client, localPoint);
-        }
+            currentBounds = boundsMap.get(playerLocation);
+            currentArea = currentBounds == null ? null : areaMap.getOrDefault(currentBounds, null);
 
-        currentBounds = boundsMap.get(playerLocation);
-        currentArea = currentBounds == null ? null : areaMap.getOrDefault(currentBounds, null);
+            if (plugin.loadingScene) {
+                return;
+            }
 
-        if(plugin.loadingScene) {
-            return;
-        }
+            if (currentBounds != null && currentArea != null) {
+                if (currentBounds != lastBounds || currentArea != lastArea) {
+                    log.info("Player entered area: {}, {}", currentArea.getName(), currentBounds.getName());
 
-        if(currentBounds != null && currentArea != null) {
-            if (currentBounds != lastBounds || currentArea != lastArea) {
-                log.info("Player entered area: {}, {}", currentArea.getName(), currentBounds.getName());
-
-                if(lastBounds != null)
-                {
-                    if(!lastBounds.isHideOtherAreas() && !currentBounds.isHideOtherAreas())
-                    {
-                        return;
+                    if (lastBounds != null) {
+                        if (!lastBounds.isHideOtherAreas() && !currentBounds.isHideOtherAreas()) {
+                            return;
+                        }
+                    } else {
+                        if (!currentBounds.isHideOtherAreas()) {
+                            return;
+                        }
                     }
-                }
-                else
-                {
-                    if(!currentBounds.isHideOtherAreas())
-                    {
-                        return;
-                    }
-                }
 
-                if (client.getGameState() == GameState.LOGGED_IN) {
-                    clientThread.invoke(() -> {
-                        client.setGameState(GameState.LOADING);
-                        plugin.loadScene(client.getScene());
-                        plugin.swapScene(client.getScene());
-                    });
+                    if (client.getGameState() == GameState.LOGGED_IN) {
+                        clientThread.invoke(() -> {
+                            client.setGameState(GameState.LOADING);
+                            plugin.loadScene(client.getScene());
+                            plugin.swapScene(client.getScene());
+                        });
+                    }
                 }
             }
         }

@@ -100,7 +100,12 @@ public class RegionOverlay extends OverlayPanel {
         int my = region & 0xff;
 
         panelComponent.getChildren().add(LineComponent.builder()
-                .left("Region ID")
+                .left("Region Id")
+                .right(region + "")
+                .build());
+
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("Region XY")
                 .right(mx + ", " + my)
                 .build());
 

@@ -81,6 +81,16 @@
     ]
   },
   {
+    "name": "MOURNER_HQ",
+    "bounds": [
+      {
+        "start": [1855, 4608, -1],
+        "end": [2046, 4670, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "WILDERNESS",
     "bounds": [
       {

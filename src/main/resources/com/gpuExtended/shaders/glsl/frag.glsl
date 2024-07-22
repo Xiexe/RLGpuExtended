@@ -68,7 +68,8 @@ void main() {
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
     float shadow = (shadowTex * ndl);
 
-    vec3 litFragment = s.albedo.rgb * (shadow * mainLight.color.rgb + ambientColor.rgb);
+    vec3 ambient = ambientColor.rgb * 1.2;
+    vec3 litFragment = s.albedo.rgb * (shadow * mainLight.color.rgb + ambient);
 
     float fog = fFogAmount;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
