@@ -200,10 +200,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	static final Shader SHADOW_PROGRAM = new Shader()
 		.add(GL_VERTEX_SHADER, "vert_shadow.glsl")
+		.add(GL_GEOMETRY_SHADER, "geom_depth.glsl")
 		.add(GL_FRAGMENT_SHADER, "frag_depth.glsl");
 
 	static final Shader DETPH_PROGRAM = new Shader()
 			.add(GL_VERTEX_SHADER, "vert_depth.glsl")
+			.add(GL_GEOMETRY_SHADER, "geom_depth.glsl")
 			.add(GL_FRAGMENT_SHADER, "frag_depth.glsl");
 
 	static final Shader COMPUTE_PROGRAM = new Shader()

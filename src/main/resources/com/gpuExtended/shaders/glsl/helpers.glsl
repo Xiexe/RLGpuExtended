@@ -23,6 +23,11 @@ bool CheckIsWater(int texId)
     return texId == WATER;
 }
 
+bool CheckIsSwampWater(int texId)
+{
+    return texId == WATER_SWAMP;
+}
+
 bool CheckIsUnlitTexture(int texId)
 {
     return CheckIsInfernalCapeFireCape(texId);
@@ -63,10 +68,15 @@ void PopulateSurfaceColor(inout Surface s)
             textureColor *= 1.2;
         }
 
-//        if(CheckIsWater(fTextureId))
-//        {
-//            textureColor = vec4(1, 1, 1, 1);
-//        }
+        if(CheckIsWater(fTextureId))
+        {
+            textureColor = vec4(0.4, 0.55, 0.6, 1);
+        }
+
+        if(CheckIsSwampWater(fTextureId))
+        {
+            textureColor = vec4(0.1, 0.3, 0.25, 1);
+        }
 
         color = textureColor;
     } else {

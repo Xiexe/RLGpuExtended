@@ -42,6 +42,8 @@
 #define FIRE_CAPE 41
 #define INFERNAL_CAPE 60
 #define WATER 2
+#define WATER_SWAMP 26
+#define LAVA 41
 
 #define MAX_Z_HEIGHT 4 // 4 tiles high
 #define BIT_ZHEIGHT 24

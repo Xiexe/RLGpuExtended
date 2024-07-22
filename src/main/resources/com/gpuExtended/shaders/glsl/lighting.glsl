@@ -146,6 +146,7 @@ void ApplyLightAnimation(inout Light light)
     }
 }
 
+// TODO:: move light animation to CPU
 void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 fragPos)
 {
     for(int i = 0; i < LIGHT_COUNT; i++)

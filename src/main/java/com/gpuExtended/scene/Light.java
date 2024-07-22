@@ -119,6 +119,11 @@ public class Light
         return light;
     }
 
+    public void Animate(float time)
+    {
+        // TODO:: move light animation to cpu
+    }
+
     public String toString()
     {
         return "Light: " + name + " Type: " + type + " Animation: " + animation + " Color: " + color + " Position: " + position + " Offset: " + offset + " Intensity: " + intensity + " Radius: " + radius;

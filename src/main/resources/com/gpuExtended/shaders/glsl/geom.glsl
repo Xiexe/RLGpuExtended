@@ -69,7 +69,9 @@ void main() {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
 
-    fPosition = gPosition[i];
+    vec3 pos = gPosition[i];
+
+    fPosition = pos;
     fColor = gColor[i];
     fFogAmount = gFogAmount[i];
     fHsl = gHsl[i];
