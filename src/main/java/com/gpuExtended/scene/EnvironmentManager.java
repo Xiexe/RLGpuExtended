@@ -282,7 +282,7 @@ public class EnvironmentManager
         sceneLightVisibility.clear();
 
         GameState gameState = client.getGameState();
-        if(gameState == GameState.LOADING || gameState == GameState.LOGGED_IN) {
+        if(gameState == GameState.LOGGED_IN || plugin.loadingScene) {
             HashMap<Vector4, ArrayList<TileObject>> processedObjects = new HashMap<>();
             // TODO:: something causes duplicate lights sometimes. Fix it.
             for (int z = 0; z < Constants.MAX_Z; ++z) {
@@ -296,7 +296,6 @@ public class EnvironmentManager
                         if (tile.getPlane() != client.getPlane()) {
                             continue;
                         }
-
 
                         WorldPoint tileWorldLocation = tile.getWorldLocation();
                         int[] worldLocation = new int[]{
@@ -438,7 +437,7 @@ public class EnvironmentManager
 
     public void CheckRegion()
     {
-        if(client.getGameState() == GameState.LOGGED_IN || client.getGameState() == GameState.LOADING)
+        if(client.getGameState() == GameState.LOGGED_IN || plugin.loadingScene)
         {
             Bounds lastBounds = currentBounds;
             Area lastArea = currentArea;
@@ -449,7 +448,6 @@ public class EnvironmentManager
             if (player == null || client.getScene() == null) {
                 return;
             }
-            ;
 
             WorldPoint playerLocation = player.getWorldLocation();
             LocalPoint localPoint = player.getLocalLocation();
@@ -481,9 +479,11 @@ public class EnvironmentManager
 
                     if (client.getGameState() == GameState.LOGGED_IN) {
                         clientThread.invoke(() -> {
+                            Scene scene = client.getScene();
+
                             client.setGameState(GameState.LOADING);
-                            plugin.loadScene(client.getScene());
-                            plugin.swapScene(client.getScene());
+                            plugin.loadScene(scene);
+                            plugin.swapScene(scene);
                         });
                     }
                 }

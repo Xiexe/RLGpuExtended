@@ -24,6 +24,9 @@ public class Bounds {
     boolean hideOtherAreas;
 
     @Nullable
+    boolean allowRoofFading;
+
+    @Nullable
     int groundPlane;
 
     public int getWidth() {

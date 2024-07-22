@@ -358,6 +358,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private long StartTime;
 	private float currentTrueTileAlpha = 1;
 	private int currentPlane = 0;
+	public boolean roofFading = false;
+
 	private int[] lastPlayerPosition = new int[2];
 
 	private int[] currentViewport = new int[4];
@@ -667,7 +669,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				});
 			}
 
-			client.getScene().setRoofRemovalMode(config.roofFading() ? 16 : 0);
+			if(client.getGameState() == GameState.LOGGED_IN) {
+				Bounds bounds = environmentManager.currentBounds;
+
+				boolean allowRoofFading = true;
+				if(bounds != null)
+				{
+					allowRoofFading = bounds.isAllowRoofFading();
+				}
+
+				client.getScene().setRoofRemovalMode(allowRoofFading && config.roofFading() ? 16 : 0);
+			}
 		}
 	}
 
@@ -1170,7 +1182,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		final Scene scene = client.getScene();
 		scene.setDrawDistance(getDrawDistance());
-		scene.setRoofRemovalMode(config.roofFading() ? 16 : 0);
+//		scene.setRoofRemovalMode(config.roofFading() ? 16 : 0);
 
 		// Only reset the target buffer offset right before drawing the scene. That way if there are frames
 		// after this that don't involve a scene draw, like during LOADING/HOPPING/CONNECTION_LOST, we can
@@ -1569,6 +1581,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		Environment env = environmentManager.currentEnvironment;
 
+		Bounds currentBounds = environmentManager.currentBounds;
+		boolean roofFadingEnabled = currentBounds != null ? currentBounds.isAllowRoofFading() : true;
+
 		// <editor-fold defaultstate="collapsed" desc="Write Tilemap Data">
 		// </editor-fold>
 
@@ -1866,7 +1881,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
 			bBufferConfigBlock.putInt(getDrawDistance());
 			bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-			bBufferConfigBlock.putInt(config.roofFading() ? 1 : 0);
+			bBufferConfigBlock.putInt(roofFadingEnabled ? 1 : 0);
 			bBufferConfigBlock.putInt(config.roofFadingRange());
 
 			bBufferConfigBlock.flip();
@@ -2160,12 +2175,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneNormalBuffer = normalBuffer;
 		nextSceneFlagsBuffer = flagsBuffer;
 		nextSceneId = sceneUploader.sceneId;
-
-		if(config.roofFading()) {
-			scene.setRoofRemovalMode(16);
-		} else {
-			scene.setRoofRemovalMode(0);
-		}
 	}
 
 	private void uploadTileHeights(Scene scene)

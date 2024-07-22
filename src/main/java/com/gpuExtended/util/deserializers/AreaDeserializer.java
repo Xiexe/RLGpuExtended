@@ -47,13 +47,19 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
                     hideOtherAreas = boundObject.get("hideOtherAreas").getAsBoolean();
                 }
 
+                boolean allowRoofFading = true;
+                if(boundObject.has("allowRoofFading"))
+                {
+                    allowRoofFading = boundObject.get("allowRoofFading").getAsBoolean();
+                }
+
                 int groundPlane = 0;
                 if(boundObject.has("groundPlane"))
                 {
                     groundPlane = boundObject.get("groundPlane").getAsInt();
                 }
 
-                bounds[i] = new Bounds(boundName, start, end, hideOtherAreas, groundPlane);
+                bounds[i] = new Bounds(boundName, start, end, hideOtherAreas, allowRoofFading, groundPlane);
             }
         }
 

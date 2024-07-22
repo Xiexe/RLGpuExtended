@@ -813,17 +813,13 @@ public class SceneUploader
 
 	public void PrepareScene(Scene scene)
 	{
-		if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps())
-		{
-			return;
-		}
-
 		Bounds currentBounds = enviornmentManager.currentBounds;
-		if(currentBounds != null) {
-			if(!currentBounds.isHideOtherAreas())
-			{
-				return;
-			}
+		if(currentBounds != null)
+		{
+			scene.setRoofRemovalMode(gpuConfig.roofFading() && currentBounds.isAllowRoofFading() ? 16 : 0);
+
+			if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
+			if(!currentBounds.isHideOtherAreas()) return;
 
 			log.info("Hiding unrelated maps to: {}", currentBounds.getName());
 
@@ -843,6 +839,9 @@ public class SceneUploader
 					}
 				}
 			}
+		}
+		else {
+			scene.setRoofRemovalMode(gpuConfig.roofFading() ? 16 : 0);
 		}
 	}
 

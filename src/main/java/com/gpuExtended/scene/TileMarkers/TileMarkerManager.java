@@ -150,50 +150,55 @@ public class TileMarkerManager {
 
     public void InitializeSceneRoofMask(Scene scene)
     {
-        roofMaskTexture.floodPixels(0,0,0,0);
+        if(client.getGameState() == GameState.LOGGED_IN || plugin.loadingScene) {
+            if (scene == null)
+                return;
 
-        //TODO:: if going from login screen, this will fail for some reason in some places.
-        Tile[][][] tiles = scene.getExtendedTiles();
-        byte[][][] settings = scene.getExtendedTileSettings();
+            roofMaskTexture.floodPixels(0, 0, 0, 0);
 
-        for (int z = 0; z < Constants.MAX_Z; z++) {
-            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
-                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
+            //TODO:: if going from login screen, this will fail for some reason in some places.
+            Tile[][][] tiles = scene.getExtendedTiles();
+            byte[][][] settings = scene.getExtendedTileSettings();
 
-                    Tile tile = tiles[z][x][y];
-                    if(tile != null) {
-                        Bounds bounds = environmentManager.CheckTileRegion(tile.getWorldLocation());
-                        if(bounds != null) {
-                            if (z < bounds.getGroundPlane()) {
-                                continue;
+            for (int z = 0; z < Constants.MAX_Z; z++) {
+                for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
+                    for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
+
+                        Tile tile = tiles[z][x][y];
+                        if (tile != null) {
+                            Bounds bounds = environmentManager.CheckTileRegion(tile.getWorldLocation());
+                            if (bounds != null) {
+                                if (z < bounds.getGroundPlane()) {
+                                    continue;
+                                }
                             }
-                        }
 
-                        int cSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 0)];
-                        int nSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 1)];
-                        int sSettings = settings[z][clampCoords(x + 0)][clampCoords(y - 1)];
-                        int eSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 0)];
-                        int wSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 0)];
+                            int cSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 0)];
+                            int nSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 1)];
+                            int sSettings = settings[z][clampCoords(x + 0)][clampCoords(y - 1)];
+                            int eSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 0)];
+                            int wSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 0)];
 
-                        int neSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 1)];
-                        int seSettings = settings[z][clampCoords(x + 1)][clampCoords(y - 1)];
-                        int nwSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 1)];
-                        int swSettings = settings[z][clampCoords(x - 1)][clampCoords(y - 1)];
+                            int neSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 1)];
+                            int seSettings = settings[z][clampCoords(x + 1)][clampCoords(y - 1)];
+                            int nwSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 1)];
+                            int swSettings = settings[z][clampCoords(x - 1)][clampCoords(y - 1)];
 
-                        boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                        boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
+                            boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
 
-                        boolean tileIsUnderRoof = centerRoof || nRoof || sRoof || eRoof || wRoof || neRoof || seRoof || nwRoof || swRoof;
-                        if (tileIsUnderRoof) {
-                            // todo:: use color channels to mask groups of roofs
-                            roofMaskTexture.setPixel(x, y, z, 0, 0, 0, 255);
+                            boolean tileIsUnderRoof = centerRoof || nRoof || sRoof || eRoof || wRoof || neRoof || seRoof || nwRoof || swRoof;
+                            if (tileIsUnderRoof) {
+                                // todo:: use color channels to mask groups of roofs
+                                roofMaskTexture.setPixel(x, y, z, 0, 0, 0, 255);
+                            }
                         }
                     }
                 }

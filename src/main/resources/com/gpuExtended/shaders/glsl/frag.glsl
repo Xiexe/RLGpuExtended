@@ -91,10 +91,7 @@ void main() {
     //finalColor = vec3(float(flags.tileX) / EXTENDED_SCENE_SIZE, float(flags.tileY) / EXTENDED_SCENE_SIZE, 0.0);
     //finalColor = vec3(float(flags.plane) / 4.);
     //finalColor = vec3(flags.isTerrain);
-
-
-//    finalColor = vec3(s.albedo);
-
     //finalColor = vec3(fColor);
+
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }
