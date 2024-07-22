@@ -21,7 +21,18 @@ void main() {
     int hsl = vHsl & 0xffff;
     float a = float(vHsl >> 24 & 0xff) / 255.f;
 
-    gVertex = vPosition;
+    vec3 vPos = vPosition;
+//    int plane              = ((vFlags.x >> BIT_PLANE) & 3);
+//    bool isBridge          = ((vFlags.x >> BIT_ISBRIDGE) & 1) > 0;
+//    bool isTerrain         = ((vFlags.x >> BIT_ISTERRAIN) & 1) > 0;
+//    bool isDynamicModel    = ((vFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
+//
+//    if(isDynamicModel)
+//    {
+//        vPos = vec3(0);
+//    }
+
+    gVertex = vPos;
     gTextureId = int(vUv.x);
     gTexPos = vUv.yzw;
     gProjMatrix = mainLight.projectionMatrix;

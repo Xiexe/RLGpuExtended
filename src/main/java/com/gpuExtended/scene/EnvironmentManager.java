@@ -91,6 +91,7 @@ public class EnvironmentManager
     public HashMap<Integer, ArrayList<Light>> tileLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> decorationLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> gameObjectLights = new HashMap<>();
+    public HashMap<Integer, ArrayList<Light>> wallLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> projectileLights = new HashMap<>();
 
 
@@ -198,6 +199,7 @@ public class EnvironmentManager
             decorationLights.clear();
             gameObjectLights.clear();
             projectileLights.clear();
+            wallLights.clear();
 
             int uniqueLightAssignements = 0;
             for(int i = 0; i < lightsDefinitions.length; i++) {
@@ -238,6 +240,18 @@ public class EnvironmentManager
 
                         if(!gameObjectLights.get(gameObjects[j]).contains(light)) {
                             gameObjectLights.get(gameObjects[j]).add(light);
+                        }
+                        uniqueLightAssignements++;
+                    }
+                }
+
+                int[] walls = light.walls;
+                if(walls != null) {
+                    for(int j = 0; j < walls.length; j++) {
+                        wallLights.computeIfAbsent(walls[j], k -> new ArrayList<>());
+
+                        if(!wallLights.get(walls[j]).contains(light)) {
+                            wallLights.get(walls[j]).add(light);
                         }
                         uniqueLightAssignements++;
                     }
@@ -352,6 +366,32 @@ public class EnvironmentManager
                             }
 
                             processedObjects.get(position).add(gameObject);
+                        }
+
+                        WallObject wallObject = tile.getWallObject();
+                        if(wallObject != null)
+                        {
+                            ArrayList<Light> lightsForWallObject = wallLights.get(wallObject.getId());
+                            if (lightsForWallObject == null) continue;
+
+                            LocalPoint location = wallObject.getLocalLocation();
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
+
+                            if (processedObjects.containsKey(position)) {
+                                if (processedObjects.get(position).contains(wallObject))
+                                    continue;
+                            }
+
+                            if (!processedObjects.containsKey(position)) {
+                                processedObjects.put(position, new ArrayList<>());
+                            }
+
+                            for (int i = 0; i < lightsForWallObject.size(); i++) {
+                                Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position);
+                                sceneLights.add(light);
+                            }
+
+                            processedObjects.get(position).add(wallObject);
                         }
                     }
                 }

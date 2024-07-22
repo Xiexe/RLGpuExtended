@@ -547,10 +547,22 @@ public interface GpuExtendedConfig extends Config
 		String debugging = "debugging";
 
 		@ConfigItem(
+				keyName = "forceSceneReload",
+				name = "Reload Scene",
+				description = "Forces the current scene to reload when changed. On / Off means nothing.",
+				position = 0,
+				section = debugging
+		)
+		default boolean forceSceneReload()
+		{
+			return false;
+		}
+
+		@ConfigItem(
 				keyName = "showShadowMap",
 				name = "Show Shadow Map",
 				description = "",
-				position = 0,
+				position = 1,
 				section = debugging
 		)
 		default boolean showShadowMap()
@@ -562,7 +574,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "showTileMask",
 				name = "Show Tile Mask",
 				description = "",
-				position = 0,
+				position = 2,
 				section = debugging
 		)
 		default boolean showTileMask()
@@ -574,7 +586,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "showRegionOverlay",
 				name = "Show Location Overlay",
 				description = "",
-				position = 0,
+				position = 3,
 				section = debugging
 		)
 		default boolean showRegionOverlay()
@@ -586,7 +598,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "showPerformanceOverlay",
 				name = "Show Performance Overlay",
 				description = "",
-				position = 0,
+				position = 4,
 				section = debugging
 		)
 		default boolean showPerformanceOverlay()

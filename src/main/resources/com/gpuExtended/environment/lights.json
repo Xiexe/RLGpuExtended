@@ -24,12 +24,25 @@
       196,
       197,
       198,
+      205,
       3474,
       4694
     ],
     "gameObjects": [
       724,
       17237
+    ]
+  },
+  {
+    "name": "GENERIC_TORCHES_WALL",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [0, 0, 4],
+    "intensity": 1,
+    "radius": 3,
+    "animation": "flicker",
+    "walls": [
+      51759
     ]
   },
   {

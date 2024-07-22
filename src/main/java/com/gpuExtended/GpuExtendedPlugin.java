@@ -80,6 +80,7 @@ import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ConstantVariables.*;
 import static com.gpuExtended.util.ResourcePath.path;
+import static com.gpuExtended.util.SceneUploader.GetTileRealPlane;
 import static com.gpuExtended.util.Utils.InverseLerp;
 import static net.runelite.api.Constants.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
@@ -2399,27 +2400,27 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
 
-		int tc = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
+		int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 		int uvOffset = offsetModel.getUvBufferOffset();
 		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
 		int exFlags = GetExFlags(hash, x, y, z, false);
 
-		GpuIntBuffer b = bufferForTriangles(tc);
+		GpuIntBuffer b = bufferForTriangles(faceCount);
 
 		b.ensureCapacity(12);
 		IntBuffer buffer = b.getBuffer();
 		buffer.put(offsetModel.getBufferOffset());
 		buffer.put(uvOffset);
-		buffer.put(tc);
+		buffer.put(faceCount);
 		buffer.put(targetBufferOffset);
 		buffer.put(FLAG_SCENE_BUFFER | flags);
 		buffer.put(x).put(y).put(z);
 		buffer.put(exFlags);
-		buffer.put(0);
-		buffer.put(0);
-		buffer.put(0);
+		buffer.put(-1);
+		buffer.put(-1);
+		buffer.put(-1);
 
-		targetBufferOffset += tc * 3;
+		targetBufferOffset += faceCount * 3;
 		//staticModelUpload.stop();
 	}
 
@@ -2438,26 +2439,26 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		boolean hasUv = model.getFaceTextures() != null;
 		boolean isNPC = renderable instanceof NPC;
 
-		int len = sceneUploader.PushDynamicModel(model, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+		int vertexCount = sceneUploader.PushDynamicModel(model, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 
-		GpuIntBuffer b = bufferForTriangles(len / 3);
+		GpuIntBuffer b = bufferForTriangles(vertexCount / 3);
 		b.ensureCapacity(12);
 		IntBuffer buffer = b.getBuffer();
 		buffer.put(tempOffset);
 		buffer.put(hasUv ? tempUvOffset : -1);
-		buffer.put(len / 3);
+		buffer.put(vertexCount / 3);
 		buffer.put(targetBufferOffset);
 		buffer.put(flags);
 		buffer.put(x).put(y).put(z);
 		buffer.put(exFlags);
-		buffer.put(0);
-		buffer.put(0);
-		buffer.put(0);
+		buffer.put(-1);
+		buffer.put(-1);
+		buffer.put(-1);
 
-		tempOffset += len;
-		targetBufferOffset += len;
+		tempOffset += vertexCount;
+		targetBufferOffset += vertexCount;
 		if(hasUv) {
-			tempUvOffset += len;
+			tempUvOffset += vertexCount;
 		}
 		//dynamicModelUpload.stop();
 	}
@@ -2480,8 +2481,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+		int realPlane = GetTileRealPlane(tileX, tileY, plane, client.getScene());
 
-		int flags = (plane << BIT_PLANE) |
+		int flags = (realPlane << BIT_PLANE) |
 					(tileX << BIT_XPOS) |
 					(tileY << BIT_YPOS) |
 					(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0);
@@ -2497,9 +2499,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			final int localY = 0;
 			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
 
-			int len = paint.getBufferLen();
-			boolean isBridge = ((len >> 5) & 1) != 0;
-			int flags = (plane << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (1 << BIT_ISTERRAIN);
+			int faceCount = paint.getBufferLen();
+			boolean isBridge = ((faceCount >> 5) & 1) != 0;
+			boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
+			int renderLevel = (faceCount >> 3) & 3;
+			int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 
 			GpuIntBuffer b = modelBufferUnordered;
 			++unorderedModels;
@@ -2513,9 +2517,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			buffer.put(FLAG_SCENE_BUFFER);
 			buffer.put(localX).put(localY).put(localZ);
 			buffer.put(flags);
-			buffer.put(0);
-			buffer.put(0);
-			buffer.put(0);
+			buffer.put(-1);
+			buffer.put(-1);
+			buffer.put(-1);
 
 			targetBufferOffset += 2 * 3;
 		}
@@ -2530,12 +2534,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			final int localY = 0;
 			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
 
-			int len = model.getBufferLen();
-			boolean isBridge = ((len >> 5) & 1) != 0;
-			int plane = (len >> 3) & 3;
-			len &= 7;
+			int faceCount = model.getBufferLen();
+			boolean isBridge = ((faceCount >> 5) & 1) != 0;
+			boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
+			int renderLevel = (faceCount >> 3) & 3;
+			faceCount &= 7;
 
-			int flags = (plane << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (1 << BIT_ISTERRAIN);
+			int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);;
 
 			GpuIntBuffer b = modelBufferUnordered;
 			++unorderedModels;
@@ -2544,16 +2549,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			IntBuffer buffer = b.getBuffer();
 			buffer.put(model.getBufferOffset());
 			buffer.put(model.getUvBufferOffset());
-			buffer.put(len);
+			buffer.put(faceCount);
 			buffer.put(targetBufferOffset);
 			buffer.put(FLAG_SCENE_BUFFER);
 			buffer.put(localX).put(localY).put(localZ);
 			buffer.put(flags);
-			buffer.put(0);
-			buffer.put(0);
-			buffer.put(0);
+			buffer.put(-1);
+			buffer.put(-1);
+			buffer.put(-1);
 
-			targetBufferOffset += len * 3;
+			targetBufferOffset += faceCount * 3;
 		}
 	}
 

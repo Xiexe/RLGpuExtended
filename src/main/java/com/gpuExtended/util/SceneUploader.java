@@ -122,10 +122,18 @@ public class SceneUploader
 			}
 
 			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
-			int plane = tile.getRenderLevel();
-			int isBridge = tile.getBridge() != null ? 1 : 0;
+			int realPlane = GetTileRealPlane(tilePoint.getX() + SCENE_OFFSET, tilePoint.getY() + SCENE_OFFSET, tile.getRenderLevel(), scene);
+			int isBridge = bridge != null ? 1 : 0;
+			int isUnderneathBridge = isUnderBridge ? 1 : 0;
+			if(vertexCount > 0)
+			{
+				sceneTilePaint.setBufferLen(isUnderneathBridge << 6 | isBridge << 5 | realPlane << 3 | (vertexCount / 3));
+			}
+			else
+			{
+				sceneTilePaint.setBufferLen(vertexCount);
+			}
 
-			sceneTilePaint.setBufferLen(isBridge << 5 | plane << 3 | (vertexCount / 3));
 			offset += vertexCount;
 			if (sceneTilePaint.getTexture() != -1)
 			{
@@ -147,10 +155,17 @@ public class SceneUploader
 			}
 
 			int vertexCount = PushTerrainDetailedTile(scene, sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
-			int plane = tile.getRenderLevel();
-			int isBridge = tile.getBridge() != null ? 1 : 0;
+			int realPlane = GetTileRealPlane(tilePoint.getX() + SCENE_OFFSET, tilePoint.getY() + SCENE_OFFSET, tile.getRenderLevel(), scene);
+			int isBridge = bridge != null ? 1 : 0;
+			int isUnderneathBridge = isUnderBridge ? 1 : 0;
 
-			sceneTileModel.setBufferLen(isBridge << 5 | plane << 3 | (vertexCount / 3));
+			if(vertexCount > 0) {
+				sceneTileModel.setBufferLen(isUnderneathBridge << 6 | isBridge << 5 | realPlane << 3 | (vertexCount / 3));
+			}
+			else {
+				sceneTileModel.setBufferLen(vertexCount);
+			}
+
 			offset += vertexCount;
 			if (sceneTileModel.getTriangleTextureId() != null)
 			{
@@ -268,8 +283,6 @@ public class SceneUploader
 		tileX += SCENE_OFFSET;
 		tileY += SCENE_OFFSET;
 
-		int realPlane = GetTileRealPlane(tileX, tileY, tileZ, scene);
-
 		int swHeight = tileHeights[tileZ][tileX    ][tileY    ];
 		int seHeight = tileHeights[tileZ][tileX + 1][tileY    ];
 		int neHeight = tileHeights[tileZ][tileX + 1][tileY + 1];
@@ -322,19 +335,14 @@ public class SceneUploader
 		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
 		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
 
-		int flags = (realPlane << BIT_PLANE) |
-					(tileX << BIT_XPOS) |
-					(tileY << BIT_YPOS) |
-					(hasBridge ? (1 << BIT_ISBRIDGE) : 0) |
-					(!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
+		// Flags are populated in the draw call for tiles in GPUExtendedPlugin
+		flagsBuffer.put(0, 0, 0, 0);
+		flagsBuffer.put(0, 0, 0, 0);
+		flagsBuffer.put(0, 0, 0, 0);
 
-		flagsBuffer.put(flags, 0, 0, 0);
-		flagsBuffer.put(flags, 0, 0, 0);
-		flagsBuffer.put(flags, 0, 0, 0);
-
-		flagsBuffer.put(flags, 0, 0, 0);
-		flagsBuffer.put(flags, 0, 0, 0);
-		flagsBuffer.put(flags, 0, 0, 0);
+		flagsBuffer.put(0, 0, 0, 0);
+		flagsBuffer.put(0, 0, 0, 0);
+		flagsBuffer.put(0, 0, 0, 0);
 
 		if (tile.getTexture() != -1)
 		{
@@ -380,8 +388,6 @@ public class SceneUploader
 	// Map tiles with extra geometry
 	public int PushTerrainDetailedTile(Scene scene, SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetZ)
 	{
-		int realPlane = GetTileRealPlane(tileX + SCENE_OFFSET, tileY + SCENE_OFFSET, tileZ, scene);
-
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
 		final int[] faceZ = sceneTileModel.getFaceZ();
@@ -438,15 +444,10 @@ public class SceneUploader
 			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
 			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
 
-			int flags = (realPlane << BIT_PLANE) |
-						(tileX << BIT_XPOS) |
-						(tileY << BIT_YPOS) |
-						(hasBridge ? (1 << BIT_ISBRIDGE) : 0) |
-						(!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
-
-			flagsBuffer.put(flags, 0, 0, 0);
-			flagsBuffer.put(flags, 0, 0, 0);
-			flagsBuffer.put(flags, 0, 0, 0);
+			// Flags are populated in the draw call for tiles in GPUExtendedPlugin
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
 
 			if (triangleTextures != null)
 			{
@@ -505,10 +506,10 @@ public class SceneUploader
 
 		if(isOnBridge)
 		{
-			realPlane -= 1;
+			realPlane -= 2;
 		}
 
-		return realPlane;
+		return Math.max(0, realPlane);
 	}
 
 	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileX, int tileY, boolean recomputeNormals, boolean isNPC, ArrayListMultimap<Vector3, Integer> sharedVertexMap)
@@ -570,6 +571,10 @@ public class SceneUploader
 				normalBuffer.put(0, 0, 0, 0);
 				normalBuffer.put(0, 0, 0, 0);
 
+				flagsBuffer.put(0, 0, 0, 0);
+				flagsBuffer.put(0, 0, 0, 0);
+				flagsBuffer.put(0, 0, 0, 0);
+
 				if (faceTextures != null)
 				{
 					uvBuffer.put(0, 0, 0, 0);
@@ -592,6 +597,10 @@ public class SceneUploader
 					normalBuffer.put(0, 0, 0, 0);
 					normalBuffer.put(0, 0, 0, 0);
 					normalBuffer.put(0, 0, 0, 0);
+
+					flagsBuffer.put(0, 0, 0, 0);
+					flagsBuffer.put(0, 0, 0, 0);
+					flagsBuffer.put(0, 0, 0, 0);
 
 					if (faceTextures != null)
 					{

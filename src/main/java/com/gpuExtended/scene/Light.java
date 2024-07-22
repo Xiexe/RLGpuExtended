@@ -87,6 +87,7 @@ public class Light
     public int[][] tiles = new int[0][0];
     public int[] decorations = new int[0];
     public int[] gameObjects = new int[0];
+    public int[] walls = new int[0];
     public int[] projectiles = new int[0];
 
     @Nullable

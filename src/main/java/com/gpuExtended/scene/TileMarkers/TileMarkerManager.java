@@ -161,11 +161,7 @@ public class TileMarkerManager {
                 for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
 
                     Tile tile = tiles[z][x][y];
-                    boolean hasBridge = false;
                     if(tile != null) {
-//                        Tile bridge = tiles[z][x][y].getBridge();
-//                        hasBridge = bridge != null;
-
                         Bounds bounds = environmentManager.CheckTileRegion(tile.getWorldLocation());
                         if(bounds != null) {
                             if (z < bounds.getGroundPlane()) {
@@ -197,12 +193,7 @@ public class TileMarkerManager {
                         boolean tileIsUnderRoof = centerRoof || nRoof || sRoof || eRoof || wRoof || neRoof || seRoof || nwRoof || swRoof;
                         if (tileIsUnderRoof) {
                             // todo:: use color channels to mask groups of roofs
-
-                            if (hasBridge) {
-                                roofMaskTexture.setPixel(x, y, Math.min(MAX_Z - 1, z + 1), 0, 0, 0, 255);
-                            } else {
-                                roofMaskTexture.setPixel(x, y, z, 0, 0, 0, 255);
-                            }
+                            roofMaskTexture.setPixel(x, y, z, 0, 0, 0, 255);
                         }
                     }
                 }
