@@ -13,7 +13,7 @@
     "Name": "DEFAULT",
     "SkyColor":     [0.91, 0.88, 0.84, 0.88],
     "AmbientColor": [1.00, 1.00, 1.00, 1.00],
-    "LightColor":   [0.67, 0.64, 0.58, 1.00],
+    "LightColor":   [0.4, 0.4, 0.4, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
     "FogDepth": 5,

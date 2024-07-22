@@ -6,6 +6,7 @@
 
 flat in int fTextureId;
 in vec2 fUv;
+in float fAlpha;
 
 float Dither8x8Bayer( int x, int y ) {
     const float dither[ 64 ] = {
@@ -35,13 +36,17 @@ void clip(float value) {
 }
 
 void main() {
+    float dither = Dither(gl_FragCoord.xy);
+
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
         // This error is fake news.
         float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
-        float dither = Dither(gl_FragCoord.xy);
-
-        clip(alpha - dither);
+        clip((alpha * fAlpha) - dither);
+    }
+    else
+    {
+        clip(fAlpha - dither);
     }
 
     gl_FragDepth = gl_FragCoord.z;

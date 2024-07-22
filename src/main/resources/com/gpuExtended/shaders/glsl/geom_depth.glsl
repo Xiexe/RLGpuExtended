@@ -16,9 +16,11 @@ in vec3 gVertex[3];
 in int gTextureId[3];
 in vec3 gTexPos[3];
 in mat4 gProjMatrix[3];
+in float gAlpha[3];
 
 flat out int fTextureId;
 out vec2 fUv;
+out float fAlpha;
 
 void main() {
   int textureId = gTextureId[0];
@@ -26,7 +28,7 @@ void main() {
 
   if (textureId > 0)
   {
-    compute_uv(cameraPosition.xyz, gVertex[0], gVertex[1], gVertex[2], gTexPos[0], gTexPos[1], gTexPos[2], uv[0], uv[1], uv[2]);
+    compute_uv(mainLight.pos.xyz, gVertex[0], gVertex[1], gVertex[2], gTexPos[0], gTexPos[1], gTexPos[2], uv[0], uv[1], uv[2]);
 
     vec2 textureAnim = textureAnimations[textureId - 1];
     for (int i = 0; i < 3; ++i) {
@@ -43,6 +45,7 @@ void main() {
   for (int i = 0; i < 3; ++i) {
     fTextureId = gTextureId[i];
     fUv = uv[i];
+    fAlpha = gAlpha[i];
     gl_Position = gProjMatrix[0] * vec4(gVertex[i], 1);
     EmitVertex();
   }

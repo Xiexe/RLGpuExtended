@@ -22,7 +22,10 @@
     "animation": "flicker",
     "decorations": [
       196,
-      197
+      197,
+      198,
+      3474,
+      4694
     ],
     "gameObjects": [
       724,
@@ -100,6 +103,21 @@
     "animation": "flicker",
     "gameObjects": [
       409
+    ]
+  },
+  {
+    "name": "ELVEN_TORCHES",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 1.2],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "pulse",
+    "decorations": [
+      8774
+    ],
+    "gameObjects": [
+      3918
     ]
   },
   {

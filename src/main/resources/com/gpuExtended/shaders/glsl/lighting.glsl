@@ -1,6 +1,6 @@
 const float bias = 0.00065;
 const float lightSize = 0.0035;
-const int shadowSamples = 16;
+const int shadowSamples = 32;
 
 float LinearAttenuation(float dist, float maxDistance) {
     float linearAttenuation = max(1.0 - dist / maxDistance, 0.0);
