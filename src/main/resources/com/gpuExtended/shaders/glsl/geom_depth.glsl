@@ -22,6 +22,11 @@ flat out int fTextureId;
 out vec2 fUv;
 out float fAlpha;
 
+bool CheckIsTree(int texId)
+{
+  return texId == TREE_TOP || texId == TREE_BOTTOM || texId == TREE_WILLOW;
+}
+
 void main() {
   int textureId = gTextureId[0];
   vec2 uv[3];
@@ -43,10 +48,20 @@ void main() {
   }
 
   for (int i = 0; i < 3; ++i) {
+    vec3 vertex = gVertex[i];
+    if(CheckIsTree(gTextureId[i]))
+    {
+      float frequency = 0.005;
+      float phase = vertex.x + vertex.z;
+
+      vertex.x += sin(time * frequency + phase) * 2;
+      vertex.z += cos(time * frequency + phase) * 2;
+    }
+
     fTextureId = gTextureId[i];
     fUv = uv[i];
     fAlpha = gAlpha[i];
-    gl_Position = gProjMatrix[0] * vec4(gVertex[i], 1);
+    gl_Position = gProjMatrix[0] * vec4(vertex, 1);
     EmitVertex();
   }
 

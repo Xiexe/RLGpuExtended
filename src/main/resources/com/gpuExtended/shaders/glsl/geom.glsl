@@ -35,6 +35,11 @@ out vec3 fPosition;
 out float fFogAmount;
 out flat ivec4 fFlags;
 
+bool CheckIsTree(int texId)
+{
+  return texId == TREE_TOP || texId == TREE_BOTTOM || texId == TREE_WILLOW;
+}
+
 void main() {
   int textureId = gTextureId[0];
   vec2 uv[3];
@@ -70,6 +75,15 @@ void main() {
     }
 
     vec3 pos = gPosition[i];
+    vec3 vertex = gVertex[i];
+    if(CheckIsTree(gTextureId[i]))
+    {
+      float frequency = 0.005;
+      float phase = vertex.x + vertex.z;
+
+      vertex.x += sin(time * frequency + phase) * 2;
+      vertex.z += cos(time * frequency + phase) * 2;
+    }
 
     fPosition = pos;
     fColor = gColor[i];
@@ -79,7 +93,7 @@ void main() {
     fNormal = normal;
     fUv = uv[i];
     fFlags = gFlags[i];
-    gl_Position = cameraProjectionMatrix * vec4(gVertex[i], 1);
+    gl_Position = cameraProjectionMatrix * vec4(vertex, 1);
     EmitVertex();
   }
 

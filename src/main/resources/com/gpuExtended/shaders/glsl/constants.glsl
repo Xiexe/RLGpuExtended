@@ -44,6 +44,9 @@
 #define WATER 2
 #define WATER_SWAMP 26
 #define LAVA 41
+#define TREE_WILLOW 31
+#define TREE_BOTTOM 9
+#define TREE_TOP 61
 
 #define MAX_Z_HEIGHT 4 // 4 tiles high
 #define BIT_ZHEIGHT 24
