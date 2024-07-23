@@ -1419,7 +1419,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		lastAntiAliasingMode = antiAliasingMode;
 
-		Environment env = environmentManager.currentEnvironment;
+		Environment env = environmentManager.GetCurrentEnvironment();
 		if(gameState.getState() == GameState.LOGIN_SCREEN.getState())
 		{
 			glClearColor(0, 0, 0, 1f);
@@ -1428,6 +1428,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			glClearColor(env.SkyColor.getRed() / 255f, env.SkyColor.getGreen() / 255f, env.SkyColor.getBlue() / 255f, 1f);
 		}
+
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// Draw 3d scene
@@ -1579,7 +1580,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int playerY = client.getLocalPlayer().getLocalLocation().getY();
 		int playerPlane = client.getPlane();
 
-		Environment env = environmentManager.currentEnvironment;
+		Environment env = environmentManager.GetCurrentEnvironment();
 
 		Bounds currentBounds = environmentManager.currentBounds;
 		boolean roofFadingEnabled = currentBounds != null ? currentBounds.isAllowRoofFading() : true;

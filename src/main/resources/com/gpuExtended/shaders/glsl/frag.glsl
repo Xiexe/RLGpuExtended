@@ -7,6 +7,7 @@ flat in int fTextureId;
 in vec2 fUv;
 in vec3 fPosition;
 in float fFogAmount;
+in flat int isEmissive;
 
 in flat ivec4 fFlags;
 out vec4 FragColor;
@@ -70,13 +71,14 @@ void main() {
 
     vec3 ambient = ambientColor.rgb * 1.2;
     vec3 litFragment = s.albedo.rgb * (shadow * mainLight.color.rgb + ambient);
+    litFragment = mix(litFragment, s.albedo.rgb * 5, isEmissive);
 
     float fog = fFogAmount;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
     ApplyAdditiveLighting(finalColor, s.albedo.rgb, s.normal.xyz, fPosition);
     FadeRoofs(flags, fPosition, dither, distanceToPlayer);
-    PostProcessImage(finalColor, colorBlindMode, fog);
+    PostProcessImage(finalColor, colorBlindMode, fog, isEmissive);
     finalColor = mix(finalColor, skyColor.rgb, fog);
 
     if(!flags.isDynamicModel)
@@ -91,7 +93,7 @@ void main() {
     //finalColor = vec3(float(flags.tileX) / EXTENDED_SCENE_SIZE, float(flags.tileY) / EXTENDED_SCENE_SIZE, 0.0);
     //finalColor = vec3(float(flags.plane) / 4.);
     //finalColor = vec3(flags.isTerrain);
-    //finalColor = vec3(fColor);
+//    finalColor = vec3(isEmissive);
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

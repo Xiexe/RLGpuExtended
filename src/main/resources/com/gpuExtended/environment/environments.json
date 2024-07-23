@@ -13,7 +13,7 @@
     "Name": "DEFAULT",
     "SkyColor":     [0.91, 0.88, 0.84, 0.88],
     "AmbientColor": [1.00, 1.00, 1.00, 1.00],
-    "LightColor":   [0.2, 0.2, 0.2, 1.00],
+    "LightColor":   [0.3, 0.3, 0.3, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
     "FogDepth": 5,
@@ -28,5 +28,15 @@
     "LightYaw": 0,
     "FogDepth": 10,
     "Type": 1
+  },
+  {
+    "Name": "DRAYNOR_MANOR",
+    "SkyColor":     [0.00, 0.00, 0.00, 1.00],
+    "AmbientColor": [0.5, 0.5, 0.5, 1.00],
+    "LightColor":   [0.1, 0.1, 0.1, 1.00],
+    "LightPitch": 45,
+    "LightYaw": 200,
+    "FogDepth": 60,
+    "Type": 0
   }
 ]

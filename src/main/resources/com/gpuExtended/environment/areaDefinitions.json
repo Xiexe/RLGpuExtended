@@ -35,6 +35,23 @@
     ]
   },
   {
+    "name": "DRAYNOR_MANOR",
+    "bounds": [
+      {
+        "start": [3072, 3321, -1],
+        "end": [3135, 3389, -1],
+        "environment": "DRAYNOR_MANOR"
+      },
+      {
+        "name": "BASEMENT",
+        "start": [3076, 9769, -1],
+        "end": [3079, 9777, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "VARROCK",
     "bounds": [
       {
@@ -168,6 +185,17 @@
         "name": "ANCIENT_SHRINE",
         "start": [1494, 9561, 0],
         "end": [1531, 9598, 2],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "RANDOM_EVENT",
+    "bounds": [
+      {
+        "name": "BOBS_ISLAND",
+        "start": [2500, 4755, 0],
+        "end": [2550, 4794, 0],
         "hideOtherAreas": true
       }
     ]

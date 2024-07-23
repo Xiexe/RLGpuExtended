@@ -634,6 +634,11 @@ public class SceneUploader
 			vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
 			vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
 
+			// TODO:: Loop through face colors to create a hash for known models, and then use that hash to determine if the model should be emissive and on what faces.
+//			if(model.getFaceCount() == 370) {
+//				log.info("Model Hash: {}", model.get);
+//			}
+
 			flagsBuffer.put(0, 0, 0, 0);
 			flagsBuffer.put(0, 0, 0, 0);
 			flagsBuffer.put(0, 0, 0, 0);

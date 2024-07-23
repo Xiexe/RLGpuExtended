@@ -21,6 +21,9 @@ public class Bounds {
     Vector3 end;
 
     @Nullable
+    String environment;
+
+    @Nullable
     boolean hideOtherAreas;
 
     @Nullable

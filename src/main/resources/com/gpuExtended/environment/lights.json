@@ -31,10 +31,14 @@
       4501,
       4694,
       7432,
+      10297,
+      11474,
+      12238,
       20832
     ],
     "gameObjects": [
       724,
+      11472,
       17237
     ]
   },
@@ -87,6 +91,18 @@
     "animation": "flicker",
     "gameObjects": [
       24970
+    ]
+  },
+  {
+    "name": "DRAYNOR_MANOR_STREET_LAMPS",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [0, 0, 2.2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      11468
     ]
   },
   {

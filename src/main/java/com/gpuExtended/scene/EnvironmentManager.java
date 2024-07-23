@@ -3,7 +3,6 @@ package com.gpuExtended.scene;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.regions.Area;
-import com.gpuExtended.regions.Region;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
@@ -85,6 +84,8 @@ public class EnvironmentManager
     public Area currentArea;
     public Bounds currentBounds;
 
+    private boolean loadingLights = false;
+
     public Light[] lightsDefinitions;
     public ArrayList<Light> sceneLights = new ArrayList<>();
     public HashMap<Light, Boolean> sceneLightVisibility = new HashMap<>();
@@ -115,20 +116,8 @@ public class EnvironmentManager
 
     public void Update(float deltaTime)
     {
-        if(currentEnvironment == null) {
-            currentEnvironment = GetDefaultEnvironment();
-        }
-
-        Player player = client.getLocalPlayer();
-        if (player != null)
-        {
-            boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
-            Environment targetEnvironment = isInOverworld ? GetDefaultEnvironment() : GetDefaultUndergroundEnvironment();
-            currentEnvironment = targetEnvironment;
-        }
-
-        UpdateMainLightProjectionMatrix();
         CheckRegion();
+        UpdateMainLightProjectionMatrix();
     }
 
     public void LoadAreas()
@@ -192,6 +181,7 @@ public class EnvironmentManager
     private void LoadLights()
     {
         try {
+            loadingLights = true;
             log.info("Fetching new light information: " + LIGHTS_PATH.resolve().toAbsolute());
             lightsDefinitions = LIGHTS_PATH.loadJson(plugin.getGson(), Light[].class);
 
@@ -397,13 +387,25 @@ public class EnvironmentManager
             }
 
             log.info("Loaded {} lights across scene total.", sceneLights.size());
+            loadingLights = false;
         }
     }
 
     public void DetermineRenderedLights()
     {
+        if(loadingLights)
+            return;
+
         Player player = client.getLocalPlayer();
         if (player == null)
+        {
+            return;
+        }
+
+        if(sceneLights == null)
+            return;
+
+        if(sceneLights.size() < 2)
         {
             return;
         }
@@ -463,6 +465,32 @@ public class EnvironmentManager
                 return;
             }
 
+            if (lastBounds != currentBounds || lastArea != currentArea) {
+                if(lastBounds != null && lastArea != null)
+                {
+                    log.info("Player left area: {}, {}", lastArea.getName(), lastBounds.getName());
+                }
+            }
+
+            if(currentBounds != null)
+            {
+                if(currentBounds.getEnvironment() != null)
+                {
+                    Environment targetEnvironment = environmentMap.get(currentBounds.getEnvironment());
+                    if(targetEnvironment != null) {
+                        currentEnvironment = targetEnvironment;
+                    }
+                }
+                else
+                {
+                    currentEnvironment = GetDefaultEnvironment();
+                }
+            }
+            else
+            {
+                currentEnvironment = GetDefaultEnvironment();
+            }
+
             if (currentBounds != null && currentArea != null) {
                 if (currentBounds != lastBounds || currentArea != lastArea) {
                     log.info("Player entered area: {}, {}", currentArea.getName(), currentBounds.getName());
@@ -502,6 +530,11 @@ public class EnvironmentManager
 
     private void UpdateMainLightProjectionMatrix()
     {
+        if(currentEnvironment == null)
+        {
+            currentEnvironment = GetDefaultEnvironment();
+        }
+
         // Calculate light matrix
         boolean overrideLightDirection = config.customLightRotation();
         int customLightPitch = config.lightPitch();
@@ -538,7 +571,17 @@ public class EnvironmentManager
         Mat4.mul(lightProjectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
     }
 
-    private Environment GetDefaultEnvironment() {
+    private Environment GetDefaultEnvironment()
+    {
+        Player player = client.getLocalPlayer();
+        if(player == null) return null;
+
+        boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
+        Environment targetEnvironment = isInOverworld ? GetDefaultOverworldEnvironment() : GetDefaultUndergroundEnvironment();
+        return targetEnvironment;
+    }
+
+    private Environment GetDefaultOverworldEnvironment() {
         try {
             return environmentMap.get("DEFAULT");
         } catch (Exception e) {
@@ -554,6 +597,16 @@ public class EnvironmentManager
             log.error("Failed to get default underground environment", e);
             return null;
         }
+    }
+
+    public Environment GetCurrentEnvironment()
+    {
+        if(currentEnvironment == null)
+        {
+            return GetDefaultEnvironment();
+        }
+
+        return currentEnvironment;
     }
 }
 

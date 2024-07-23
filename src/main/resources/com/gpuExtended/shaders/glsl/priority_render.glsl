@@ -218,7 +218,7 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   const int IGNORE_LOW_LIGHTNESS = 3;
   // multiplier applied to vertex' lightness value.
   // results in greater lightening of lighter colors
-  const float LIGHTNESS_MULTIPLIER = 3;
+  const float LIGHTNESS_MULTIPLIER = 3.f;
   // the minimum amount by which each color will be lightened
   const int BASE_LIGHTEN = 10;
 
@@ -228,15 +228,12 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   if (vanillaLightDotNormals > 0) {
     vanillaLightDotNormals /= length(unrotatedNormal);
     float lighten = max(0, lightness - IGNORE_LOW_LIGHTNESS);
-    lightness += int((lighten * LIGHTNESS_MULTIPLIER + BASE_LIGHTEN - lightness) * vanillaLightDotNormals);
+    lightness += int((lighten * LIGHTNESS_MULTIPLIER + BASE_LIGHTEN - lightness) * (vanillaLightDotNormals));
   }
+
   int maxLightness;
-  #if LEGACY_GREY_COLORS
-    maxLightness = 55;
-  #else
-    maxLightness = int(127 - 72 * pow(saturation / 7., .05));
-  #endif
-    lightness = min(lightness, maxLightness);
+  maxLightness = int(127 - 72 * pow(saturation / 7., .05));
+  lightness = min(lightness, maxLightness);
   hsl &= ~0x7F;
   hsl |= lightness;
 }
@@ -286,6 +283,10 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       normB = tempnormal[offset + localId * 3 + 1];
       normC = tempnormal[offset + localId * 3 + 2];
     }
+
+    undoVanillaShading(thisrvA.ahsl, normA.xyz);
+    undoVanillaShading(thisrvB.ahsl, normB.xyz);
+    undoVanillaShading(thisrvC.ahsl, normC.xyz);
 
     normA = rotate_vertex(normA, orientation);
     normB = rotate_vertex(normB, orientation);

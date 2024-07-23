@@ -33,6 +33,7 @@ flat out int fTextureId;
 out vec2 fUv;
 out vec3 fPosition;
 out float fFogAmount;
+out flat int isEmissive;
 out flat ivec4 fFlags;
 
 bool CheckIsTree(int texId)
@@ -78,15 +79,29 @@ void main() {
     vec3 vertex = gVertex[i];
     if(CheckIsTree(gTextureId[i]))
     {
+      float distanceToCenter = length(vertex - vec3(0, 0, 0)) * 0.00005;
       float frequency = 0.005;
       float phase = vertex.x + vertex.z;
 
-      vertex.x += sin(time * frequency + phase) * 2;
-      vertex.z += cos(time * frequency + phase) * 2;
+      vertex.x += sin(time * frequency + phase) * 2 * distanceToCenter;
+      vertex.z += cos(time * frequency + phase) * 2 * distanceToCenter;
     }
 
+    vec3 grayscaleVec = vec3(0.299, 0.587, 0.114);
+    vec4 color = gColor[i];
+
+    isEmissive = 0;
+//
+//    int hsl = int(gHsl[i] / 128);
+//    float l = float(hsl & 7) / 8.0f + 0.0625f;
+//    if(color.a < 0.8 && l > 0.2)
+//    {
+//      color = vec4(0,0,0,color.a);
+//      isEmissive = 1;
+//    }
+
     fPosition = pos;
-    fColor = gColor[i];
+    fColor = color;
     fFogAmount = gFogAmount[i];
     fHsl = gHsl[i];
     fTextureId = gTextureId[i];

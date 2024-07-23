@@ -41,6 +41,12 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
                         endArray.get(2).getAsInt()
                 );
 
+                String environment = null;
+                if(boundObject.has("environment"))
+                {
+                    environment = boundObject.get("environment").getAsString();
+                }
+
                 boolean hideOtherAreas = false;
                 if(boundObject.has("hideOtherAreas"))
                 {
@@ -59,7 +65,7 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
                     groundPlane = boundObject.get("groundPlane").getAsInt();
                 }
 
-                bounds[i] = new Bounds(boundName, start, end, hideOtherAreas, allowRoofFading, groundPlane);
+                bounds[i] = new Bounds(boundName, start, end, environment, hideOtherAreas, allowRoofFading, groundPlane);
             }
         }
 

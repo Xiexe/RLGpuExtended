@@ -135,7 +135,7 @@ int combine16(int upper, int lower) {
 }
 
 
-void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff)
+void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff, int isEmissive)
 {
     image = mix(adjustSaturationAndContrast(image, 1.1, 1.3), image, fogFalloff);
     image = adjustBrightness(image, 0.8);
