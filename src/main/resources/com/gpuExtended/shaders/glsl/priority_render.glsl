@@ -284,9 +284,9 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       normC = tempnormal[offset + localId * 3 + 2];
     }
 
-    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-    undoVanillaShading(thisrvC.ahsl, normC.xyz);
+//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
+//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
+//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
 
     normA = rotate_vertex(normA, orientation);
     normB = rotate_vertex(normB, orientation);

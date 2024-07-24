@@ -85,6 +85,48 @@
     ]
   },
   {
+    "name": "MORYTANIA",
+    "bounds": [
+      {
+        "start": [3422, 3202, -1],
+        "end": [3776, 3583, -1],
+        "environment": "MORYTANIA"
+      },
+      {
+        "start": [3456, 3163, -1],
+        "end": [3725, 3207, -1],
+        "environment": "MORYTANIA"
+      },
+      {
+        "start": [3400, 3321, -1],
+        "end": [3424, 3461, -1],
+        "environment": "MORYTANIA"
+      },
+      {
+        "start": [3413, 3275, -1],
+        "end": [3430, 3324, -1],
+        "environment": "MORYTANIA"
+      },
+      {
+        "start": [3392, 3511, -1],
+        "end": [3468, 3583, -1],
+        "environment": "MORYTANIA"
+      },
+      {
+        "start": [3392, 3456, -1],
+        "end": [3441, 3513, -1],
+        "environment": "MORYTANIA"
+      },
+      {
+        "name": "MAUSOLEUM",
+        "start": [3402, 9880, -1],
+        "end": [3443, 9908, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "FALADOR",
     "bounds": [
       {
@@ -190,12 +232,31 @@
     ]
   },
   {
+    "name": "DEATHS_DOMAIN",
+    "bounds": [
+      {
+        "start": [3166, 5720, -1],
+        "end": [3183, 5733, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "RANDOM_EVENT",
     "bounds": [
       {
         "name": "BOBS_ISLAND",
         "start": [2500, 4755, 0],
         "end": [2550, 4794, 0],
+        "environment": "DEFAULT",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "PHEASANTS",
+        "start": [2579, 4756, 0],
+        "end": [2617, 4795, 0],
+        "environment": "DEFAULT",
         "hideOtherAreas": true
       }
     ]

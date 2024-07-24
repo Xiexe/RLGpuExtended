@@ -19,19 +19,21 @@
     "color": [1.00, 0.52, 0.00],
     "offset": [0, 0, 1.5],
     "intensity": 1,
-    "radius": 3,
+    "radius": 4,
     "animation": "flicker",
     "decorations": [
       196,
       197,
       198,
       205,
+      2175,
       2501,
       3474,
       4501,
       4694,
       7432,
       10297,
+      10307,
       11474,
       12238,
       20832
@@ -143,6 +145,72 @@
     ],
     "gameObjects": [
       3918
+    ]
+  },
+  {
+    "name": "MAUSOLEUM_EXIT",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [-0.5, 0, 1.2],
+    "intensity": 1,
+    "radius": 3,
+    "animation": "pulse",
+    "gameObjects": [
+      3443
+    ]
+  },
+  {
+    "name": "MAUSOLEUM_STATUES",
+    "type": "point",
+    "color": [1.00, 0.7, 0.00],
+    "offset": [0, 0, 3],
+    "intensity": 1,
+    "radius": 6,
+    "animation": "flicker",
+    "gameObjects": [
+      3493,
+      3494,
+      3495,
+      3496,
+      3497,
+      3498,
+      3499
+    ]
+  },
+  {
+    "name": "DEATHS_OFFICE_TORCHES",
+    "type": "point",
+    "color": [0.75, 0.4, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "decorations": [
+      39582
+    ]
+  },
+  {
+    "name": "DEATHS_OFFICE_WALL_FIRE",
+    "type": "point",
+    "color": [0.75, 0.4, 1.00],
+    "offset": [0, 0, 1.5],
+    "intensity": 3,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      39551
+    ]
+  },
+  {
+    "name": "DEATHS_OFFICE_SCYTHE",
+    "type": "point",
+    "color": [0.75, 0.2, 0.2],
+    "offset": [-0.45, 0.25, 1],
+    "intensity": 2,
+    "radius": 1,
+    "animation": "pulse",
+    "gameObjects": [
+      39579
     ]
   },
   {
@@ -390,6 +458,19 @@
     "animation": "flicker",
     "gameObjects": [
       51362
+    ]
+  },
+  {
+    "name": "FAIRY_RING",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 3],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "pulse",
+    "decorations": [],
+    "gameObjects": [
+      29495
     ]
   }
 ]

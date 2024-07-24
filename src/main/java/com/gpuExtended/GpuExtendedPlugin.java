@@ -80,6 +80,7 @@ import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ConstantVariables.*;
 import static com.gpuExtended.util.ResourcePath.path;
+import static com.gpuExtended.util.SceneUploader.CheckIsOnBridge;
 import static com.gpuExtended.util.SceneUploader.GetTileRealPlane;
 import static com.gpuExtended.util.Utils.InverseLerp;
 import static net.runelite.api.Constants.*;
@@ -1484,7 +1485,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 
 			glBindVertexArray(mainDrawVertexArrayObject);
-
 			drawShadowPass();
 
 			// This needs to be run before drawing the depth pass or the main pass
@@ -1580,6 +1580,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int playerY = client.getLocalPlayer().getLocalLocation().getY();
 		int playerPlane = client.getPlane();
 
+		final TextureProvider textureProvider = client.getTextureProvider();
 		Environment env = environmentManager.GetCurrentEnvironment();
 
 		Bounds currentBounds = environmentManager.currentBounds;
@@ -1877,12 +1878,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// <editor-fold defaultstate="collapsed" desc="Populate Config Block">
 			bBufferConfigBlock.clear();
 
-			bBufferConfigBlock.putFloat((float) client.getTextureProvider().getBrightness());
+			bBufferConfigBlock.putFloat((float) textureProvider.getBrightness());
 			bBufferConfigBlock.putFloat(config.smoothBanding() ? 0 : 1);
 			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
 			bBufferConfigBlock.putInt(getDrawDistance());
 			bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-			bBufferConfigBlock.putInt(roofFadingEnabled ? 1 : 0);
+			bBufferConfigBlock.putInt(roofFadingEnabled && config.roofFading() ? 1 : 0);
 			bBufferConfigBlock.putInt(config.roofFadingRange());
 
 			bBufferConfigBlock.flip();
@@ -2493,6 +2494,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 		int realPlane = GetTileRealPlane(tileX, tileY, plane, client.getScene());
 
+		// hash bits
+		// 14 isNpc
+		// 15 isObject
+		// 16 isStaticObject
 		int flags = (realPlane << BIT_PLANE) |
 					(tileX << BIT_XPOS) |
 					(tileY << BIT_YPOS) |

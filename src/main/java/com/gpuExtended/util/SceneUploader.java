@@ -488,8 +488,19 @@ public class SceneUploader
 	{
 		int realPlane = tileZ;
 
-		boolean isOnBridge = false;
+		boolean isOnBridge = CheckIsOnBridge(sceneTileX, sceneTileY, tileZ, scene);
 
+//		if(isOnBridge)
+//		{
+//			realPlane -= 1;
+//		}
+
+		return Math.max(0, realPlane);
+	}
+
+	public static boolean CheckIsOnBridge(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
+	{
+		boolean isOnBridge = false;
 		byte[][][] tileSettings = scene.getExtendedTileSettings();
 		if (1 <= sceneTileX && sceneTileX < EXTENDED_SCENE_SIZE - 1 && 1 <= sceneTileY && sceneTileY < EXTENDED_SCENE_SIZE - 1) {
 			for (int i = 0; i < MAX_Z; i++) {
@@ -504,12 +515,7 @@ public class SceneUploader
 			}
 		}
 
-		if(isOnBridge)
-		{
-			realPlane -= 2;
-		}
-
-		return Math.max(0, realPlane);
+		return isOnBridge;
 	}
 
 	private int PushGeometryToBuffers(Model model, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileX, int tileY, boolean recomputeNormals, boolean isNPC, ArrayListMultimap<Vector3, Integer> sharedVertexMap)

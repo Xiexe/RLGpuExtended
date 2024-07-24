@@ -62,10 +62,21 @@ void PopulateSurfaceColor(inout Surface s)
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
         // This error is fake news.
-        vec4 textureColor = texture(textures, vec3(uv, float(textureIdx)));
+        vec4 textureColor = texture(textures, vec3(fUv, float(textureIdx)));
+        vec4 textureColorBrightness = pow(textureColor, vec4(brightness, brightness, brightness, 1.0f));
+
+        // textured triangles hsl is a 7 bit lightness 2-126
+        float textureLightMode = 1;
+        float light = fHsl / 127.f;
+        vec3 mul = (1.f - textureLightMode) * vec3(light) + textureLightMode * fColor.rgb;;
+
         if(CheckIsInfernalCapeFireCape(fTextureId))
         {
             textureColor *= 1.2;
+        }
+        else
+        {
+            textureColor = textureColorBrightness * vec4(mul, 1.f);
         }
 
         if(CheckIsWater(fTextureId))
@@ -102,6 +113,7 @@ void PopulateVertexFlags(inout VertexFlags flags, ivec4 fFlags)
     flags.isBridge          = ((fFlags.x >> BIT_ISBRIDGE) & 1) > 0;
     flags.isTerrain         = ((fFlags.x >> BIT_ISTERRAIN) & 1) > 0;
     flags.isDynamicModel    = ((fFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
+    flags.isOnBridge        = ((fFlags.x >> BIT_ISONBRIDGE) & 1) > 0;
 }
 
 // Function to adjust saturation
@@ -125,8 +137,8 @@ vec3 adjustSaturationAndContrast(vec3 color, float saturation, float contrast) {
     return color;
 }
 
-vec3 adjustBrightness(vec3 color, float brightness) {
-    return color * brightness;
+vec3 adjustBrightness(vec3 color, float brightnessAdjust) {
+    return color * brightnessAdjust;
 }
 
 // Function to combine upper and lower parts to form a 32-bit integer

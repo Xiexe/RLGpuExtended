@@ -49,14 +49,14 @@ void main() {
 
   for (int i = 0; i < 3; ++i) {
     vec3 vertex = gVertex[i];
-    if(CheckIsTree(gTextureId[i]))
-    {
-      float frequency = 0.005;
-      float phase = vertex.x + vertex.z;
-
-      vertex.x += sin(time * frequency + phase) * 2;
-      vertex.z += cos(time * frequency + phase) * 2;
-    }
+//    if(CheckIsTree(gTextureId[i]))
+//    {
+//      float frequency = 0.005;
+//      float phase = vertex.x + vertex.z;
+//
+//      vertex.x += sin(time * frequency + phase) * 2;
+//      vertex.z += cos(time * frequency + phase) * 2;
+//    }
 
     fTextureId = gTextureId[i];
     fUv = uv[i];

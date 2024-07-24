@@ -5,7 +5,7 @@
 #define TEXTURE_ANIM_UNIT (1.0 / 128.0)
 
 layout(triangles) in;
-layout(triangle_strip, max_vertices = 3) out;
+layout(triangle_strip, max_vertices = 6) out;
 //#define LINE_DEBUG
 //layout(line_strip, max_vertices = 4) out;
 //layout(points, max_vertices = 3) out;
@@ -51,7 +51,7 @@ void main() {
 
     vec2 textureAnim = textureAnimations[textureId - 1];
     for (int i = 0; i < 3; ++i) {
-      uv[i] += tick * textureAnim * TEXTURE_ANIM_UNIT;
+      uv[i] += time * 0.05 * textureAnim * TEXTURE_ANIM_UNIT;
     }
   }
   else
@@ -77,29 +77,38 @@ void main() {
 
     vec3 pos = gPosition[i];
     vec3 vertex = gVertex[i];
-    if(CheckIsTree(gTextureId[i]))
-    {
-      float distanceToCenter = length(vertex - vec3(0, 0, 0)) * 0.00005;
-      float frequency = 0.005;
-      float phase = vertex.x + vertex.z;
-
-      vertex.x += sin(time * frequency + phase) * 2 * distanceToCenter;
-      vertex.z += cos(time * frequency + phase) * 2 * distanceToCenter;
-    }
+//    if(CheckIsTree(gTextureId[i]))
+//    {
+//      float distanceToCenter = length(vertex.xz) * 0.00005;
+//      float frequency = 0.005;
+//      float phase = vertex.x + vertex.z;
+//
+//      vertex.x += sin(time * frequency + phase) * 2 * distanceToCenter;
+//      vertex.z += cos(time * frequency + phase) * 2 * distanceToCenter;
+//    }
 
     vec3 grayscaleVec = vec3(0.299, 0.587, 0.114);
     vec4 color = gColor[i];
 
-    isEmissive = 0;
-//
-//    int hsl = int(gHsl[i] / 128);
-//    float l = float(hsl & 7) / 8.0f + 0.0625f;
-//    if(color.a < 0.8 && l > 0.2)
+//    bool isTerrain = ((gFlags[i].x >> BIT_ISTERRAIN) & 1) > 0;
+//    if(isTerrain)
 //    {
-//      color = vec4(0,0,0,color.a);
-//      isEmissive = 1;
+//      vertex = vec3(0,0,0);
+//
+//      isEmissive = 0;
+//      fPosition = pos;
+//      fColor = vec4(1,0,0,1);
+//      fFogAmount = gFogAmount[i];
+//      fHsl = gHsl[i];
+//      fTextureId = gTextureId[i];
+//      fNormal = gNormal[i];
+//      fUv = uv[i];
+//      fFlags = gFlags[i];
+//      gl_Position = cameraProjectionMatrix * vec4(vertex, 1);
+//      EmitVertex();
 //    }
 
+    isEmissive = 0;
     fPosition = pos;
     fColor = color;
     fFogAmount = gFogAmount[i];

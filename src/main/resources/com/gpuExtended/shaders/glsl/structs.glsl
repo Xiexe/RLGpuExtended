@@ -24,4 +24,5 @@ struct VertexFlags
     bool isBridge;
     bool isTerrain;
     bool isDynamicModel;
+    bool isOnBridge;
 };

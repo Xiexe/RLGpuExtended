@@ -91,9 +91,16 @@ void main() {
 
 //    finalColor = vec3(fFlags.z == 1);
     //finalColor = vec3(float(flags.tileX) / EXTENDED_SCENE_SIZE, float(flags.tileY) / EXTENDED_SCENE_SIZE, 0.0);
-    //finalColor = vec3(float(flags.plane) / 4.);
+//    finalColor = vec3(float(flags.plane) / 4.);
+//    finalColor = vec3(flags.isBridge);
     //finalColor = vec3(flags.isTerrain);
 //    finalColor = vec3(isEmissive);
+//    finalColor = vec3(flags.isDynamicModel);
+
+
+//    finalColor.r = mix(finalColor.r, 1, float(flags.isBridge));
+//    finalColor.g = mix(finalColor.g, 1, float(flags.plane) / 4.);
+    finalColor = mix(finalColor, vec3(0,0,0), float(flags.isOnBridge));
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }
