@@ -14,25 +14,47 @@ public class LightDeserializer implements JsonDeserializer<Light> {
         JsonObject lightObject = json.getAsJsonObject();
 
         String name = lightObject.get("name").getAsString();
-        Light.LightType type = context.deserialize(lightObject.get("type"), Light.LightType.class);
-        Light.LightAnimation animation = context.deserialize(lightObject.get("animation"), Light.LightAnimation.class);
 
-        JsonArray colorArray = lightObject.getAsJsonArray("color");
-        Color color = new Color(
-                colorArray.get(0).getAsFloat(),
-                colorArray.get(1).getAsFloat(),
-                colorArray.get(2).getAsFloat()
-        );
+        Light.LightType type = Light.LightType.None;
+        if(lightObject.has("type")) {
+            type = context.deserialize(lightObject.get("type"), Light.LightType.class);
+        }
 
-        JsonArray positionArray = lightObject.getAsJsonArray("offset");
-        Vector3 offset = new Vector3(
-                positionArray.get(0).getAsFloat(),
-                positionArray.get(1).getAsFloat(),
-                positionArray.get(2).getAsFloat()
-        );
+        Light.LightAnimation animation = Light.LightAnimation.None;
+        if(lightObject.has("animation")) {
+            animation = context.deserialize(lightObject.get("animation"), Light.LightAnimation.class);
+        }
 
-        float intensity = lightObject.get("intensity").getAsFloat();
-        float radius = lightObject.get("radius").getAsFloat();
+        Color color = new Color(1,1,1);
+        if(lightObject.has("color")) {
+            JsonArray colorArray = lightObject.getAsJsonArray("color");
+            color = new Color(
+                    colorArray.get(0).getAsFloat(),
+                    colorArray.get(1).getAsFloat(),
+                    colorArray.get(2).getAsFloat()
+            );
+        }
+
+        // check is light has offset
+        Vector3 offset = new Vector3(0,0,0);
+        if(lightObject.has("offset")) {
+            JsonArray positionArray = lightObject.getAsJsonArray("offset");
+            offset = new Vector3(
+                    positionArray.get(0).getAsFloat(),
+                    positionArray.get(1).getAsFloat(),
+                    positionArray.get(2).getAsFloat()
+            );
+        }
+
+        float intensity = 1;
+        if(lightObject.has("intensity")) {
+            intensity = lightObject.get("intensity").getAsFloat();
+        }
+
+        float radius = 2;
+        if (lightObject.has("radius")) {
+            radius = lightObject.get("radius").getAsFloat();
+        }
 
         int[][] tiles = context.deserialize(lightObject.get("tiles"), int[][].class);
         int[] decorations = context.deserialize(lightObject.get("decorations"), int[].class);

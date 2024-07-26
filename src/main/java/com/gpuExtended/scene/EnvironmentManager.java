@@ -616,22 +616,30 @@ public class EnvironmentManager
 
     public void CleanupOldProjectiles()
     {
-        while(sceneProjectiles.size() > 0) {
-            Projectile projectile = sceneProjectiles.iterator().next();
-            if(projectile.getEndCycle() <= client.getGameCycle()) {
-                sceneProjectiles.remove(projectile);
-                sceneLights.remove(projectileLightHashMap.get(projectile));
-                projectileLightHashMap.remove(projectile);
+        if(sceneProjectiles.size() == 0)
+            return;
 
-                log.info("Projectile Removed: " + projectile.getId());
+        List<Projectile> projectiles = new ArrayList<>(sceneProjectiles);
+        projectiles.sort(Comparator.comparing(Projectile::getEndCycle));
+
+        List<Projectile> projectilesToRemove = new ArrayList<>();
+
+        for (Projectile projectile : projectiles) {
+            if (projectile.getEndCycle() <= client.getGameCycle()) {
+                projectilesToRemove.add(projectile);
             }
-            else
-            {
-                break;
-            }
+        }
+
+        // Remove projectiles and associated lights
+        for (Projectile projectileToRemove : projectilesToRemove) {
+            sceneProjectiles.remove(projectileToRemove);
+            sceneLights.remove(projectileLightHashMap.get(projectileToRemove));
+            projectileLightHashMap.remove(projectileToRemove);
+            log.info("Projectile Removed: " + projectileToRemove.getId());
         }
     }
 
+    // TODO:: Add lights for SpotAnims
     public void OnProjectileMoved(ProjectileMoved event) {
         Projectile projectile = event.getProjectile();
 
@@ -667,9 +675,6 @@ public class EnvironmentManager
             }
 
             sceneProjectiles.add(projectile);
-            List<Projectile> projectiles = new ArrayList<>(sceneProjectiles);
-            projectiles.sort(Comparator.comparing(Projectile::getEndCycle));
-            sceneProjectiles = new HashSet<>(projectiles);
             log.info("Projectile added: " + projectile.getId());
         }
     }

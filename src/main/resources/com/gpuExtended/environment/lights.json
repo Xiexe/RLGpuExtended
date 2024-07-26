@@ -829,27 +829,79 @@
     ]
   },
   {
-    "name": "TRIDENT_OF_THE_SEAS",
+    "name": "PROJECTILE_RED",
     "type": "point",
-    "color": [0.1, 0.1, 1.00],
-    "offset": [0, 0, 3],
-    "intensity": 5,
-    "radius": 5,
-    "animation": "none",
+    "color": [1.00, 0.00, 0.00],
+    "intensity": 1,
+    "radius": 3,
     "projectiles": [
+      100,
+      127,
+      130,
+      156,
+      1922
+    ]
+  },
+  {
+    "name": "PROJECTILE_GREEN",
+    "type": "point",
+    "color": [0.00, 1.00, 0.00],
+    "intensity": 2,
+    "radius": 3,
+    "projectiles": [
+      97,
+      124,
+      139,
+      165
+    ]
+  },
+  {
+    "name": "PROJECTILE_BLUE",
+    "type": "point",
+    "color": [0.00, 0.00, 1.00],
+    "intensity": 2,
+    "radius": 3,
+    "projectiles": [
+      94,
+      121,
+      136,
+      162,
       1252
     ]
   },
   {
-    "name": "BOW_OF_FERRIDAN",
+    "name": "PROJECTILE_WHITE",
     "type": "point",
-    "color": [1.00, 0.00, 0.00],
-    "offset": [0, 0, 3],
-    "intensity": 5,
-    "radius": 10,
-    "animation": "none",
+    "color": [1.00, 1.00, 1.00],
+    "intensity": 2,
+    "radius": 3,
     "projectiles": [
-      1922
+      91,
+      118,
+      133,
+      146,
+      159
+    ]
+  },
+  {
+    "name": "PROJECTILE_YELLOW",
+    "type": "point",
+    "color": [1.00, 1.00, 0.00],
+    "intensity": 2,
+    "radius": 3,
+    "projectiles": [
+      178
+    ]
+  },
+  {
+    "name": "PROJECTILE_PURPLE",
+    "type": "point",
+    "color": [1.00, 0.00, 1.00],
+    "intensity": 2,
+    "radius": 3,
+    "projectiles": [
+      168,
+      171
     ]
   }
 ]

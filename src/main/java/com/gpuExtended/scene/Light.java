@@ -76,9 +76,9 @@ public class Light
         }
     }
 
-    public String name;
-    public LightType type;
-    public LightAnimation animation;
+    public String name = "";
+    public LightType type = LightType.None;
+    public LightAnimation animation = LightAnimation.None;
     public Color color = new Color(1,1,1);
     public Vector4 position = new Vector4(0,0,0, 0); // world position, does not get populated by JSON.
     public Vector3 offset = new Vector3(0,0,0); // local position to the thing it's attached to
