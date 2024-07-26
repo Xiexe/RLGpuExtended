@@ -4,7 +4,6 @@ import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
-import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +12,9 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.*;
 import java.util.*;
 
 import static com.gpuExtended.util.ResourcePath.path;
@@ -98,12 +94,9 @@ public class EnvironmentManager
     public HashMap<Integer, ArrayList<Light>> gameObjectLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> wallLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> projectileLights = new HashMap<>();
+
     public HashSet<Projectile> sceneProjectiles = new HashSet<>();
-    public WeakHashMap<Projectile, Light> projectileLightMap = new WeakHashMap<>();
-
-    public
-
-    Light testLight = new Light();
+    public HashMap<Projectile, Light> projectileLightHashMap = new HashMap<>();
 
     public void Initialize() {
         environments = new Environment[0];
@@ -623,7 +616,20 @@ public class EnvironmentManager
 
     public void CleanupOldProjectiles()
     {
+        while(sceneProjectiles.size() > 0) {
+            Projectile projectile = sceneProjectiles.iterator().next();
+            if(projectile.getEndCycle() <= client.getGameCycle()) {
+                sceneProjectiles.remove(projectile);
+                sceneLights.remove(projectileLightHashMap.get(projectile));
+                projectileLightHashMap.remove(projectile);
 
+                log.info("Projectile Removed: " + projectile.getId());
+            }
+            else
+            {
+                break;
+            }
+        }
     }
 
     public void OnProjectileMoved(ProjectileMoved event) {
@@ -631,18 +637,8 @@ public class EnvironmentManager
 
         boolean projectileExists = sceneProjectiles.contains(projectile);
         if(projectileExists) {
-            int remainingCycles = projectile.getRemainingCycles();
-            if (remainingCycles <= 0) {
-                if (sceneProjectiles.contains(projectile)) {
-                    sceneLights.remove(projectileLightMap.get(projectile));
-                    projectileLightMap.remove(projectile);
-                    sceneProjectiles.remove(projectile);
-                    return;
-                }
-            }
-
-            if(projectileLightMap.containsKey(projectile)) {
-                Light light = projectileLightMap.get(projectile);
+            if(projectileLightHashMap.containsKey(projectile)) {
+                Light light = projectileLightHashMap.get(projectile);
                 LocalPoint location = new LocalPoint((int)projectile.getX(), (int)projectile.getY());
                 Vector4 position = new Vector4(location.getX(), location.getY(), (float)projectile.getZ(), 0);
                 light.position = position;
@@ -659,7 +655,7 @@ public class EnvironmentManager
                         Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position);
                         light.isDynamic = true;
                         sceneLights.add(light);
-                        projectileLightMap.put(projectile, light);
+                        projectileLightHashMap.put(projectile, light);
                     }
                 }
             }
@@ -671,8 +667,10 @@ public class EnvironmentManager
             }
 
             sceneProjectiles.add(projectile);
-            float remainingSeconds = (float)remainingCycles / 50f;
-            log.info("Tracking Projectile: Remaining {}, Seconds Remaining {}s", projectile.getRemainingCycles(), remainingSeconds);
+            List<Projectile> projectiles = new ArrayList<>(sceneProjectiles);
+            projectiles.sort(Comparator.comparing(Projectile::getEndCycle));
+            sceneProjectiles = new HashSet<>(projectiles);
+            log.info("Projectile added: " + projectile.getId());
         }
     }
 }
