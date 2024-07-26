@@ -59,6 +59,7 @@
 #define BIT_ISTERRAIN 11
 #define BIT_ISDYNAMICMODEL 10
 #define BIT_ISONBRIDGE 9
+#define BIT_ISROOF 8
 
 #define MAX_SHADOW_DISTANCE 100 // 100 tiles.
 

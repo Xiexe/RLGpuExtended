@@ -32,12 +32,22 @@
   {
     "Name": "DARK_UNDERGROUND",
     "SkyColor":     [0.00, 0.00, 0.00, 1.00],
-    "AmbientColor": [0.3, 0.3, 0.3, 1.00],
+    "AmbientColor": [0.4, 0.4, 0.4, 1.00],
     "LightColor":   [0.2, 0.2, 0.2, 1.00],
     "LightPitch": 90,
     "LightYaw": 0,
     "FogDepth": 50,
     "Type": 1
+  },
+  {
+    "Name": "WILDERNESS",
+    "SkyColor":     [0.25, 0.15, 0.15, 1.00],
+    "AmbientColor": [0.7, 0.6, 0.6, 1.00],
+    "LightColor":   [0.2, 0.2, 0.2, 1.00],
+    "LightPitch": 45,
+    "LightYaw": 200,
+    "FogDepth": 30,
+    "Type": 0
   },
   {
     "Name": "DRAYNOR_MANOR",
@@ -58,5 +68,25 @@
     "LightYaw": 200,
     "FogDepth": 60,
     "Type": 0
+  },
+  {
+    "Name": "CHAMBERS_OF_XERIC",
+    "SkyColor":     [0.10, 0.15, 0.07, 1.00],
+    "AmbientColor": [0.6, 0.8, 0.6, 1.00],
+    "LightColor":   [0.2, 0.2, 0.2, 1.00],
+    "LightPitch": 90,
+    "LightYaw": 0,
+    "FogDepth": 60,
+    "Type": 1
+  },
+  {
+    "Name": "GUARDIANS_OF_THE_RIFT",
+    "SkyColor":     [0.1, 0.15, 0.2, 1.00],
+    "AmbientColor": [0.4, 0.4, 0.5, 1.00],
+    "LightColor":   [0.1, 0.1, 0.1, 1.00],
+    "LightPitch": 90,
+    "LightYaw": 0,
+    "FogDepth": 50,
+    "Type": 1
   }
 ]

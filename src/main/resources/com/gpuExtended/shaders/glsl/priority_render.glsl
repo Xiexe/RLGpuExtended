@@ -270,23 +270,28 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vec4 vertB = vec4(thisrvB.pos, 0) + pos;
     vec4 vertC = vec4(thisrvC.pos, 0) + pos;
     vec4 normA, normB, normC;
+    ivec4 flagsA, flagsB, flagsC;
 
     if (flags < 0)
     {
-      normA = normal[offset + localId * 3    ];
-      normB = normal[offset + localId * 3 + 1];
-      normC = normal[offset + localId * 3 + 2];
+        normA = normal[offset + localId * 3    ];
+        normB = normal[offset + localId * 3 + 1];
+        normC = normal[offset + localId * 3 + 2];
+
+        flagsA = flagsin[offset + localId * 3    ];
+        flagsB = flagsin[offset + localId * 3 + 1];
+        flagsC = flagsin[offset + localId * 3 + 2];
     }
     else
     {
-      normA = tempnormal[offset + localId * 3    ];
-      normB = tempnormal[offset + localId * 3 + 1];
-      normC = tempnormal[offset + localId * 3 + 2];
-    }
+        normA = tempnormal[offset + localId * 3    ];
+        normB = tempnormal[offset + localId * 3 + 1];
+        normC = tempnormal[offset + localId * 3 + 2];
 
-//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
+        flagsA = tempflags[offset + localId * 3    ];
+        flagsB = tempflags[offset + localId * 3 + 1];
+        flagsC = tempflags[offset + localId * 3 + 2];
+    }
 
     normA = rotate_vertex(normA, orientation);
     normB = rotate_vertex(normB, orientation);
@@ -310,7 +315,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
 
     // write to out buffer
-    vout[outOffset + myOffset * 3] = Vertex(vertA.xyz, thisrvA.ahsl);
+    vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
     vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
     vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
 

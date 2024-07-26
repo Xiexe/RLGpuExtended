@@ -4,18 +4,22 @@ import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
+import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ProjectileMoved;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.awt.*;
+import java.util.*;
 
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.Utils.GenerateTileHash;
@@ -94,7 +98,12 @@ public class EnvironmentManager
     public HashMap<Integer, ArrayList<Light>> gameObjectLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> wallLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> projectileLights = new HashMap<>();
+    public HashSet<Projectile> sceneProjectiles = new HashSet<>();
+    public WeakHashMap<Projectile, Light> projectileLightMap = new WeakHashMap<>();
 
+    public
+
+    Light testLight = new Light();
 
     public void Initialize() {
         environments = new Environment[0];
@@ -116,6 +125,7 @@ public class EnvironmentManager
 
     public void Update(float deltaTime)
     {
+        CleanupOldProjectiles();
         CheckRegion();
         UpdateMainLightProjectionMatrix();
     }
@@ -261,6 +271,7 @@ public class EnvironmentManager
             }
 
             log.info("Loaded {} lights across {} objects", lightsDefinitions.length, uniqueLightAssignements);
+            log.info("Loaded {} projectile lights", projectileLights.size());
         } catch (Exception e) {
             log.error("Failed to load lights: " + LIGHTS_PATH, e);
         }
@@ -270,6 +281,7 @@ public class EnvironmentManager
     {
         sceneLights.clear();
         sceneLightVisibility.clear();
+        sceneProjectiles.clear();
 
         GameState gameState = client.getGameState();
         if(gameState == GameState.LOGGED_IN || plugin.loadingScene) {
@@ -607,6 +619,61 @@ public class EnvironmentManager
         }
 
         return currentEnvironment;
+    }
+
+    public void CleanupOldProjectiles()
+    {
+
+    }
+
+    public void OnProjectileMoved(ProjectileMoved event) {
+        Projectile projectile = event.getProjectile();
+
+        boolean projectileExists = sceneProjectiles.contains(projectile);
+        if(projectileExists) {
+            int remainingCycles = projectile.getRemainingCycles();
+            if (remainingCycles <= 0) {
+                if (sceneProjectiles.contains(projectile)) {
+                    sceneLights.remove(projectileLightMap.get(projectile));
+                    projectileLightMap.remove(projectile);
+                    sceneProjectiles.remove(projectile);
+                    return;
+                }
+            }
+
+            if(projectileLightMap.containsKey(projectile)) {
+                Light light = projectileLightMap.get(projectile);
+                LocalPoint location = new LocalPoint((int)projectile.getX(), (int)projectile.getY());
+                Vector4 position = new Vector4(location.getX(), location.getY(), (float)projectile.getZ(), 0);
+                light.position = position;
+            }
+            else
+            {
+                if(projectileLights.containsKey(projectile.getId())) {
+                    ArrayList<Light> lightsForProjectile = projectileLights.get(projectile.getId());
+                    if(lightsForProjectile == null) return;
+
+                    LocalPoint location = new LocalPoint((int)projectile.getX(), (int)projectile.getY());
+                    Vector4 position = new Vector4(location.getX(), location.getY(), (float)projectile.getZ(), 0);
+                    for(int i = 0; i < lightsForProjectile.size(); i++) {
+                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position);
+                        light.isDynamic = true;
+                        sceneLights.add(light);
+                        projectileLightMap.put(projectile, light);
+                    }
+                }
+            }
+        }
+        else {
+            int remainingCycles = projectile.getRemainingCycles();
+            if (remainingCycles <= 0) {
+                return;
+            }
+
+            sceneProjectiles.add(projectile);
+            float remainingSeconds = (float)remainingCycles / 50f;
+            log.info("Tracking Projectile: Remaining {}, Seconds Remaining {}s", projectile.getRemainingCycles(), remainingSeconds);
+        }
     }
 }
 

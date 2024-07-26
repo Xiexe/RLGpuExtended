@@ -7,8 +7,8 @@ flat in int fTextureId;
 in vec2 fUv;
 in vec3 fPosition;
 in float fFogAmount;
+in float fSurfaceDepth;
 in flat int isEmissive;
-
 in flat ivec4 fFlags;
 out vec4 FragColor;
 
@@ -48,6 +48,33 @@ vec4 boxBlur(sampler2D tex, vec2 uv, vec2 texelSize) {
     return color;
 }
 
+// Simple noise function
+float noise(vec2 p) {
+    return fract(sin(dot(p ,vec2(127.1,311.7))) * 43758.5453);
+}
+
+// Interpolated noise
+float smoothNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f*f*(3.0-2.0*f);
+    float n = mix(mix(noise(i + vec2(0.0, 0.0)), noise(i + vec2(1.0, 0.0)), f.x),
+    mix(noise(i + vec2(0.0, 1.0)), noise(i + vec2(1.0, 1.0)), f.x), f.y);
+    return n;
+}
+
+// Raymarching to calculate the distance to the underwater surface
+float raymarch(vec3 ro, vec3 rd) {
+    float depth = 0.0;
+    for (int i = 0; i < 100; i++) {
+        vec3 p = ro + depth * rd;
+        float h = smoothNoise(p.xz * 0.1 + vec2(time * 0.1, 0.0)) * 0.5;
+        if (p.y < h) break;
+        depth += 0.1;
+    }
+    return depth;
+}
+
 void main() {
     Surface s;
     VertexFlags flags;
@@ -60,18 +87,16 @@ void main() {
 
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
-    float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
+    float ndl = dot(s.normal.xyz, mainLight.pos.xyz) * 0.5 + 0.5;
 
-   // vec4 tileMask = boxBlur(tileMaskTexture, sceneUV - 0.00001, 0.5 / textureSize(tileMaskTexture, 0).xy);
     float shadowTex = GetShadowMap(fPosition, ndl);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
     float shadow = (shadowTex * ndl);
 
-    vec3 ambient = ambientColor.rgb * 1.2;
-    vec3 litFragment = s.albedo.rgb * (shadow * mainLight.color.rgb + ambient);
-    litFragment = mix(litFragment, s.albedo.rgb * 5, isEmissive);
+    vec3 ambient = ambientColor.rgb;
+    vec3 litFragment = s.albedo.rgb * (shadow + ambient);
 
     float fog = fFogAmount;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
@@ -96,11 +121,12 @@ void main() {
     //finalColor = vec3(flags.isTerrain);
 //    finalColor = vec3(isEmissive);
 //    finalColor = vec3(flags.isDynamicModel);
+//    finalColor = vec3(s.normal.rgb * 0.5 + 0.5);
 
-
-//    finalColor.r = mix(finalColor.r, 1, float(flags.isBridge));
-//    finalColor.g = mix(finalColor.g, 1, float(flags.plane) / 4.);
-    finalColor = mix(finalColor, vec3(0,0,0), float(flags.isOnBridge));
+//    if(flags.isTerrain)
+//    {
+//        finalColor *= vec3(fSurfaceDepth);
+//    }
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

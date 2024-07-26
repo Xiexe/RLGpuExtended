@@ -24,6 +24,7 @@ void main() {
   Vertex thisA, thisB, thisC;
   vec4 normA, normB, normC;
   vec4 texA, texB, texC;
+  ivec4 flagsA, flagsB, flagsC;
 
   uint myOffset = localId;
   vec3 pos = vec3(minfo.x, minfo.y, minfo.z);
@@ -42,6 +43,10 @@ void main() {
     texA = texPos + texb[toffset + localId * 3];
     texB = texPos + texb[toffset + localId * 3 + 1];
     texC = texPos + texb[toffset + localId * 3 + 2];
+
+    flagsA = flagsin[toffset + localId * 3];
+    flagsB = flagsin[toffset + localId * 3 + 1];
+    flagsC = flagsin[toffset + localId * 3 + 2];
   } else {
     thisA = tempvb[offset + ssboOffset * 3];
     thisB = tempvb[offset + ssboOffset * 3 + 1];
@@ -54,6 +59,10 @@ void main() {
     texA = texPos + temptexb[toffset + localId * 3];
     texB = texPos + temptexb[toffset + localId * 3 + 1];
     texC = texPos + temptexb[toffset + localId * 3 + 2];
+
+    flagsA = tempflags[toffset + localId * 3];
+    flagsB = tempflags[toffset + localId * 3 + 1];
+    flagsC = tempflags[toffset + localId * 3 + 2];
   }
 
   vec3 vertA = thisA.pos + pos;
@@ -69,9 +78,9 @@ void main() {
   normalout[outOffset + myOffset * 3 + 1] = normB;
   normalout[outOffset + myOffset * 3 + 2] = normC;
 
-  flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
-  flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
-  flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
+  flagsout[outOffset + myOffset * 3]     = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsA.w);
+  flagsout[outOffset + myOffset * 3 + 1] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsB.w);
+  flagsout[outOffset + myOffset * 3 + 2] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsC.w);
 
   if(toffset < 0)
   {

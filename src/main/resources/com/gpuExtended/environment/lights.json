@@ -40,6 +40,7 @@
     ],
     "gameObjects": [
       724,
+      6203,
       11472,
       17237
     ]
@@ -145,6 +146,200 @@
     ],
     "gameObjects": [
       3918
+    ]
+  },
+  {
+    "name": "GLOWING_FUNGUS",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 1.2],
+    "intensity": 1,
+    "radius": 3,
+    "animation": "none",
+    "gameObjects": [
+      4932,
+      4933
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_PORTAL",
+    "type": "point",
+    "color": [0.45, 0.45, 1.00],
+    "offset": [0, 2, 2],
+    "intensity": 2,
+    "radius": 8,
+    "animation": "pulse",
+    "gameObjects": [
+      43692
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_PORTAL",
+    "type": "point",
+    "color": [0.45, 0.45, 1.00],
+    "offset": [0, -1, 1.25],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "pulse",
+    "gameObjects": [
+      43841
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 1.00, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43784
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.6, 0.4],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43788
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.3, 0.3, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43792
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.7, 0.5],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43789
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 1.00, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": -0.25,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43790
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.5, 0.5, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43795
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.1, 0.1],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43791
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.6, 0.2],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43787
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.25, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43794
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.9, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43786
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.2, 0.2, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43785
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43793
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_CORAL",
+    "type": "point",
+    "color": [0.8, 0.8, 1.00],
+    "offset": [0, 0, 5],
+    "intensity": 1,
+    "radius": 16,
+    "animation": "pulse",
+    "gameObjects": [
+      43800,
+      43801
     ]
   },
   {
@@ -264,6 +459,34 @@
     ]
   },
   {
+    "name": "TOA_BOSS_GATE",
+    "type": "point",
+    "color": [1.00, 0.1, 0.10],
+    "offset": [0, 1, 2],
+    "intensity": 3,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      46155,
+      46158,
+      46161,
+      46164
+    ]
+  },
+  {
+    "name": "TOA_TORCHES",
+    "type": "point",
+    "color": [1.00, 0.1, 0.00],
+    "offset": [0, 0, 1.5],
+    "intensity": 1,
+    "radius": 8,
+    "animation": "flicker",
+    "gameObjects": [
+      45334,
+      45135
+    ]
+  },
+  {
     "name": "TOA_INVOCATION_BOARD",
     "type": "point",
     "color": [1.00, 0.1, 0.10],
@@ -321,6 +544,126 @@
     "animation": "none",
     "tiles": [
       [3359, 2710, 0]
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      29794
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_BLUE",
+    "type": "point",
+    "color": [0.25, 0.25, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      29796
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_ABOVE",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 6],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      29800
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_ABOVE_SMALL",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 4],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      29803
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_WHITE",
+    "type": "point",
+    "color": [1.00, 1.00, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      29762
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_RED",
+    "type": "point",
+    "color": [1.00, 0.25, 0.15],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      30014
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_ABOVE_SMALL_RED",
+    "type": "point",
+    "color": [1.00, 0.25, 0.15],
+    "offset": [0, 0, 4],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      29805
+    ]
+  },
+  {
+    "name": "COX_ENERGY_WELL",
+    "type": "point",
+    "color": [1.00, 1.00, 0.00],
+    "offset": [0, 0, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      30067
+    ]
+  },
+  {
+    "name": "COX_OLM_PORTAL",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 10,
+    "animation": "pulse",
+    "gameObjects": [
+      29879
+    ]
+  },
+  {
+    "name": "COX_ROPE_LIGHT",
+    "type": "point",
+    "color": [0.90, 1.00, 0.90],
+    "offset": [0, 0, 0.5],
+    "intensity": 4,
+    "radius": 3,
+    "animation": "none",
+    "gameObjects": [
+      29996
     ]
   },
   {
@@ -471,6 +814,42 @@
     "decorations": [],
     "gameObjects": [
       29495
+    ]
+  },
+  {
+    "name": "BLAST_FURNACE_MELTING_POT",
+    "type": "point",
+    "color": [1.00, 0.65, 0.00],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "flicker",
+    "gameObjects": [
+      9098
+    ]
+  },
+  {
+    "name": "TRIDENT_OF_THE_SEAS",
+    "type": "point",
+    "color": [0.1, 0.1, 1.00],
+    "offset": [0, 0, 3],
+    "intensity": 5,
+    "radius": 5,
+    "animation": "none",
+    "projectiles": [
+      1252
+    ]
+  },
+  {
+    "name": "BOW_OF_FERRIDAN",
+    "type": "point",
+    "color": [1.00, 0.00, 0.00],
+    "offset": [0, 0, 3],
+    "intensity": 5,
+    "radius": 10,
+    "animation": "none",
+    "projectiles": [
+      1922
     ]
   }
 ]

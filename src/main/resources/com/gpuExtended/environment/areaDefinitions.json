@@ -123,6 +123,18 @@
         "end": [3443, 9908, -1],
         "environment": "DARK_UNDERGROUND",
         "hideOtherAreas": true
+      },
+      {
+        "name": "HAUNTED_MINE",
+        "start": [3380, 9605, -1],
+        "end": [3452, 9660, -1],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "HAUNTED_MINE",
+        "start": [2681, 4415, -1],
+        "end": [2819, 4606, -1],
+        "hideOtherAreas": true
       }
     ]
   },
@@ -136,6 +148,28 @@
       {
         "start": [3011, 3280, -1],
         "end": [3068, 3308, -1]
+      }
+    ]
+  },
+  {
+    "name": "WIZARDS_TOWER",
+    "bounds": [
+      {
+        "name": "BASEMENT",
+        "start": [3092, 9551, -1],
+        "end": [3124, 9580, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT",
+    "bounds": [
+      {
+        "start": [2364, 5600, -1],
+        "end": [2496, 5761, -1],
+        "environment": "GUARDIANS_OF_THE_RIFT",
+        "hideOtherAreas": true
       }
     ]
   },
@@ -156,12 +190,20 @@
     "bounds": [
       {
         "start": [2945, 3522, -1],
-        "end": [3394, 3971, -1]
+        "end": [3394, 3971, -1],
+        "environment": "WILDERNESS"
       },
       {
         "name": "CHAOS_ALTAR",
         "start": [2944, 3813, -1],
-        "end": [2967, 3828, -1]
+        "end": [2967, 3828, -1],
+        "environment": "WILDERNESS"
+      },
+      {
+        "name": "MAGE_BANK",
+        "start": [2493, 4682, -1],
+        "end": [2548, 4730, -1],
+        "hideOtherAreas": true
       }
     ]
   },
@@ -243,6 +285,17 @@
     ]
   },
   {
+    "name": "BLAST_FURNACE",
+    "bounds": [
+      {
+        "start": [1930, 4951, -1],
+        "end": [1962, 4979, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "RANDOM_EVENT",
     "bounds": [
       {
@@ -257,6 +310,83 @@
         "start": [2579, 4756, 0],
         "end": [2617, 4795, 0],
         "environment": "DEFAULT",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "TOMBS_OF_AMASCUT",
+    "bounds": [
+      {
+          "name": "ENTRANCE",
+          "start": [3328, 9088, -1],
+          "end": [3391, 9151, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+          "name": "LOBBY",
+          "start": [3520, 5120, -1],
+          "end": [3583, 5183, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+          "name": "PUZZLE_HET",
+          "start": [3649, 5249, -1],
+          "end": [3710, 5310, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+          "name": "PUZZLE_CRONDIS",
+          "start": [3904, 5248, -1],
+          "end": [3967, 5311, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+          "name": "PUZZLE_KEPHRI",
+          "start": [3520, 5248, -1],
+          "end": [3583, 5310, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+          "name": "CRONDIS",
+          "start": [3904, 5376, -1],
+          "end": [3967, 5439, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+          "name": "KEPHRI",
+          "start": [3520, 5376, -1],
+          "end": [3583, 5439, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "CHAMBERS_OF_XERIC",
+    "bounds": [
+      {
+        "start": [3263, 5120, -1],
+        "end": [3359, 5472, -1],
+        "environment": "CHAMBERS_OF_XERIC",
+        "hideOtherAreas": true
+      },
+      {
+        "start": [3260, 5697, -1],
+        "end": [3362, 5762, -1],
+        "environment": "CHAMBERS_OF_XERIC",
+        "hideOtherAreas": true
+      },
+      {
+        "start": [3214, 5698, -1],
+        "end": [3252, 5763, -1],
+        "environment": "CHAMBERS_OF_XERIC",
         "hideOtherAreas": true
       }
     ]

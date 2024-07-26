@@ -155,8 +155,6 @@ public class TileMarkerManager {
                 return;
 
             roofMaskTexture.floodPixels(0, 0, 0, 0);
-
-            //TODO:: if going from login screen, this will fail for some reason in some places.
             Tile[][][] tiles = scene.getExtendedTiles();
             byte[][][] settings = scene.getExtendedTileSettings();
 
@@ -166,37 +164,38 @@ public class TileMarkerManager {
 
                         Tile tile = tiles[z][x][y];
                         if (tile != null) {
-                            Bounds bounds = environmentManager.CheckTileRegion(tile.getWorldLocation());
-                            if (bounds != null) {
-                                if (z < bounds.getGroundPlane()) {
-                                    continue;
+                            boolean tileIsUnderRoof = (settings[z][x][y] & TILE_FLAG_UNDER_ROOF) != 0;
+                            if (tileIsUnderRoof) {
+                                // todo:: use color channels to mask groups of roofs
+                                roofMaskTexture.setPixel(x, y, Math.min(MAX_Z - 1, z + 1), 0, 0, 0, 255);
+                            }
+
+                            boolean anyObjectOnTileIsRoof = false;
+
+                            GameObject[] gameObjects = tile.getGameObjects();
+                            if (gameObjects != null) {
+                                for (GameObject gameObject : gameObjects) {
+                                    if (gameObject != null) {
+                                        int gameObjectConfigIsRoof = gameObject.getConfig() & 0x3F;
+                                        if (gameObjectConfigIsRoof >= 12) {
+                                            anyObjectOnTileIsRoof = true;
+                                        }
+                                    }
                                 }
                             }
 
-                            int cSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 0)];
-                            int nSettings = settings[z][clampCoords(x + 0)][clampCoords(y + 1)];
-                            int sSettings = settings[z][clampCoords(x + 0)][clampCoords(y - 1)];
-                            int eSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 0)];
-                            int wSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 0)];
+                            WallObject wallObject = tile.getWallObject();
+                            if(wallObject != null)
+                            {
+                                int wallConfig = wallObject.getConfig() & 63;
+                                // 0 == flat wall
+                                // 1 == 45 degree wall
+                                // 2 == Inner Corner
+                                log.info("Wall config: Type:{}, Config:{}", wallConfig, wallObject.getConfig());
+                                anyObjectOnTileIsRoof = true;
+                            }
 
-                            int neSettings = settings[z][clampCoords(x + 1)][clampCoords(y + 1)];
-                            int seSettings = settings[z][clampCoords(x + 1)][clampCoords(y - 1)];
-                            int nwSettings = settings[z][clampCoords(x - 1)][clampCoords(y + 1)];
-                            int swSettings = settings[z][clampCoords(x - 1)][clampCoords(y - 1)];
-
-                            boolean centerRoof = (cSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean nRoof = (nSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean sRoof = (sSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean eRoof = (eSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean wRoof = (wSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean neRoof = (neSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean seRoof = (seSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean nwRoof = (nwSettings & TILE_FLAG_UNDER_ROOF) != 0;
-                            boolean swRoof = (swSettings & TILE_FLAG_UNDER_ROOF) != 0;
-
-                            boolean tileIsUnderRoof = centerRoof || nRoof || sRoof || eRoof || wRoof || neRoof || seRoof || nwRoof || swRoof;
-                            if (tileIsUnderRoof) {
-                                // todo:: use color channels to mask groups of roofs
+                            if (anyObjectOnTileIsRoof) {
                                 roofMaskTexture.setPixel(x, y, z, 0, 0, 0, 255);
                             }
                         }

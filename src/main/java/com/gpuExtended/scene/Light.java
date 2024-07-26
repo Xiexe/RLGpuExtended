@@ -93,6 +93,9 @@ public class Light
     @Nullable
     public float distanceSquared = 0;
 
+    @Nullable
+    public boolean isDynamic = false;
+
     public static Light CreateLightFromTemplate(Light template, Vector4 position)
     {
         Light light = new Light();

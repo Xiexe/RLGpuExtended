@@ -38,6 +38,7 @@ import net.runelite.api.Constants;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -683,6 +684,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 		}
 	}
+
+	@Subscribe
+	public void onProjectileMoved(ProjectileMoved event)
+	{
+		environmentManager.OnProjectileMoved(event);
+	}
+
+
 
 	private void setupSyncMode()
 	{
@@ -1707,17 +1716,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					float renderDistance = MAX_LIGHT_RENDER_DISTANCE * LOCAL_TILE_SIZE;
 					float maxDistanceSquared = renderDistance * renderDistance;
 					//log.info("Light Distance: {}", distanceSquared);
-					if(distanceSquared > maxDistanceSquared)
-					{
-						PushEmptyLightToBuffer();
-						continue;
-					}
+//					if(distanceSquared > maxDistanceSquared)
+//					{
+//						PushEmptyLightToBuffer();
+//						continue;
+//					}
 
 					float normalizedDistance = InverseLerp(0.0f, maxDistanceSquared, distanceSquared);
 					float fadeMultiplier = (float) (1.0f - Math.pow(normalizedDistance, 5.0));
 					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
 
-					float intensity = light.intensity * fadeMultiplier;
+					float intensity = light.intensity;// * fadeMultiplier;
 
 					bBufferEnvironmentBlock.putFloat(light.position.x);
 					bBufferEnvironmentBlock.putFloat(light.position.y);
@@ -2411,10 +2420,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
 
+		int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+
 		int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
 		int uvOffset = offsetModel.getUvBufferOffset();
 		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-		int exFlags = GetExFlags(hash, x, y, z, false);
+		int exFlags = GetExFlags(hash, tileX, tileY, z, false);
 
 		GpuIntBuffer b = bufferForTriangles(faceCount);
 
@@ -2429,7 +2441,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		buffer.put(exFlags);
 		buffer.put(-1);
 		buffer.put(-1);
-		buffer.put(-1);
+		buffer.put(GetModelConfig(hash, tileX, tileY, z));
 
 		targetBufferOffset += faceCount * 3;
 		//staticModelUpload.stop();
@@ -2444,13 +2456,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			renderable.setModelHeight(model.getModelHeight());
 		}
 
+		int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+
 		CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
 		int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-		int exFlags = GetExFlags(hash, x, y, z, true);
+		int exFlags = GetExFlags(hash, tileX, tileY, z, true);
 		boolean hasUv = model.getFaceTextures() != null;
 		boolean isNPC = renderable instanceof NPC;
 
-		int vertexCount = sceneUploader.PushDynamicModel(model, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+		int vertexCount = sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 
 		GpuIntBuffer b = bufferForTriangles(vertexCount / 3);
 		b.ensureCapacity(12);
@@ -2464,7 +2479,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		buffer.put(exFlags);
 		buffer.put(-1);
 		buffer.put(-1);
-		buffer.put(-1);
+		buffer.put(GetModelConfig(hash, x, y, z));
 
 		tempOffset += vertexCount;
 		targetBufferOffset += vertexCount;
@@ -2489,20 +2504,43 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int GetExFlags(long hash, int x, int y, int z, boolean isDynamicModel)
 	{
 		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-
-		int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-		int realPlane = GetTileRealPlane(tileX, tileY, plane, client.getScene());
-
-		// hash bits
-		// 14 isNpc
-		// 15 isObject
-		// 16 isStaticObject
-		int flags = (realPlane << BIT_PLANE) |
-					(tileX << BIT_XPOS) |
-					(tileY << BIT_YPOS) |
+		int flags = (plane << BIT_PLANE) |
+					(x << BIT_XPOS) |
+					(y << BIT_YPOS) |
 					(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0);
 		return flags;
+	}
+
+	private int GetModelConfig(long hash, int x, int y, int z)
+	{
+		// hash bits
+		// | 1111 1111 1111 1 |    11 | 1  1111 1111 1111 1111 1111 1111 1111 111 |               1 |   11 |    11 1111 1 |     111 1111 |
+		// |   13 unused bits | plane |                        32-bit id or index | right-clickable | type | 7-bit sceneY | 7-bit sceneX |
+		//
+		// 0    - straight walls, fences etc
+		// 1    - diagonal walls corner, fences etc connectors
+		// 2    - entire walls, fences etc corners
+		// 3    - straight wall corners, fences etc connectors
+		// 4    - straight inside wall decoration
+		// 5    - straight outside wall decoration
+		// 6    - diagonal outside wall decoration
+		// 7    - diagonal inside wall decoration
+		// 8    - diagonal in wall decoration
+		// 9    - diagonal walls, fences etc
+		// 10    - all kinds of objects, trees, statues, signs, fountains etc etc
+		// 11    - ground objects like daisies etc
+		// 12    - straight sloped roofs
+		// 13    - diagonal sloped roofs
+		// 14    - diagonal slope connecting roofs
+		// 15    - straight sloped corner connecting roofs
+		// 16    - straight sloped corner roof
+		// 17    - straight flat top roofs
+		// 18    - straight bottom egde roofs
+		// 19    - diagonal bottom edge connecting roofs
+		// 20    - straight bottom edge connecting roofs
+		// 21    - straight bottom edge connecting corner roofs
+
+		return -1;
 	}
 
 	@Override

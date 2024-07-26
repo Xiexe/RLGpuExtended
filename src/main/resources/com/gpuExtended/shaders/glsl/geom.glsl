@@ -3,12 +3,10 @@
 // smallest unit of the texture which can be moved per tick. textures are all
 // 128x128px - so this is equivalent to +1px
 #define TEXTURE_ANIM_UNIT (1.0 / 128.0)
+#define WATER_OFFSET 0.2
 
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 6) out;
-//#define LINE_DEBUG
-//layout(line_strip, max_vertices = 4) out;
-//layout(points, max_vertices = 3) out;
 
 #include "shaders/glsl/constants.glsl"
 #include "shaders/glsl/structs.glsl"
@@ -33,6 +31,7 @@ flat out int fTextureId;
 out vec2 fUv;
 out vec3 fPosition;
 out float fFogAmount;
+out float fSurfaceDepth;
 out flat int isEmissive;
 out flat ivec4 fFlags;
 
@@ -41,7 +40,13 @@ bool CheckIsTree(int texId)
   return texId == TREE_TOP || texId == TREE_BOTTOM || texId == TREE_WILLOW;
 }
 
+bool CheckIsWater(int texId)
+{
+  return texId == WATER;
+}
+
 void main() {
+  vec3 grayscaleVec = vec3(0.299, 0.587, 0.114);
   int textureId = gTextureId[0];
   vec2 uv[3];
 
@@ -68,44 +73,27 @@ void main() {
   vec3 triangleNormal = normalize(cross(v1 - v0, v2 - v0));
 
   for (int i = 0; i < 3; ++i) {
+    vec4 color = gColor[i];
     vec4 normal = gNormal[i];
-    // TODO:: Bitshift to get flat normals flag
+    vec3 pos = gPosition[i];
+    vec3 vertex = gVertex[i];
+
     if((gNormal[i].x == 0 && gNormal[i].y == 0 && gNormal[i].z == 0))
     {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
 
-    vec3 pos = gPosition[i];
-    vec3 vertex = gVertex[i];
-//    if(CheckIsTree(gTextureId[i]))
+//    if(CheckIsWater(gTextureId[i]))
 //    {
-//      float distanceToCenter = length(vertex.xz) * 0.00005;
-//      float frequency = 0.005;
-//      float phase = vertex.x + vertex.z;
-//
-//      vertex.x += sin(time * frequency + phase) * 2 * distanceToCenter;
-//      vertex.z += cos(time * frequency + phase) * 2 * distanceToCenter;
+//      pos.y += WATER_OFFSET * TILE_SIZE;
+//      vertex.y += WATER_OFFSET * TILE_SIZE;
 //    }
 
-    vec3 grayscaleVec = vec3(0.299, 0.587, 0.114);
-    vec4 color = gColor[i];
-
-//    bool isTerrain = ((gFlags[i].x >> BIT_ISTERRAIN) & 1) > 0;
-//    if(isTerrain)
+//    if(gNormal[i].w > 0)
 //    {
-//      vertex = vec3(0,0,0);
-//
-//      isEmissive = 0;
-//      fPosition = pos;
-//      fColor = vec4(1,0,0,1);
-//      fFogAmount = gFogAmount[i];
-//      fHsl = gHsl[i];
-//      fTextureId = gTextureId[i];
-//      fNormal = gNormal[i];
-//      fUv = uv[i];
-//      fFlags = gFlags[i];
-//      gl_Position = cameraProjectionMatrix * vec4(vertex, 1);
-//      EmitVertex();
+//      pos.y += 0.5 * TILE_SIZE;
+//      vertex.y += 0.5 * TILE_SIZE;
+//      color = vec4(1, 1, 1, 1);
 //    }
 
     isEmissive = 0;
@@ -117,15 +105,9 @@ void main() {
     fNormal = normal;
     fUv = uv[i];
     fFlags = gFlags[i];
+    fSurfaceDepth = normal.w;
     gl_Position = cameraProjectionMatrix * vec4(vertex, 1);
     EmitVertex();
   }
-
-#ifdef LINE_DEBUG
-  fPosition = gPosition[0];
-  gl_Position = cameraProjectionMatrix * vec4(gVertex[0], 1);
-  EmitVertex();
-#endif
-
   EndPrimitive();
 }
