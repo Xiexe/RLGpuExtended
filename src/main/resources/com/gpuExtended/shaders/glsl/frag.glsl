@@ -89,14 +89,12 @@ void main() {
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = dot(s.normal.xyz, mainLight.pos.xyz) * 0.5 + 0.5;
 
-    float shadowTex = GetShadowMap(fPosition, ndl);
+    float shadowMap = GetShadowMap(fPosition, ndl);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
-    float shadow = (shadowTex * ndl);
 
-    vec3 ambient = ambientColor.rgb;
-    vec3 litFragment = s.albedo.rgb * (shadow + ambient);
+    vec3 litFragment = s.albedo.rgb * ((shadowMap * ndl) + ambientColor.rgb);
 
     float fog = fFogAmount;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;

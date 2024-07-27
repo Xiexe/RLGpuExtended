@@ -37,6 +37,8 @@ import net.runelite.api.*;
 import net.runelite.api.Constants;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.hooks.DrawCallbacks;
@@ -691,7 +693,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		environmentManager.OnProjectileMoved(event);
 	}
 
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		environmentManager.OnGameObjectSpawned(event);
+	}
 
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		environmentManager.OnGameObjectDespawned(event);
+	}
 
 	private void setupSyncMode()
 	{
@@ -1716,17 +1728,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					float renderDistance = MAX_LIGHT_RENDER_DISTANCE * LOCAL_TILE_SIZE;
 					float maxDistanceSquared = renderDistance * renderDistance;
 					//log.info("Light Distance: {}", distanceSquared);
-//					if(distanceSquared > maxDistanceSquared)
-//					{
-//						PushEmptyLightToBuffer();
-//						continue;
-//					}
+					if(distanceSquared > maxDistanceSquared)
+					{
+						PushEmptyLightToBuffer();
+						continue;
+					}
 
 					float normalizedDistance = InverseLerp(0.0f, maxDistanceSquared, distanceSquared);
 					float fadeMultiplier = (float) (1.0f - Math.pow(normalizedDistance, 5.0));
 					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
 
-					float intensity = light.intensity;// * fadeMultiplier;
+					float intensity = light.intensity * fadeMultiplier;
 
 					bBufferEnvironmentBlock.putFloat(light.position.x);
 					bBufferEnvironmentBlock.putFloat(light.position.y);

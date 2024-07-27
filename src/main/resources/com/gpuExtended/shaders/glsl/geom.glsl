@@ -83,19 +83,6 @@ void main() {
         normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     }
 
-//    if(CheckIsWater(gTextureId[i]))
-//    {
-//      pos.y += WATER_OFFSET * TILE_SIZE;
-//      vertex.y += WATER_OFFSET * TILE_SIZE;
-//    }
-
-//    if(gNormal[i].w > 0)
-//    {
-//      pos.y += 0.5 * TILE_SIZE;
-//      vertex.y += 0.5 * TILE_SIZE;
-//      color = vec4(1, 1, 1, 1);
-//    }
-
     isEmissive = 0;
     fPosition = pos;
     fColor = color;

@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.client.callback.ClientThread;
 
@@ -97,6 +99,8 @@ public class EnvironmentManager
 
     public HashSet<Projectile> sceneProjectiles = new HashSet<>();
     public HashMap<Projectile, Light> projectileLightHashMap = new HashMap<>();
+
+    public HashMap<GameObject, Light> gameObjectLightHashMap = new HashMap<>();
 
     public void Initialize() {
         environments = new Environment[0];
@@ -275,6 +279,8 @@ public class EnvironmentManager
         sceneLights.clear();
         sceneLightVisibility.clear();
         sceneProjectiles.clear();
+        projectileLightHashMap.clear();
+        gameObjectLightHashMap.clear();
 
         GameState gameState = client.getGameState();
         if(gameState == GameState.LOGGED_IN || plugin.loadingScene) {
@@ -676,6 +682,43 @@ public class EnvironmentManager
 
             sceneProjectiles.add(projectile);
             log.info("Projectile added: " + projectile.getId());
+        }
+    }
+
+    public void OnGameObjectSpawned(GameObjectSpawned event)
+    {
+        GameObject gameObject = event.getGameObject();
+
+        if(gameObjectLights.containsKey(gameObject.getId()))
+        {
+            if(gameObjectLightHashMap.containsKey(gameObject))
+            {
+                return;
+            }
+
+            ArrayList<Light> lightsForGameObject = gameObjectLights.get(gameObject.getId());
+            if(lightsForGameObject == null) return;
+
+            LocalPoint location = gameObject.getLocalLocation();
+            Vector4 position = new Vector4(location.getX(), location.getY(), gameObject.getZ(), 0);
+            for(int i = 0; i < lightsForGameObject.size(); i++) {
+                Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position);
+                sceneLights.add(light);
+                gameObjectLightHashMap.put(gameObject, light);
+                log.info("GameObject added: " + gameObject.getId());
+            }
+        }
+    }
+
+    public void OnGameObjectDespawned(GameObjectDespawned event)
+    {
+        GameObject gameObject = event.getGameObject();
+
+        if(gameObjectLightHashMap.containsKey(gameObject))
+        {
+            sceneLights.remove(gameObjectLightHashMap.get(gameObject));
+            gameObjectLightHashMap.remove(gameObject);
+            log.info("GameObject despawned: " + event.getGameObject().getId());
         }
     }
 }

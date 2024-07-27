@@ -311,6 +311,13 @@
         "end": [2617, 4795, 0],
         "environment": "DEFAULT",
         "hideOtherAreas": true
+      },
+      {
+        "name": "MOLLY",
+        "start": [1856, 5120, -1],
+        "end": [1878, 5142, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
       }
     ]
   },
@@ -365,6 +372,41 @@
           "end": [3583, 5439, -1],
           "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
+      },
+      {
+          "name": "APMEKEN_PUZZLE",
+          "start": [3785, 5263, -1],
+          "end": [3830, 5298, -1],
+          "environment": "DARK_UNDERGROUND",
+          "hideOtherAreas": true
+      },
+      {
+        "name": "APMEKEN",
+        "start": [3783, 5395, -1],
+        "end": [3831, 5421, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ELIDINIS",
+        "start": [3776, 5120, -1],
+        "end": [3839, 5183, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "TUMEKEN",
+        "start": [3904, 5120, -1],
+        "end": [3967, 5183, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "TREASURE",
+        "start": [3648, 5120, -1],
+        "end": [3711, 5183, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
       }
     ]
   },
