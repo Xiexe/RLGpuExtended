@@ -88,5 +88,15 @@
     "LightYaw": 0,
     "FogDepth": 50,
     "Type": 1
+  },
+  {
+    "Name": "TAVERLY_DUNGEON",
+    "SkyColor":     [0.0, 0.0, 0.0, 1.00],
+    "AmbientColor": [0.5, 0.4, 0.4, 1.00],
+    "LightColor":   [0.2, 0.2, 0.2, 1.00],
+    "LightPitch": 90,
+    "LightYaw": 0,
+    "FogDepth": 20,
+    "Type": 1
   }
 ]

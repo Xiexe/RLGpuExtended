@@ -14,7 +14,18 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
         JsonObject jsonObject = json.getAsJsonObject();
 
         String name = jsonObject.get("name").getAsString();
+
         Bounds[] bounds = null;
+        boolean hideOtherAreas = false;
+        String environment = null;
+
+        if(jsonObject.has("hideOtherAreas")) {
+            hideOtherAreas = jsonObject.get("hideOtherAreas").getAsBoolean();
+        }
+
+        if(jsonObject.has("environment")) {
+            environment = jsonObject.get("environment").getAsString();
+        }
 
         if(jsonObject.has("bounds")) {
             JsonArray boundsArray = jsonObject.getAsJsonArray("bounds");
@@ -41,16 +52,16 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
                         endArray.get(2).getAsInt()
                 );
 
-                String environment = null;
+                String boundsEnvironment = null;
                 if(boundObject.has("environment"))
                 {
-                    environment = boundObject.get("environment").getAsString();
+                    boundsEnvironment = boundObject.get("environment").getAsString();
                 }
 
-                boolean hideOtherAreas = false;
+                boolean hideOtherBounds = false;
                 if(boundObject.has("hideOtherAreas"))
                 {
-                    hideOtherAreas = boundObject.get("hideOtherAreas").getAsBoolean();
+                    hideOtherBounds = boundObject.get("hideOtherAreas").getAsBoolean();
                 }
 
                 boolean allowRoofFading = true;
@@ -65,10 +76,10 @@ public class AreaDeserializer implements JsonDeserializer<Area> {
                     groundPlane = boundObject.get("groundPlane").getAsInt();
                 }
 
-                bounds[i] = new Bounds(boundName, start, end, environment, hideOtherAreas, allowRoofFading, groundPlane);
+                bounds[i] = new Bounds(boundName, start, end, boundsEnvironment, hideOtherBounds, allowRoofFading, groundPlane);
             }
         }
 
-        return new Area(name, bounds);
+        return new Area(name, environment, hideOtherAreas, bounds);
     }
 }

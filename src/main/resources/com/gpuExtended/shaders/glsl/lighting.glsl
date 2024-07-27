@@ -57,7 +57,7 @@ float PCFShadows(vec4 projCoords, float fadeOut, float shadowBias) {
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
 
     for(int i = 0; i < shadowSamples; i++) {
-        vec2 offset = poissonDisk[i] * 0.002;
+        vec2 offset = poissonDisk[i] * 0.005;
         float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
         shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
     }

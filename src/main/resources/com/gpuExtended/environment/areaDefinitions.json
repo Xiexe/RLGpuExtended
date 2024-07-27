@@ -432,5 +432,24 @@
         "hideOtherAreas": true
       }
     ]
+  },
+  {
+    "name": "TAVERLY_DUNGEON",
+    "hideOtherAreas": true,
+    "environment": "TAVERLY_DUNGEON",
+    "bounds": [
+      {
+        "start": [2811, 9721, -1],
+        "end": [2943, 9855, -1]
+      },
+      {
+        "start": [2880, 9664, -1],
+        "end": [2943, 9721, -1]
+      },
+      {
+        "start": [2944, 9766, -1],
+        "end": [2971, 9802, -1]
+      }
+    ]
   }
 ]

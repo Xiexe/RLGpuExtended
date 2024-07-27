@@ -15,6 +15,7 @@ import javax.inject.Singleton;
 import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.*;
 import com.gpuExtended.scene.EnvironmentManager;
@@ -963,6 +964,51 @@ public class SceneUploader
 
 	public void PrepareScene(Scene scene)
 	{
+		Area currentArea = enviornmentManager.currentArea;
+
+		if(currentArea != null)
+		{
+			if(currentArea.isHideOtherAreas())
+			{
+				if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
+
+				Bounds[] areaBounds = currentArea.getBounds();
+				if(areaBounds == null) return;
+
+				log.info("Hiding unrelated maps");
+				ArrayList<Tile> invalidTiles = new ArrayList<>();
+
+				Tile[][][] tiles = scene.getExtendedTiles();
+				for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+					for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+						for (int z = 0; z < Constants.MAX_Z; ++z) {
+							Tile tile = tiles[z][x][y];
+							if (tile == null) continue;
+
+							WorldPoint tileLocation = tile.getWorldLocation();
+							boolean tileValid = false;
+							for(Bounds currentSubBounds : areaBounds)
+							{
+								if (currentSubBounds.contains(tileLocation, 2)) {
+									tileValid = true;
+									break;
+								}
+							}
+
+							if(!tileValid) {
+								invalidTiles.add(tile);
+							}
+						}
+					}
+				}
+
+				for(Tile tile : invalidTiles)
+				{
+					scene.removeTile(tile);
+				}
+			}
+		}
+
 		Bounds currentBounds = enviornmentManager.currentBounds;
 		if(currentBounds != null)
 		{
@@ -970,8 +1016,6 @@ public class SceneUploader
 
 			if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
 			if(!currentBounds.isHideOtherAreas()) return;
-
-			log.info("Hiding unrelated maps to: {}", currentBounds.getName());
 
 			Tile[][][] tiles = scene.getExtendedTiles();
 			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {

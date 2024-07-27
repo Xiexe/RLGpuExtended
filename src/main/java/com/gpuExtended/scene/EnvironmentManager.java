@@ -484,18 +484,35 @@ public class EnvironmentManager
                 }
             }
 
-            if(currentBounds != null)
+            if(currentArea != null)
             {
-                if(currentBounds.getEnvironment() != null)
+                if(currentArea.getEnvironment() != null)
                 {
-                    Environment targetEnvironment = environmentMap.get(currentBounds.getEnvironment());
+                    Environment targetEnvironment = environmentMap.get(currentArea.getEnvironment());
                     if(targetEnvironment != null) {
                         currentEnvironment = targetEnvironment;
                     }
                 }
                 else
                 {
-                    currentEnvironment = GetDefaultEnvironment();
+                    if(currentBounds != null)
+                    {
+                        if(currentBounds.getEnvironment() != null)
+                        {
+                            Environment targetEnvironment = environmentMap.get(currentBounds.getEnvironment());
+                            if(targetEnvironment != null) {
+                                currentEnvironment = targetEnvironment;
+                            }
+                        }
+                        else
+                        {
+                            currentEnvironment = GetDefaultEnvironment();
+                        }
+                    }
+                    else
+                    {
+                        currentEnvironment = GetDefaultEnvironment();
+                    }
                 }
             }
             else

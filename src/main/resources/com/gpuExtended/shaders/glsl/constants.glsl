@@ -43,7 +43,7 @@
 #define INFERNAL_CAPE 60
 #define WATER 2
 #define WATER_SWAMP 26
-#define LAVA 41
+#define LAVA 32
 #define TREE_WILLOW 31
 #define TREE_BOTTOM 9
 #define TREE_TOP 61

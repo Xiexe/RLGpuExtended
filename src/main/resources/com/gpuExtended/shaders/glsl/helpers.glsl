@@ -30,7 +30,7 @@ bool CheckIsSwampWater(int texId)
 
 bool CheckIsUnlitTexture(int texId)
 {
-    return CheckIsInfernalCapeFireCape(texId);
+    return CheckIsInfernalCapeFireCape(texId) || texId == LAVA;
 }
 
 float Dither(vec2 screenPos) {
@@ -70,7 +70,7 @@ void PopulateSurfaceColor(inout Surface s)
         float light = fHsl / 127.f;
         vec3 mul = (1.f - textureLightMode) * vec3(light) + textureLightMode * fColor.rgb;;
 
-        if(CheckIsInfernalCapeFireCape(fTextureId))
+        if(CheckIsUnlitTexture(fTextureId))
         {
             textureColor *= 1.2;
         }

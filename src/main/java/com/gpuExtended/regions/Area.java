@@ -13,5 +13,7 @@ import javax.annotation.Nullable;
 @ToString
 public class Area {
     String name;
+    String environment;
+    boolean hideOtherAreas;
     Bounds[] bounds;
 }

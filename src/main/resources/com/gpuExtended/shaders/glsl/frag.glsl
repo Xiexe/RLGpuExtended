@@ -94,7 +94,7 @@ void main() {
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
-    vec3 litFragment = s.albedo.rgb * ((shadowMap * ndl) + ambientColor.rgb);
+    vec3 litFragment = s.albedo.rgb * (mainLight.color.rgb * ((shadowMap * ndl)) + ambientColor.rgb);
 
     float fog = fFogAmount;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
