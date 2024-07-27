@@ -27,6 +27,7 @@ import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
+import com.gpuExtended.util.config.ShadowResolution;
 import com.gpuExtended.util.deserializers.AreaDeserializer;
 import com.gpuExtended.util.deserializers.ColorDeserializer;
 import com.gpuExtended.util.deserializers.LightDeserializer;
@@ -83,8 +84,6 @@ import com.gpuExtended.util.*;
 
 import static com.gpuExtended.util.ConstantVariables.*;
 import static com.gpuExtended.util.ResourcePath.path;
-import static com.gpuExtended.util.SceneUploader.CheckIsOnBridge;
-import static com.gpuExtended.util.SceneUploader.GetTileRealPlane;
 import static com.gpuExtended.util.Utils.InverseLerp;
 import static net.runelite.api.Constants.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
@@ -672,6 +671,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					}
 				});
 			}
+			else if(configChanged.getKey().equals("shadowResolution"))
+			{
+				clientThread.invokeLater(() ->
+				{
+					if (shadowMapFramebuffer.isInitialized()) {
+						int res = config.shadowResolution().getValue();
+
+						if (config.shadowResolution() == ShadowResolution.RES_OFF) {
+							shadowMapFramebuffer.resize(1, 1);
+						} else {
+							shadowMapFramebuffer.resize(res, res);
+						}
+					}
+				});
+			}
 
 			if(client.getGameState() == GameState.LOGGED_IN) {
 				Bounds bounds = environmentManager.currentBounds;
@@ -1100,8 +1114,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initShadowMapTexture()
 	{
 		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
-		fboSettings.width = 8192;
-		fboSettings.height = 8192;
+		fboSettings.width = config.shadowResolution().getValue();
+		fboSettings.height = config.shadowResolution().getValue();
 		fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
 		fboSettings.awtContext = awtContext;
 

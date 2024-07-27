@@ -20,6 +20,9 @@ public class FrameBuffer {
     private Texture2D texture;
     private FrameBufferSettings settings;
 
+    @Getter
+    private boolean isInitialized = false;
+
 
     private AWTContext awtContext;
 
@@ -42,6 +45,8 @@ public class FrameBuffer {
         }
 
         unbind();
+
+        isInitialized = true;
     }
 
     public void bind() {
@@ -55,6 +60,7 @@ public class FrameBuffer {
     public void cleanup() {
         GL30.glDeleteFramebuffers(id);
         texture.cleanup();
+        isInitialized = false;
     }
 
     public void resize(int width, int height) {

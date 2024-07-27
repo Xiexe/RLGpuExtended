@@ -1,6 +1,7 @@
 
 package com.gpuExtended;
 
+import com.gpuExtended.util.config.ShadowResolution;
 import net.runelite.client.config.*;
 
 import static com.gpuExtended.GpuExtendedPlugin.MAX_DISTANCE;
@@ -470,6 +471,18 @@ public interface GpuExtendedConfig extends Config
 				section = lightSettings
 		)
 		Color skyColor();
+
+		@ConfigItem(
+				keyName = "shadowResolution",
+				name = "Shadow Resolution",
+				description = "resolution squared of the shadow map",
+				position = 99,
+				section = lightSettings
+		)
+		default ShadowResolution shadowResolution()
+		{
+			return ShadowResolution.RES_4096;
+		}
 
 		@ConfigItem(
 				keyName = "overrideLightRotation",

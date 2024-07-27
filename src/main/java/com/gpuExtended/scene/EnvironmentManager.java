@@ -6,6 +6,7 @@ import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
+import com.gpuExtended.util.config.ShadowResolution;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -541,6 +542,12 @@ public class EnvironmentManager
 
     private void UpdateMainLightProjectionMatrix()
     {
+        if(config.shadowResolution() == ShadowResolution.RES_OFF) {
+            lightProjectionMatrix = Mat4.identity();
+            lightViewMatrix = Mat4.identity();
+            return;
+        }
+
         if(currentEnvironment == null)
         {
             currentEnvironment = GetDefaultEnvironment();
@@ -571,7 +578,7 @@ public class EnvironmentManager
         int height = north - south;
         int farPlane = 10000;
 
-        int maxDrawDistance = 100;
+        int maxDrawDistance = 90;
         float maxScale = 0.7f;
         float minScale = 0.4f;
         float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
