@@ -18,14 +18,15 @@
     "type": "point",
     "color": [1.00, 0.52, 0.00],
     "offset": [0, 0, 1.5],
-    "intensity": 1,
-    "radius": 4,
+    "intensity": 0.2,
+    "radius": 6,
     "animation": "flicker",
     "decorations": [
       196,
       197,
       198,
       205,
+      206,
       2175,
       2501,
       3474,
@@ -142,14 +143,15 @@
     "type": "point",
     "color": [0.75, 0.90, 1.00],
     "offset": [0, 0, 1.2],
-    "intensity": 1,
-    "radius": 3,
+    "intensity": 0.5,
+    "radius": 6,
     "animation": "pulse",
     "decorations": [
       8774,
       9992
     ],
     "gameObjects": [
+      201,
       3918
     ]
   },
@@ -504,11 +506,11 @@
     ]
   },
   {
-    "name": "TOA_OBELISK_TIP_SOUTH",
+    "name": "TOA_OBELISK_TIP",
     "type": "point",
     "color": [1.00, 0.3, 0.3],
-    "offset": [0, -1, 6],
-    "intensity": 3,
+    "offset": [0, 0, 6],
+    "intensity": 4,
     "radius": 8,
     "animation": "none",
     "gameObjects": [
@@ -516,27 +518,15 @@
     ]
   },
   {
-    "name": "TOA_OBELISK_TIP_EAST",
+    "name": "TOA_OBELISK_CENTER",
     "type": "point",
     "color": [1.00, 0.3, 0.3],
-    "offset": [-1, 0, 6],
+    "offset": [0, 0, 6],
     "intensity": 3,
-    "radius": 8,
+    "radius": 10,
     "animation": "none",
     "gameObjects": [
-      46068
-    ]
-  },
-  {
-    "name": "TOA_OBELISK_TIP_WEST",
-    "type": "point",
-    "color": [1.00, 0.3, 0.3],
-    "offset": [1, 0, 6],
-    "intensity": 3,
-    "radius": 8,
-    "animation": "none",
-    "gameObjects": [
-      46068
+      42838
     ]
   },
   {
@@ -834,10 +824,22 @@
     ]
   },
   {
+    "name": "LAVA_BUBBLE_SPOT",
+    "type": "point",
+    "color": [1.00, 0.35, 0.00],
+    "offset": [0, 0, 1],
+    "intensity": 2,
+    "radius": 3,
+    "animation": "flicker",
+    "gameObjects": [
+      731
+    ]
+  },
+  {
     "name": "PROJECTILE_RED",
     "type": "point",
     "color": [1.00, 0.00, 0.00],
-    "intensity": 1,
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       100,
@@ -858,20 +860,22 @@
     "name": "PROJECTILE_GREEN",
     "type": "point",
     "color": [0.00, 1.00, 0.00],
-    "intensity": 2,
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       97,
       124,
       139,
-      165
+      165,
+      2178,
+      2187
     ]
   },
   {
     "name": "PROJECTILE_BLUE",
     "type": "point",
     "color": [0.00, 0.00, 1.00],
-    "intensity": 2,
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       94,
@@ -884,8 +888,8 @@
   {
     "name": "PROJECTILE_WHITE",
     "type": "point",
-    "color": [0.33, 0.33, 0.33],
-    "intensity": 2,
+    "color": [1, 1, 1],
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       91,
@@ -898,8 +902,8 @@
   {
     "name": "PROJECTILE_YELLOW",
     "type": "point",
-    "color": [0.33, 0.33, 0.00],
-    "intensity": 2,
+    "color": [1, 1, 0.00],
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       178
@@ -908,8 +912,8 @@
   {
     "name": "PROJECTILE_CYAN",
     "type": "point",
-    "color": [0.2, 0.4, 0.4],
-    "intensity": 2,
+    "color": [0.5, 1, 1],
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       1907
@@ -918,8 +922,8 @@
   {
     "name": "PROJECTILE_PURPLE",
     "type": "point",
-    "color": [0.50, 0.00, 0.50],
-    "intensity": 2,
+    "color": [1, 0.00, 1],
+    "intensity": 0.5,
     "radius": 5,
     "projectiles": [
       143,

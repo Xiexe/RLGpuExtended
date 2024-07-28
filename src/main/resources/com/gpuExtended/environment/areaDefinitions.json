@@ -323,61 +323,54 @@
   },
   {
     "name": "TOMBS_OF_AMASCUT",
+    "environment": "DEFAULT_UNDERGROUND",
     "bounds": [
       {
           "name": "ENTRANCE",
           "start": [3328, 9088, -1],
           "end": [3391, 9151, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "LOBBY",
           "start": [3520, 5120, -1],
           "end": [3583, 5183, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "PUZZLE_HET",
           "start": [3649, 5249, -1],
           "end": [3710, 5310, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "PUZZLE_CRONDIS",
           "start": [3904, 5248, -1],
           "end": [3967, 5311, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "PUZZLE_KEPHRI",
           "start": [3520, 5248, -1],
           "end": [3583, 5310, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "CRONDIS",
           "start": [3904, 5376, -1],
           "end": [3967, 5439, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "KEPHRI",
           "start": [3520, 5376, -1],
           "end": [3583, 5439, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {
           "name": "APMEKEN_PUZZLE",
           "start": [3785, 5263, -1],
           "end": [3830, 5298, -1],
-          "environment": "DARK_UNDERGROUND",
           "hideOtherAreas": true
       },
       {

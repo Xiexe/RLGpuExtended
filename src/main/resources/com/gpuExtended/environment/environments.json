@@ -13,7 +13,7 @@
     "Name": "DEFAULT",
     "SkyColor":     [0.91, 0.88, 0.84, 0.88],
     "AmbientColor": [1.00, 1.00, 1.00, 1.00],
-    "LightColor":   [0.3, 0.3, 0.3, 1.00],
+    "LightColor":   [0.5, 0.5, 0.5, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
     "FogDepth": 5,
@@ -22,8 +22,8 @@
   {
     "Name": "DEFAULT_UNDERGROUND",
     "SkyColor":     [0.00, 0.00, 0.00, 1.00],
-    "AmbientColor": [0.5, 0.5, 0.5, 1.00],
-    "LightColor":   [0.2, 0.2, 0.2, 1.00],
+    "AmbientColor": [0.7, 0.7, 0.7, 1.00],
+    "LightColor":   [0.4, 0.4, 0.4, 1.00],
     "LightPitch": 90,
     "LightYaw": 0,
     "FogDepth": 10,
@@ -32,7 +32,7 @@
   {
     "Name": "DARK_UNDERGROUND",
     "SkyColor":     [0.00, 0.00, 0.00, 1.00],
-    "AmbientColor": [0.4, 0.4, 0.4, 1.00],
+    "AmbientColor": [0.5, 0.5, 0.5, 1.00],
     "LightColor":   [0.2, 0.2, 0.2, 1.00],
     "LightPitch": 90,
     "LightYaw": 0,
@@ -92,7 +92,7 @@
   {
     "Name": "TAVERLY_DUNGEON",
     "SkyColor":     [0.0, 0.0, 0.0, 1.00],
-    "AmbientColor": [0.5, 0.4, 0.4, 1.00],
+    "AmbientColor": [0.6, 0.5, 0.5, 1.00],
     "LightColor":   [0.2, 0.2, 0.2, 1.00],
     "LightPitch": 90,
     "LightYaw": 0,

@@ -3,8 +3,7 @@ const float lightSize = 0.0035;
 const int shadowSamples = 32;
 
 float LinearAttenuation(float dist, float maxDistance) {
-    float linearAttenuation = max(1.0 - dist / maxDistance, 0.0);
-    return linearAttenuation;
+    return clamp(1.0 - dist*dist/(maxDistance*maxDistance), 0.0, 1.0);;
 }
 
 float PCSSEstimatePenumbraSize(vec4 projCoords, float currentDepth, float searchRadius) {
