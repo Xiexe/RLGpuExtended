@@ -1804,6 +1804,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.glBufferId);
+			glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
 		// </editor-fold>
 
