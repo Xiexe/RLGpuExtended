@@ -120,6 +120,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int TILEMARKER_BUFFER_BINDING_ID = 3;
 	private int SYSTEMINFO_BUFFER_BINDING_ID = 4;
 	private int CONFIG_BUFFER_BINDING_ID = 5;
+	private int LIGHT_BINNING_BUFFER_BINDING_ID = 6;
 
 	private int MODEL_BUFFER_IN_BINDING_ID = 1;
 	private int VERTEX_BUFFER_OUT_BINDING_ID = 2;
@@ -191,7 +192,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GLCapabilities glCapabilities;
 
 	static final String LINUX_VERSION_HEADER =
-		"#version 420\n" +
+		"#version 430\n" +
 			"#extension GL_ARB_compute_shader : require\n" +
 			"#extension GL_ARB_shader_storage_buffer_object : require\n" +
 			"#extension GL_ARB_explicit_attrib_location : require\n";
@@ -221,6 +222,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	static final Shader UNORDERED_COMPUTE_PROGRAM = new Shader()
 		.add(GL_COMPUTE_SHADER, "comp_unordered.glsl");
 
+	static final Shader LIGHT_BINNING_COMPUTE_PROGRAM = new Shader()
+		.add(GL_COMPUTE_SHADER, "comp_light_binning.glsl");
+
 	static final Shader UI_PROGRAM = new Shader()
 		.add(GL_VERTEX_SHADER, "vertui.glsl")
 		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
@@ -239,6 +243,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int glComputeProgram;
 	private int glSmallComputeProgram;
 	private int glUnorderedComputeProgram;
+	private int glLightBinningComputeProgram;
 	public int glUiProgram;
 
 	private int mainDrawVertexArrayObject;
@@ -279,6 +284,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private final GLBuffer tmpModelBufferLarge = new GLBuffer("model buffer large");
 	private final GLBuffer tmpModelBufferSmall = new GLBuffer("model buffer small");
 	private final GLBuffer tmpModelBufferUnordered = new GLBuffer("model buffer unordered");
+
+	private final GLBuffer lightBinsBuffer = new GLBuffer("light bins buffer");
 
 	private int textureArrayId;
 	private int tileHeightTex;
@@ -857,6 +864,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glComputeProgram = COMPUTE_PROGRAM.compile(createTemplate(1024, 6));
 			glSmallComputeProgram = SMALL_COMPUTE_PROGRAM.compile(createTemplate(512, 1));
 			glUnorderedComputeProgram = UNORDERED_COMPUTE_PROGRAM.compile(template);
+			glLightBinningComputeProgram = LIGHT_BINNING_COMPUTE_PROGRAM.compile(template);
 		}
 		else if (computeMode == ComputeMode.OPENCL)
 		{
@@ -879,6 +887,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		uniforms.InitializeShaderUniformsForShader(glComputeProgram, computeMode);
 		uniforms.InitializeShaderUniformsForShader(glSmallComputeProgram, computeMode);
 		uniforms.InitializeShaderUniformsForShader(glUnorderedComputeProgram, computeMode);
+		uniforms.InitializeShaderUniformsForShader(glLightBinningComputeProgram, computeMode);
 	}
 
 	private void shutdownProgram()
@@ -896,6 +905,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glDeleteProgram(glUnorderedComputeProgram);
 		glUnorderedComputeProgram = -1;
+
+		glDeleteProgram(glLightBinningComputeProgram);
+		glLightBinningComputeProgram = -1;
 
 		glDeleteProgram(glUiProgram);
 		glUiProgram = -1;
@@ -992,6 +1004,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		initGlBuffer(sceneUvBuffer);
 		initGlBuffer(sceneNormalBuffer);
 		initGlBuffer(sceneFlagsBuffer);
+		initGlBuffer(lightBinsBuffer);
 
 		initGlBuffer(tmpVertexBuffer);
 		initGlBuffer(tmpUvBuffer);
@@ -1014,6 +1027,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		initGlBuffer(glSystemInfoUniformBuffer);
 		initGlBuffer(glConfigUniformBuffer);
 
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
+		// +1 for the light count
+		glBufferData(GL_SHADER_STORAGE_BUFFER, Ints.BYTES * EXTENDED_SCENE_SIZE * EXTENDED_SCENE_SIZE * MAX_Z * (MAX_LIGHTS_PER_TILE + 1), GL_DYNAMIC_COPY);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
 		initUniformBufferBlocks();
 	}
 
@@ -1026,7 +1044,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
 		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 24);
-		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 12976);
+		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 16 + 16 + 4 + 4 + 4 + 4 + 128 + (64 * MAX_LIGHTS));
 		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 144);
 		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 24);
 		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 7 * Float.BYTES);
@@ -1054,6 +1072,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		destroyGlBuffer(sceneUvBuffer);
 		destroyGlBuffer(sceneNormalBuffer);
 		destroyGlBuffer(sceneFlagsBuffer);
+		destroyGlBuffer(lightBinsBuffer);
 
 		destroyGlBuffer(tmpVertexBuffer);
 		destroyGlBuffer(tmpUvBuffer);
@@ -1706,7 +1725,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[2]);
 			bBufferEnvironmentBlock.putFloat(-environmentManager.lightViewMatrix[6]);
 			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[10]);
-			bBufferEnvironmentBlock.putFloat(1); // light type / directional
+			bBufferEnvironmentBlock.putFloat(client.getPlane()); // light type / directional
 
 			// Offset
 			bBufferEnvironmentBlock.putFloat(0);
@@ -1731,39 +1750,39 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 
 			// Pack Lights
-			environmentManager.DetermineRenderedLights();
+			//environmentManager.DetermineRenderedLights();
 			for(int i = 0; i < MAX_LIGHTS; i++)
 			{
 				// TODO:: check visibility of light from frustum.
 				Light light = environmentManager.GetLightAtIndex(i);
-				if(light == null)
+				if(light != null)
 				{
-					PushEmptyLightToBuffer();
-				}
-				else
-				{
+					//log.info("Pushing Light Index: {}", i);
+
 					float dx = playerX - light.position.x;
 					float dy = playerY - light.position.y;
 					float distanceSquared = dx * dx + dy * dy;
 					float renderDistance = MAX_LIGHT_RENDER_DISTANCE * LOCAL_TILE_SIZE;
 					float maxDistanceSquared = renderDistance * renderDistance;
 					//log.info("Light Distance: {}", distanceSquared);
-					if(distanceSquared > maxDistanceSquared)
-					{
-						PushEmptyLightToBuffer();
-						continue;
-					}
+//					if(distanceSquared > maxDistanceSquared)
+//					{
+//						PushEmptyLightToBuffer();
+//						continue;
+//					}
 
-					float normalizedDistance = InverseLerp(0.0f, maxDistanceSquared, distanceSquared);
-					float fadeMultiplier = (float) (1.0f - Math.pow(normalizedDistance, 5.0));
-					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
+//					log.info("light position: {}, {}, {}", light.position.x, light.position.y, light.position.z);
 
-					float intensity = light.intensity * fadeMultiplier;
+//					float normalizedDistance = InverseLerp(0.0f, maxDistanceSquared, distanceSquared);
+//					float fadeMultiplier = (float) (1.0f - Math.pow(normalizedDistance, 5.0));
+//					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
+
+					float intensity = light.intensity;// * fadeMultiplier;
 
 					bBufferEnvironmentBlock.putFloat(light.position.x);
 					bBufferEnvironmentBlock.putFloat(light.position.y);
 					bBufferEnvironmentBlock.putFloat(light.position.z);
-					bBufferEnvironmentBlock.putFloat(light.position.w);
+					bBufferEnvironmentBlock.putFloat(light.plane);
 
 					bBufferEnvironmentBlock.putFloat(light.offset.x);
 					bBufferEnvironmentBlock.putFloat(light.offset.y);
@@ -1779,13 +1798,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					bBufferEnvironmentBlock.putFloat(light.radius);
 					bBufferEnvironmentBlock.putInt(light.animation.ordinal());
 					bBufferEnvironmentBlock.putInt(light.type.ordinal());
-
-					for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
-					{
-						// TODO:: these lights don't actually have projection matricies at the moment.
-						// Pad it. Future stuff.
-						bBufferEnvironmentBlock.putFloat(0);
-					}
 				}
 			}
 
@@ -1933,6 +1945,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
 		// </editor-fold>
 
+		int[] lightClearValue = new int[]{-1};
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
+		glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, lightClearValue);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
+
+		glUseProgram(glLightBinningComputeProgram);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glLightBinningComputeProgram);
+		glUniformBlockBinding(glLightBinningComputeProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+
+		glDispatchCompute(EXTENDED_SCENE_SIZE / 8, EXTENDED_SCENE_SIZE / 8, MAX_Z);
+		glUseProgram(0);
 //		uniformsStopwatch.stop();
 	}
 
@@ -2001,6 +2024,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		final TextureProvider textureProvider = client.getTextureProvider();
 		if (textureArrayId == -1)
@@ -2303,7 +2330,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		tileMarkerManager.InitializeSceneRoofMask(scene);
 		environmentManager.LoadSceneLights(scene);
 		environmentManager.CheckRegion();
-		environmentManager.SetEnvironmentNoLerp();
 		sceneUploader.PrepareScene(scene);
 		loadingScene = false;
 

@@ -145,26 +145,41 @@ void ApplyLightAnimation(inout Light light)
     }
 }
 
-// TODO:: move light animation to CPU
-void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 fragPos)
+int getLightBinIndex(int binSubIndex, int tileX, int tileY, int tileZ)
 {
-    for(int i = 0; i < LIGHT_COUNT; i++)
+    return
+        binSubIndex +
+        tileZ * (LIGHTS_PER_TILE+1) +
+        tileY * MAX_Z_HEIGHT * (LIGHTS_PER_TILE+1) +
+        tileX * EXTENDED_SCENE_SIZE * MAX_Z_HEIGHT * (LIGHTS_PER_TILE+1);
+}
+
+// TODO:: move light animation to CPU
+void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 fragPos, VertexFlags flags)
+{
+    int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
+    for(int binIndex = 0; binIndex < numLights; binIndex++)
     {
-        Light light = additiveLights[i];
-        if(light.type == LIGHT_TYPE_INVALID) break;
+        int oneDIndex = getLightBinIndex(binIndex, flags.tileX, flags.tileY, flags.plane);
+        int lightIndex = lightBinIndicies[oneDIndex];
+        if(lightIndex >= 0) {
+            Light light = additiveLights[lightIndex];
+            light.pos.xyz = OffsetLight(light);
 
-        light.pos.xyz = OffsetLight(light);
+            vec3 toLight = ((light.pos.xyz / TILE_SIZE) - (fragPos.xzy / TILE_SIZE));
+            float distToLight = length(toLight);
 
-        vec3 toLight = (light.pos.xyz - fragPos.xzy);
-        float distToLight = length(toLight) / TILE_SIZE;
-        if(distToLight > light.radius) continue;
+            toLight = normalize(toLight);
+            toLight.z = -toLight.z;
 
-        toLight = normalize(toLight);
-        toLight.z = -toLight.z;
-
-        ApplyLightAnimation(light);
-        float atten = LinearAttenuation(distToLight, light.radius);
-        float ndl = max(dot(normal.xzy, toLight), 0);
-        image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
+            ApplyLightAnimation(light);
+            float atten = LinearAttenuation(distToLight, light.radius);
+            float ndl = max(dot(normal.xzy, toLight), 0);
+            image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
+        }
     }
+
+//    vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
+//    image = mix(image, vec3(1), lightDebug);
+//    image = lightDebug;
 }

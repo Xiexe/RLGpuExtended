@@ -12,6 +12,7 @@ public class ConstantVariables {
     public static int BIT_ISDYNAMICMODEL = 10;
     public static int BIT_ISONBRIDGE = 9;
 
-    public static int MAX_LIGHTS = 100;
+    public static int MAX_LIGHTS = 500;
+    public static int MAX_LIGHTS_PER_TILE = 16;
     public static int MAX_LIGHT_RENDER_DISTANCE = 50;
 }

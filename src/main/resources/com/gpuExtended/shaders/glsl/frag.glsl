@@ -1,4 +1,4 @@
-#version 420
+#version 430
 
 in vec4 fColor;
 in vec4 fNormal;
@@ -104,7 +104,7 @@ void main() {
     float fog = distanceFog;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
-    ApplyAdditiveLighting(finalColor, s.albedo.rgb, s.normal.xyz, fPosition);
+    ApplyAdditiveLighting(finalColor, s.albedo.rgb, s.normal.xyz, fPosition, flags);
     FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog, isEmissive);
     finalColor = mix(finalColor, skyColor.rgb, fog);
@@ -117,19 +117,7 @@ void main() {
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
-//    finalColor = vec3(fFlags.z == 1);
-    //finalColor = vec3(float(flags.tileX) / EXTENDED_SCENE_SIZE, float(flags.tileY) / EXTENDED_SCENE_SIZE, 0.0);
-//    finalColor = vec3(float(flags.plane) / 4.);
-//    finalColor = vec3(flags.isBridge);
-    //finalColor = vec3(flags.isTerrain);
-//    finalColor = vec3(isEmissive);
-//    finalColor = vec3(flags.isDynamicModel);
-//    finalColor = vec3(s.normal.rgb * 0.5 + 0.5);
-
-//    if(flags.isTerrain)
-//    {
-//        finalColor *= vec3(fSurfaceDepth);
-//    }
+//    finalColor = vec3(float(flags.tileX) / EXTENDED_SCENE_SIZE, float(flags.tileY) / EXTENDED_SCENE_SIZE, 0);
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

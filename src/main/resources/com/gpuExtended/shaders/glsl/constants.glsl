@@ -19,6 +19,7 @@
 #define TILEMARKER_BUFFER_BINDING_ID 3
 #define SYSTEMINFO_BUFFER_BINDING_ID 4
 #define CONFIG_BUFFER_BINDING_ID 5
+#define LIGHT_BINNING_BUFFER_BINDING_ID 6
 
 #define MODEL_BUFFER_IN_BINDING_ID 1
 #define VERTEX_BUFFER_OUT_BINDING_ID 2
@@ -66,8 +67,10 @@
 #define ENV_TYPE_DEFAULT 0
 #define ENV_TYPE_UNDERGROUND 1
 
-#define LIGHT_COUNT 100 // 100 lights maximum
-#define LIGHTS_PER_TILE 8 // 8 lights per tile maximum
+#define LIGHT_COUNT 500
+#define LIGHTS_PER_TILE 16 // 16 lights per tile maximum, buffer size is +1 for the number of lights in the tile (last index)
+#define LIGHTS_BIN_NUM_LIGHTS_INDEX LIGHTS_PER_TILE
+
 #define LIGHT_TYPE_INVALID 0
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2

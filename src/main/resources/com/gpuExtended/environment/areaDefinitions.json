@@ -25,7 +25,8 @@
       {
         "name": "UNDERGROUND",
         "start": [3207, 9614, -1],
-        "end": [3221, 9626, -1]
+        "end": [3221, 9626, -1],
+        "hideOtherAreas": true
       },
       {
         "name": "CASTLE",

@@ -325,7 +325,7 @@ public class EnvironmentManager
                             LocalPoint location = tile.getLocalLocation();
                             Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
                             for (int i = 0; i < lightsForTile.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position);
+                                Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position, tile.getPlane());
                                 sceneLights.add(light);
                             }
                         }
@@ -348,7 +348,7 @@ public class EnvironmentManager
                             }
 
                             for (int i = 0; i < lightsForDecoration.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position);
+                                Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position, tile.getPlane());
                                 sceneLights.add(light);
                             }
 
@@ -374,7 +374,7 @@ public class EnvironmentManager
                             }
 
                             for (int i = 0; i < lightsForGameobject.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position);
+                                Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane());
                                 sceneLights.add(light);
                             }
 
@@ -400,7 +400,7 @@ public class EnvironmentManager
                             }
 
                             for (int i = 0; i < lightsForWallObject.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position);
+                                Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane());
                                 sceneLights.add(light);
                             }
 
@@ -463,6 +463,11 @@ public class EnvironmentManager
 
     public void CheckRegion()
     {
+        if(currentEnvironment == null)
+        {
+            return;
+        }
+
         if(client.getGameState() == GameState.LOGGED_IN || plugin.loadingScene)
         {
             Bounds lastBounds = currentBounds;
@@ -591,7 +596,6 @@ public class EnvironmentManager
     public void SetEnvironmentNoLerp()
     {
         currentEnvironment = new Environment();
-        currentEnvironment.Name = newEnvironment.Name;
         currentEnvironment.SkyColor = newEnvironment.SkyColor;
         currentEnvironment.AmbientColor = newEnvironment.AmbientColor;
         currentEnvironment.LightColor = newEnvironment.LightColor;
@@ -754,7 +758,7 @@ public class EnvironmentManager
                     LocalPoint location = new LocalPoint((int)projectile.getX(), (int)projectile.getY());
                     Vector4 position = new Vector4(location.getX(), location.getY(), (float)projectile.getZ(), 0);
                     for(int i = 0; i < lightsForProjectile.size(); i++) {
-                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position);
+                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position, client.getPlane());
                         light.isDynamic = true;
                         sceneLights.add(light);
                         projectileLightHashMap.put(projectile, light);
@@ -790,7 +794,7 @@ public class EnvironmentManager
             LocalPoint location = gameObject.getLocalLocation();
             Vector4 position = new Vector4(location.getX(), location.getY(), gameObject.getZ(), 0);
             for(int i = 0; i < lightsForGameObject.size(); i++) {
-                Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position);
+                Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position, gameObject.getPlane());
                 sceneLights.add(light);
                 gameObjectLightHashMap.put(gameObject, light);
                 log.info("GameObject added: " + gameObject.getId());

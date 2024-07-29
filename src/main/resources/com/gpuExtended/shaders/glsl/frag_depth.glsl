@@ -1,4 +1,4 @@
-#version 420
+#version 430
 
 #include "shaders/glsl/constants.glsl"
 #include "shaders/glsl/structs.glsl"

@@ -84,6 +84,7 @@ public class Light
     public Vector3 offset = new Vector3(0,0,0); // local position to the thing it's attached to
     public float intensity = 1;
     public float radius = 2;
+    public int plane = 0;
     public int[][] tiles = new int[0][0];
     public int[] decorations = new int[0];
     public int[] gameObjects = new int[0];
@@ -96,7 +97,7 @@ public class Light
     @Nullable
     public boolean isDynamic = false;
 
-    public static Light CreateLightFromTemplate(Light template, Vector4 position)
+    public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane)
     {
         Light light = new Light();
         light.name = template.name;
@@ -107,6 +108,7 @@ public class Light
         light.offset = new Vector3(template.offset.x, template.offset.y, template.offset.z);
         light.intensity = template.intensity;
         light.radius = template.radius;
+        light.plane = plane;
 
         if(template.tiles != null)
             light.tiles = template.tiles.clone();

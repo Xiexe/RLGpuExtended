@@ -1,4 +1,4 @@
-#version 420
+#version 430
 
 // smallest unit of the texture which can be moved per tick. textures are all
 // 128x128px - so this is equivalent to +1px
