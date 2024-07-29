@@ -80,6 +80,7 @@ public class EnvironmentManager
     public Environment[] environments;
     public HashMap<String, Environment> environmentMap = new HashMap<>();
     public Environment currentEnvironment;
+    private Environment newEnvironment;
 
     public Area[] areas;
     public HashMap<Bounds, Area> areaMap = new HashMap<>();
@@ -123,9 +124,16 @@ public class EnvironmentManager
 
     public void Update(float deltaTime)
     {
+        if(client.getGameState() != GameState.LOGGED_IN)
+            return;
+
         CleanupOldProjectiles();
         CheckRegion();
         UpdateMainLightProjectionMatrix();
+
+        if(currentEnvironment.isTransitioning) {
+            currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
+        }
     }
 
     public void LoadAreas()
@@ -183,6 +191,10 @@ public class EnvironmentManager
 
         } catch (Exception e) {
             log.error("Failed to load environment: " + ENVIRONMENT_PATH, e);
+        }
+
+        if(currentEnvironment != null) {
+            currentEnvironment.isTransitioning = true;
         }
     }
 
@@ -484,13 +496,14 @@ public class EnvironmentManager
                 }
             }
 
+            Environment lastEnvironment = newEnvironment;
             if(currentArea != null)
             {
                 if(currentArea.getEnvironment() != null)
                 {
                     Environment targetEnvironment = environmentMap.get(currentArea.getEnvironment());
                     if(targetEnvironment != null) {
-                        currentEnvironment = targetEnvironment;
+                        newEnvironment = targetEnvironment;
                     }
                 }
                 else
@@ -501,23 +514,41 @@ public class EnvironmentManager
                         {
                             Environment targetEnvironment = environmentMap.get(currentBounds.getEnvironment());
                             if(targetEnvironment != null) {
-                                currentEnvironment = targetEnvironment;
+                                newEnvironment = targetEnvironment;
                             }
                         }
                         else
                         {
-                            currentEnvironment = GetDefaultEnvironment();
+                            newEnvironment = GetDefaultEnvironment();
                         }
                     }
                     else
                     {
-                        currentEnvironment = GetDefaultEnvironment();
+                        newEnvironment = GetDefaultEnvironment();
                     }
                 }
             }
             else
             {
-                currentEnvironment = GetDefaultEnvironment();
+                newEnvironment = GetDefaultEnvironment();
+            }
+
+            if(lastEnvironment != newEnvironment)
+            {
+                log.info("Switching To New Environment: " + newEnvironment.Name);
+                Environment cached = new Environment();
+                cached.Name = currentEnvironment.Name;
+                cached.SkyColor = currentEnvironment.SkyColor;
+                cached.AmbientColor = currentEnvironment.AmbientColor;
+                cached.LightColor = currentEnvironment.LightColor;
+                cached.LightPitch = currentEnvironment.LightPitch;
+                cached.LightYaw = currentEnvironment.LightYaw;
+                cached.FogDepth = currentEnvironment.FogDepth;
+                cached.Type = currentEnvironment.Type;
+
+                currentEnvironment.PrepareEnvironmentTransition(cached);
+                currentEnvironment.transitionProgress = 0;
+                currentEnvironment.isTransitioning = true;
             }
 
             if (currentBounds != null && currentArea != null) {
@@ -557,17 +588,50 @@ public class EnvironmentManager
         return null;
     }
 
+    public void SetEnvironmentNoLerp()
+    {
+        currentEnvironment = new Environment();
+        currentEnvironment.Name = newEnvironment.Name;
+        currentEnvironment.SkyColor = newEnvironment.SkyColor;
+        currentEnvironment.AmbientColor = newEnvironment.AmbientColor;
+        currentEnvironment.LightColor = newEnvironment.LightColor;
+        currentEnvironment.LightPitch = newEnvironment.LightPitch;
+        currentEnvironment.LightYaw = newEnvironment.LightYaw;
+        currentEnvironment.FogDepth = newEnvironment.FogDepth;
+        currentEnvironment.Type = newEnvironment.Type;
+
+        log.info("Setting environment: " + currentEnvironment.Name);
+    }
+
     private void UpdateMainLightProjectionMatrix()
     {
+        if(currentEnvironment == null)
+        {
+            newEnvironment = GetDefaultEnvironment();
+            currentEnvironment = new Environment();
+
+            Environment defaultEnvironment = GetDefaultEnvironment();
+            currentEnvironment.SkyColor = defaultEnvironment.SkyColor;
+            currentEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
+            currentEnvironment.LightColor = defaultEnvironment.LightColor;
+            currentEnvironment.LightPitch = defaultEnvironment.LightPitch;
+            currentEnvironment.LightYaw = defaultEnvironment.LightYaw;
+            currentEnvironment.FogDepth = defaultEnvironment.FogDepth;
+            currentEnvironment.Type = defaultEnvironment.Type;
+
+            newEnvironment.SkyColor = defaultEnvironment.SkyColor;
+            newEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
+            newEnvironment.LightColor = defaultEnvironment.LightColor;
+            newEnvironment.LightPitch = defaultEnvironment.LightPitch;
+            newEnvironment.LightYaw = defaultEnvironment.LightYaw;
+            newEnvironment.FogDepth = defaultEnvironment.FogDepth;
+            newEnvironment.Type = defaultEnvironment.Type;
+        }
+
         if(config.shadowResolution() == ShadowResolution.RES_OFF) {
             lightProjectionMatrix = Mat4.identity();
             lightViewMatrix = Mat4.identity();
             return;
-        }
-
-        if(currentEnvironment == null)
-        {
-            currentEnvironment = GetDefaultEnvironment();
         }
 
         // Calculate light matrix

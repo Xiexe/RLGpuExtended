@@ -67,6 +67,7 @@
 #define ENV_TYPE_UNDERGROUND 1
 
 #define LIGHT_COUNT 100 // 100 lights maximum
+#define LIGHTS_PER_TILE 8 // 8 lights per tile maximum
 #define LIGHT_TYPE_INVALID 0
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2

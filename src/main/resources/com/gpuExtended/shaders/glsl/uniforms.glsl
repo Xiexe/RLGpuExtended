@@ -19,7 +19,7 @@ layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock
     vec4 ambientColor;                  // 16 bytes
     vec4 skyColor;                      // 16 bytes
     int envType;                        // 4 bytes
-    int fogDepth;                       // 4 bytes
+    float fogDepth;                       // 4 bytes
     int padEnv0;                        // 4 bytes
     int padEnv1;                        // 4 bytes
     Light mainLight;                    // 128 bytes (due to padding inside Light struct)

@@ -22,7 +22,7 @@ float CalculateFogAmount(vec3 position) {
     float secondNearestEdgeDistance = max(xDist, zDist);
     float fogDistance = nearestEdgeDistance - FOG_CORNER_ROUNDING * TILE_SIZE * max(0.f, (nearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED) / (secondNearestEdgeDistance + FOG_CORNER_ROUNDING_SQUARED));
 
-    float edgeFogAmount = fogFactorLinear(fogDistance, 0, fogDepth * TILE_SIZE);
+    float edgeFogAmount = fogFactorLinear(fogDistance, 0, 5 * TILE_SIZE);
 
     // Combine distance fog with edge fog
     return edgeFogAmount;

@@ -357,7 +357,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GpuIntBuffer nextSceneFlagsBuffer;
 
 	private long Time;
-	private long DeltaTime;
+	private long LastTime;
+	private float DeltaTime;
 	private long StartTime;
 	private float currentTrueTileAlpha = 1;
 	private int currentPlane = 0;
@@ -392,6 +393,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			try
 			{
 				StartTime = System.currentTimeMillis();
+				LastTime = System.currentTimeMillis();
 
 				if(Instance == null)
 				{
@@ -1467,12 +1469,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glClear(GL_COLOR_BUFFER_BIT);
 
+
+
 		// Draw 3d scene
 		if (gameState.getState() >= GameState.LOADING.getState())
 		{
 			long currentTime = System.currentTimeMillis();
-			DeltaTime = currentTime - (StartTime + Time);
+			DeltaTime = (currentTime - LastTime) / 1000.0f;
 			Time = currentTime - StartTime;
+			LastTime = currentTime;
+
 			environmentManager.Update(DeltaTime);
 			updateUniformBlocks();
 
@@ -1690,7 +1696,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			// Fog
 			bBufferEnvironmentBlock.putInt(env.Type); // Pad
-			bBufferEnvironmentBlock.putInt(env.FogDepth);
+			bBufferEnvironmentBlock.putFloat(env.FogDepth);
 			bBufferEnvironmentBlock.putInt(0);
 			bBufferEnvironmentBlock.putInt(0);
 
@@ -2297,6 +2303,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		tileMarkerManager.InitializeSceneRoofMask(scene);
 		environmentManager.LoadSceneLights(scene);
 		environmentManager.CheckRegion();
+		environmentManager.SetEnvironmentNoLerp();
 		sceneUploader.PrepareScene(scene);
 		loadingScene = false;
 

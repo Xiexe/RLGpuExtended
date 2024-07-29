@@ -88,7 +88,6 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = dot(s.normal.xyz, mainLight.pos.xyz) * 0.5 + 0.5;
-
     float shadowMap = GetShadowMap(fPosition, ndl);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
@@ -96,7 +95,13 @@ void main() {
 
     vec3 litFragment = s.albedo.rgb * (mainLight.color.rgb * ((shadowMap * ndl)) + ambientColor.rgb);
 
-    float fog = fFogAmount;
+    float maxDistance = drawDistance * TILE_SIZE;
+    float fogStart = maxDistance * (1.0 - (fogDepth / drawDistance));
+    float fogFalloff = maxDistance * (1.0 - (fogDepth / drawDistance) * 0.5); // Adjust the 0.9 to control the range of falloff
+    float fogEnd = fogStart + fogFalloff;
+    float distanceFog = smoothstep(fogStart, fogEnd, distanceToCamera);
+
+    float fog = distanceFog;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
     ApplyAdditiveLighting(finalColor, s.albedo.rgb, s.normal.xyz, fPosition);
