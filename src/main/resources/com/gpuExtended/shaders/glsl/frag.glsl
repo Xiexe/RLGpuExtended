@@ -117,7 +117,5 @@ void main() {
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
-//    finalColor = vec3(float(flags.tileX) / EXTENDED_SCENE_SIZE, float(flags.tileY) / EXTENDED_SCENE_SIZE, 0);
-
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

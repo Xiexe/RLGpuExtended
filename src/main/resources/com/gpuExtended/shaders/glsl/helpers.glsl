@@ -189,7 +189,7 @@ void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, f
     float realPlane = max(0, flags.plane - (flags.isBridge ? 1 : 0));
 
     bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
-    bool isTileWalkable = (flags.isTerrain || flags.isBridge) && tileValidPlane;
+    bool isTileWalkable = /*(flags.isTerrain || flags.isBridge) &&*/ tileValidPlane;
     if(isTileWalkable)
     {
         vec2 tileUv = vec2(mod(fragPos.x, TILE_SIZE) / TILE_SIZE, mod(fragPos.z, TILE_SIZE) / TILE_SIZE);
@@ -230,7 +230,7 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
     float realPlane = max(0, flags.plane - (flags.isBridge ? 1 : 0));
 
     bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
-    bool isTileWalkable = (flags.isTerrain || flags.isBridge) && tileValidPlane;
+    bool isTileWalkable = /*(flags.isTerrain || flags.isBridge) &&*/ tileValidPlane;
     if (cellX >= int(tilePosition.x - TILE_SIZE) &&
         cellZ >= int(tilePosition.y - TILE_SIZE) &&
         cellX <= int(tilePosition.x) &&

@@ -36,7 +36,7 @@ void main() {
         lightPos.xy /= TILE_SIZE;
 
         if(light.intensity == 0) continue;
-        if(int(light.pos.w) != tileIndex.z) continue;
+//        if(int(light.pos.w) != tileIndex.z) continue;
 
         float lightRadius = light.radius;
         float distanceTileToLight = distance(lightPos.xy, vec2(tilePosition.xy) + vec2(0.5));

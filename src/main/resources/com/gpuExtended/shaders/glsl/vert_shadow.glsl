@@ -24,7 +24,7 @@ void main() {
     vec3 vPos = vPosition;
 //    int plane              = ((vFlags.x >> BIT_PLANE) & 3);
 //    bool isBridge          = ((vFlags.x >> BIT_ISBRIDGE) & 1) > 0;
-//    bool isTerrain         = ((vFlags.x >> BIT_ISTERRAIN) & 1) > 0;
+    bool isTerrain         = ((vFlags.x >> BIT_ISTERRAIN) & 1) > 0;
 //    bool isDynamicModel    = ((vFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
 //
 //    if(isDynamicModel)

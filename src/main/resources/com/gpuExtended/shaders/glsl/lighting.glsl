@@ -1,9 +1,9 @@
 const float bias = 0.00065;
-const float lightSize = 0.0035;
+const float lightSize = 0.01;
 const int shadowSamples = 32;
 
-float LinearAttenuation(float dist, float maxDistance) {
-    return clamp(1.0 - dist*dist/(maxDistance*maxDistance), 0.0, 1.0);;
+float LightAttenuation(float dist, float radius) {
+    return clamp(1.0 - ((dist * dist) / (radius * radius)), 0.0, 1.0);
 }
 
 float PCSSEstimatePenumbraSize(vec4 projCoords, float currentDepth, float searchRadius) {
@@ -43,8 +43,7 @@ float PCSSFilter(vec4 projCoords, float currentDepth, float penumbraSize) {
 float PCSSShadows(vec4 projCoords, float fadeOut, float shadowBias) {
     vec2 shadowRes = textureSize(shadowMap, 0);
     float currentDepth = projCoords.z - shadowBias;
-    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 5;
-    penumbraSize += 0.0002;
+    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 10;
     float shadow = PCSSFilter(projCoords, currentDepth, penumbraSize);
 
     return shadow * (1.0 - fadeOut);
@@ -158,6 +157,8 @@ int getLightBinIndex(int binSubIndex, int tileX, int tileY, int tileZ)
 void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 fragPos, VertexFlags flags)
 {
     int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
+    if(numLights == 0) return;
+
     for(int binIndex = 0; binIndex < numLights; binIndex++)
     {
         int oneDIndex = getLightBinIndex(binIndex, flags.tileX, flags.tileY, flags.plane);
@@ -173,13 +174,13 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
             toLight.z = -toLight.z;
 
             ApplyLightAnimation(light);
-            float atten = LinearAttenuation(distToLight, light.radius);
+            float atten = LightAttenuation(distToLight, light.radius);
             float ndl = max(dot(normal.xzy, toLight), 0);
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
         }
     }
 
-//    vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
-//    image = mix(image, vec3(1), lightDebug);
-//    image = lightDebug;
+//   vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
+//////    image = mix(image, vec3(1), lightDebug);
+//   image = lightDebug;
 }

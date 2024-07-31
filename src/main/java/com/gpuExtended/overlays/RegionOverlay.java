@@ -38,7 +38,7 @@ public class RegionOverlay extends OverlayPanel {
     {
         setLayer(OverlayLayer.ABOVE_WIDGETS);
         setPosition(OverlayPosition.TOP_LEFT);
-        panelComponent.setPreferredSize(new Dimension(300, 200));
+        panelComponent.setPreferredSize(new Dimension(150, 200));
     }
 
     public void setActive(boolean activate) {
@@ -65,9 +65,6 @@ public class RegionOverlay extends OverlayPanel {
             return null;
         }
 
-        panelComponent.setWrap(true);
-        panelComponent.setPreferredSize(new Dimension(1000, 200));
-
         WorldPoint worldPoint = client.getLocalPlayer().getWorldLocation();
         LocalPoint localPoint = client.getLocalPlayer().getLocalLocation();
 
@@ -76,7 +73,7 @@ public class RegionOverlay extends OverlayPanel {
             worldPoint = WorldPoint.fromLocalInstance(client, localPoint);
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Instance")
+                    .left("INSTANCE")
                     .build());
         }
 
@@ -102,11 +99,6 @@ public class RegionOverlay extends OverlayPanel {
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("Region Id")
                 .right(region + "")
-                .build());
-
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left("Region XY")
-                .right(mx + ", " + my)
                 .build());
 
         if(plugin.environmentManager.currentArea != null) {

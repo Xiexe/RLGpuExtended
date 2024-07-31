@@ -150,6 +150,9 @@ public class TileMarkerManager {
 
     public void InitializeSceneRoofMask(Scene scene)
     {
+        if(true)
+            return;
+
         if(client.getGameState() == GameState.LOGGED_IN || plugin.loadingScene) {
             if (scene == null)
                 return;

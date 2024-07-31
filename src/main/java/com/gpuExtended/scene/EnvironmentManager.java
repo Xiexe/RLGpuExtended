@@ -663,7 +663,7 @@ public class EnvironmentManager
         int height = north - south;
         int farPlane = 10000;
 
-        int maxDrawDistance = 90;
+        int maxDrawDistance = 100;
         float maxScale = 0.7f;
         float minScale = 0.4f;
         float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));

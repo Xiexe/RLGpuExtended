@@ -15,6 +15,7 @@ import javax.inject.Singleton;
 import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.overlays.PerformanceOverlay;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.*;
@@ -62,6 +63,12 @@ public class SceneUploader
 			return Objects.hash(x, y, z);
 		}
 	}
+
+	@Inject
+	private GpuExtendedPlugin plugin;
+
+	@Inject
+	private PerformanceOverlay performanceOverlay;
 
 	private final Client client;
 	private final GpuExtendedConfig gpuConfig;
@@ -530,14 +537,6 @@ public class SceneUploader
 	public static int GetTileRealPlane(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
 	{
 		int realPlane = tileZ;
-
-//		boolean isOnBridge = CheckIsOnBridge(sceneTileX, sceneTileY, tileZ, scene);
-
-//		if(isOnBridge)
-//		{
-//			realPlane -= 1;
-//		}
-
 		return Math.max(0, realPlane);
 	}
 
@@ -693,14 +692,9 @@ public class SceneUploader
 			vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
 			vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
 
-			// TODO:: Loop through face colors to create a hash for known models, and then use that hash to determine if the model should be emissive and on what faces.
-//			if(model.getFaceCount() == 370) {
-//				log.info("Model Hash: {}", model.get);
-//			}
-
-			flagsBuffer.put(0, 0, 0, modelConfig);
-			flagsBuffer.put(0, 0, 0, modelConfig);
-			flagsBuffer.put(0, 0, 0, modelConfig);
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
 
 			if (faceTextures != null)
 			{

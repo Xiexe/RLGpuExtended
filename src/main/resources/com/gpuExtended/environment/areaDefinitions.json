@@ -512,5 +512,16 @@
         "end": [2302, 3130, -1]
       }
     ]
+  },
+  {
+    "name": "THORDURS_BLACKHOLE",
+    "environment": "DEFAULT_UNDERGROUND",
+    "bounds": [
+      {
+        "start": [1600, 4672, -1],
+        "end": [1663, 4735, -1],
+        "hideOtherAreas": true
+      }
+    ]
   }
 ]
