@@ -331,6 +331,22 @@ public class ResourcePath {
         }
     }
 
+    public BufferedImage loadTargetImage(String imageFileName) throws IOException {
+        try (InputStream is = toInputStream()) {
+            byte[] bytes = is.readAllBytes();
+            var icon = new ImageIcon(Toolkit.getDefaultToolkit().createImage(bytes));
+            var bufferedImage = new BufferedImage(
+                    icon.getIconWidth(),
+                    icon.getIconHeight(),
+                    BufferedImage.TYPE_INT_ARGB
+            );
+            var g = bufferedImage.createGraphics();
+            icon.paintIcon(null, g, 0, 0);
+            g.dispose();
+            return bufferedImage;
+        }
+    }
+
     /**
      * Reads the full InputStream into a garbage-collected ByteBuffer allocated with BufferUtils.
      * @return a ByteBuffer

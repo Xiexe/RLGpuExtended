@@ -595,6 +595,18 @@ public interface GpuExtendedConfig extends Config
 			return false;
 		}
 
+	@ConfigItem(
+			keyName = "showLightOverlays",
+			name = "Show Light Overlays",
+			description = "shows positions of lights and which prefabs they use",
+			position = 2,
+			section = debugging
+	)
+	default boolean showLightOverlays()
+	{
+		return false;
+	}
+
 		@ConfigItem(
 				keyName = "showRegionOverlay",
 				name = "Show Location Overlay",

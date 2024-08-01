@@ -55,6 +55,10 @@ public class Vector3 extends Vector2
         return this.x * other.x + this.y * other.y + this.z * other.z;
     }
 
+    public float Length() {
+        return (float) Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {

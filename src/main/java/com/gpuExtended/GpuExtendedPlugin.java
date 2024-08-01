@@ -20,9 +20,7 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 
-import com.gpuExtended.overlays.PerformanceOverlay;
-import com.gpuExtended.overlays.RegionOverlay;
-import com.gpuExtended.overlays.SceneTileMaskOverlay;
+import com.gpuExtended.overlays.*;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
@@ -68,7 +66,6 @@ import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
 
-import com.gpuExtended.overlays.ShadowMapOverlay;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.scene.Environment;
@@ -179,6 +176,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Inject
 	public PerformanceOverlay performanceOverlay;
 
+	@Inject
+	public LightOverlay lightOverlay;
+
 	public enum ComputeMode
 	{
 		NONE,
@@ -240,6 +240,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public boolean enableTileMaskOverlay = false;
 	public boolean showRegionOverlay = false;
 	public boolean showPerformanceOverlay = false;
+	public boolean showLightOverlay = false;
 	private int glProgram;
 	private int glShadowProgram;
 	private int glDepthProgram;
@@ -350,8 +351,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private AntiAliasingMode lastAntiAliasingMode;
 	private int lastAnisotropicFilteringLevel = -1;
 
-	private double cameraX, cameraY, cameraZ;
-	private double cameraYaw, cameraPitch;
+	public double cameraX, cameraY, cameraZ;
+	public double cameraYaw, cameraPitch;
 
 	private int viewportOffsetX;
 	private int viewportOffsetY;
@@ -1428,6 +1429,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		sceneTileMaskOverlay.setActive(config.showTileMask());
 		regionOverlay.setActive(config.showRegionOverlay());
 		performanceOverlay.setActive(config.showPerformanceOverlay());
+		lightOverlay.SetActive(config.showLightOverlays());
 
 		final int canvasHeight = client.getCanvasHeight();
 		final int canvasWidth = client.getCanvasWidth();

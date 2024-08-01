@@ -104,7 +104,7 @@ void main() {
     float fog = distanceFog;
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
-    ApplyAdditiveLighting(finalColor, s.albedo.rgb, s.normal.xyz, fPosition, flags);
+    ApplyAdditiveLighting(finalColor, flags, s.albedo.rgb, s.normal.xyz, fPosition);
     FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     PostProcessImage(finalColor, colorBlindMode, fog, isEmissive);
     finalColor = mix(finalColor, skyColor.rgb, fog);

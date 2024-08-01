@@ -727,8 +727,7 @@ public class EnvironmentManager
         if(projectileExists) {
             if(projectileLightHashMap.containsKey(projectile)) {
                 Light light = projectileLightHashMap.get(projectile);
-                LocalPoint location = new LocalPoint((int)projectile.getX(), (int)projectile.getY());
-                Vector4 position = new Vector4(location.getX(), location.getY(), (float)projectile.getZ(), 0);
+                Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
                 light.position = position;
             }
             else
@@ -737,8 +736,7 @@ public class EnvironmentManager
                     ArrayList<Light> lightsForProjectile = projectileLights.get(projectile.getId());
                     if(lightsForProjectile == null) return;
 
-                    LocalPoint location = new LocalPoint((int)projectile.getX(), (int)projectile.getY());
-                    Vector4 position = new Vector4(location.getX(), location.getY(), (float)projectile.getZ(), 0);
+                    Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
                     for(int i = 0; i < lightsForProjectile.size(); i++) {
                         Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position, client.getPlane(), 0);
                         light.isDynamic = true;

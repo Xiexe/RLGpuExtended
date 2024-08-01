@@ -95,12 +95,50 @@ public class Mat4
 	public static float[] projection(float w, float h, float n)
 	{
 		return new float[]
-			{
-				2 / w, 0, 0, 0,
-				0, 2 / h, 0, 0,
-				0, 0, -1, -1,
-				0, 0, -2 * n, 0
-			};
+		{
+			2 / w, 0, 0, 0,
+			0, 2 / h, 0, 0,
+			0, 0, -1, -1,
+			0, 0, -2 * n, 0
+		};
+	}
+
+	public static void mulVec(float[] out, float[] mat4, float[] vec4) {
+		float a =
+				mat4[0 * 4 + 0] * vec4[0] +
+						mat4[1 * 4 + 0] * vec4[1] +
+						mat4[2 * 4 + 0] * vec4[2] +
+						mat4[3 * 4 + 0] * vec4[3];
+		float b =
+				mat4[0 * 4 + 1] * vec4[0] +
+						mat4[1 * 4 + 1] * vec4[1] +
+						mat4[2 * 4 + 1] * vec4[2] +
+						mat4[3 * 4 + 1] * vec4[3];
+		float c =
+				mat4[0 * 4 + 2] * vec4[0] +
+						mat4[1 * 4 + 2] * vec4[1] +
+						mat4[2 * 4 + 2] * vec4[2] +
+						mat4[3 * 4 + 2] * vec4[3];
+		float d =
+				mat4[0 * 4 + 3] * vec4[0] +
+						mat4[1 * 4 + 3] * vec4[1] +
+						mat4[2 * 4 + 3] * vec4[2] +
+						mat4[3 * 4 + 3] * vec4[3];
+		out[0] = a;
+		out[1] = b;
+		out[2] = c;
+		out[3] = d;
+	}
+
+	public static void projectVec(float[] out, float[] mat4, float[] vec4) {
+		mulVec(out, mat4, vec4);
+		if (out[3] != 0) {
+			// The 4th component should retain information about whether the
+			// point lies behind the camera
+			float reciprocal = 1 / Math.abs(out[3]);
+			for (int i = 0; i < 4; i++)
+				out[i] *= reciprocal;
+		}
 	}
 
 	public static float[] ortho(float w, float h, float n)

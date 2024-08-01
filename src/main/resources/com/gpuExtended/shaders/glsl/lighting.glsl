@@ -116,8 +116,7 @@ int getLightBinIndex(int binSubIndex, int tileX, int tileY, int tileZ)
         tileX * EXTENDED_SCENE_SIZE * MAX_Z_HEIGHT * (LIGHTS_PER_TILE+1);
 }
 
-// TODO:: move light animation to CPU
-void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 fragPos, VertexFlags flags)
+void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec3 normal, vec3 fragPos)
 {
     int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
     if(numLights == 0) return;
@@ -143,6 +142,6 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
     }
 
 //   vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
-//////    image = mix(image, vec3(1), lightDebug);
+////    image = mix(image, vec3(1), lightDebug);
 //   image = lightDebug;
 }
