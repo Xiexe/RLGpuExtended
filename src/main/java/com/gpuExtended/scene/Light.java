@@ -1,14 +1,21 @@
 package com.gpuExtended.scene;
 
 import com.google.gson.annotations.SerializedName;
+import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.rendering.*;
+import com.gpuExtended.util.Mat4;
+import com.gpuExtended.util.Mathmatics;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import net.runelite.api.Client;
 
 import javax.annotation.Nullable;
 import java.awt.*;
+
+import static net.runelite.api.Constants.SCENE_SIZE;
+import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 
 @Data
 @NoArgsConstructor
@@ -95,7 +102,27 @@ public class Light
     public float distanceSquared = 0;
 
     @Nullable
+    public float[] projectionMatrix = Mat4.identity();
+    public float[] viewMatrix = Mat4.identity();
+
+    @Nullable
     public boolean isDynamic = false;
+
+    public Light (String name, LightType type, LightAnimation animation, Color color, Vector3 offset, float intensity, float radius, int[][] tiles, int[] decorations, int[] gameObjects, int[] walls, int[] projectiles)
+    {
+        this.name = name;
+        this.type = type;
+        this.animation = animation;
+        this.color = color;
+        this.offset = offset;
+        this.intensity = intensity;
+        this.radius = radius;
+        this.tiles = tiles;
+        this.decorations = decorations;
+        this.gameObjects = gameObjects;
+        this.walls = walls;
+        this.projectiles = projectiles;
+    }
 
     public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane)
     {
@@ -123,6 +150,36 @@ public class Light
             light.projectiles = template.projectiles.clone();
 
         return light;
+    }
+
+    public void UpdateProjectionViewMatrix(int camX, int camY)
+    {
+        if(this.type != LightType.Directional)
+            return;
+
+        this.projectionMatrix = Mat4.identity();
+        this.viewMatrix = Mat4.rotateX((float) Math.PI + this.position.x);
+        Mat4.mul(this.viewMatrix, Mat4.rotateY((float) Math.PI + this.position.y));
+
+        int shadowDrawDistance = 90;
+        int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
+        int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
+        int west = Math.max(camX - drawDistanceSceneUnits, 0);
+        int north = Math.min(camY + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
+        int south = Math.max(camY - drawDistanceSceneUnits, 0);
+        int width = east - west;
+        int height = north - south;
+        int farPlane = 10000;
+
+        int maxDrawDistance = 100;
+        float maxScale = 0.7f;
+        float minScale = 0.4f;
+        float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
+        float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
+        Mat4.mul(this.projectionMatrix, Mat4.scale(scale, scale, scale));
+        Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, farPlane));
+        Mat4.mul(this.projectionMatrix, this.viewMatrix);
+        Mat4.mul(this.projectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
     }
 
     public void Animate(float time)

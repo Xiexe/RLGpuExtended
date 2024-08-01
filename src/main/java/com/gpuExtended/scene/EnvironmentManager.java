@@ -22,8 +22,6 @@ import java.util.*;
 
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.Utils.GenerateTileHash;
-import static net.runelite.api.Constants.SCENE_SIZE;
-import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 
 @Singleton
 @Slf4j
@@ -74,8 +72,8 @@ public class EnvironmentManager
     @Inject
     private GpuExtendedConfig config;
 
-    public float[] lightProjectionMatrix;
-    public float[] lightViewMatrix;
+//    public float[] lightProjectionMatrix;
+//    public float[] lightViewMatrix;
 
     public Environment[] environments;
     public HashMap<String, Environment> environmentMap = new HashMap<>();
@@ -90,6 +88,7 @@ public class EnvironmentManager
 
     private boolean loadingLights = false;
 
+    public Light mainLight = new Light();
     public Light[] lightsDefinitions;
     public ArrayList<Light> sceneLights = new ArrayList<>();
     public HashMap<Light, Boolean> sceneLightVisibility = new HashMap<>();
@@ -129,7 +128,7 @@ public class EnvironmentManager
 
         CleanupOldProjectiles();
         CheckRegion();
-        UpdateMainLightProjectionMatrix();
+        UpdateMainLightSettings();
 
         if(currentEnvironment.isTransitioning) {
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
@@ -465,7 +464,25 @@ public class EnvironmentManager
     {
         if(currentEnvironment == null)
         {
-            return;
+            newEnvironment = GetDefaultEnvironment();
+            currentEnvironment = new Environment();
+
+            Environment defaultEnvironment = GetDefaultEnvironment();
+            currentEnvironment.SkyColor = defaultEnvironment.SkyColor;
+            currentEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
+            currentEnvironment.LightColor = defaultEnvironment.LightColor;
+            currentEnvironment.LightPitch = defaultEnvironment.LightPitch;
+            currentEnvironment.LightYaw = defaultEnvironment.LightYaw;
+            currentEnvironment.FogDepth = defaultEnvironment.FogDepth;
+            currentEnvironment.Type = defaultEnvironment.Type;
+
+            newEnvironment.SkyColor = defaultEnvironment.SkyColor;
+            newEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
+            newEnvironment.LightColor = defaultEnvironment.LightColor;
+            newEnvironment.LightPitch = defaultEnvironment.LightPitch;
+            newEnvironment.LightYaw = defaultEnvironment.LightYaw;
+            newEnvironment.FogDepth = defaultEnvironment.FogDepth;
+            newEnvironment.Type = defaultEnvironment.Type;
         }
 
         if(client.getGameState() == GameState.LOGGED_IN || plugin.loadingScene)
@@ -607,71 +624,31 @@ public class EnvironmentManager
         log.info("Setting environment: " + currentEnvironment.Name);
     }
 
-    private void UpdateMainLightProjectionMatrix()
+    private void UpdateMainLightSettings()
     {
-        if(currentEnvironment == null)
-        {
-            newEnvironment = GetDefaultEnvironment();
-            currentEnvironment = new Environment();
-
-            Environment defaultEnvironment = GetDefaultEnvironment();
-            currentEnvironment.SkyColor = defaultEnvironment.SkyColor;
-            currentEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
-            currentEnvironment.LightColor = defaultEnvironment.LightColor;
-            currentEnvironment.LightPitch = defaultEnvironment.LightPitch;
-            currentEnvironment.LightYaw = defaultEnvironment.LightYaw;
-            currentEnvironment.FogDepth = defaultEnvironment.FogDepth;
-            currentEnvironment.Type = defaultEnvironment.Type;
-
-            newEnvironment.SkyColor = defaultEnvironment.SkyColor;
-            newEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
-            newEnvironment.LightColor = defaultEnvironment.LightColor;
-            newEnvironment.LightPitch = defaultEnvironment.LightPitch;
-            newEnvironment.LightYaw = defaultEnvironment.LightYaw;
-            newEnvironment.FogDepth = defaultEnvironment.FogDepth;
-            newEnvironment.Type = defaultEnvironment.Type;
-        }
-
         if(config.shadowResolution() == ShadowResolution.RES_OFF) {
-            lightProjectionMatrix = Mat4.identity();
-            lightViewMatrix = Mat4.identity();
+            mainLight.projectionMatrix = Mat4.identity();
+            mainLight.viewMatrix = Mat4.identity();
             return;
         }
 
-        // Calculate light matrix
         boolean overrideLightDirection = config.customLightRotation();
         int customLightPitch = config.lightPitch();
         int customLightYaw = config.lightYaw();
+        int camX = (int) client.getCameraFpX();
+        int camY = (int) client.getCameraFpY();
 
         float lightPitch = (float) Math.toRadians(overrideLightDirection ? customLightPitch : currentEnvironment.LightPitch);
         float lightYaw = (float) Math.toRadians(overrideLightDirection ? customLightYaw : currentEnvironment.LightYaw);
 
-        lightProjectionMatrix = Mat4.identity();
-        lightViewMatrix = Mat4.rotateX((float) Math.PI + lightPitch);
-        Mat4.mul(lightViewMatrix, Mat4.rotateY((float) Math.PI + lightYaw));
-
-        int camX = (int) client.getCameraFpX();
-        int camY = (int) client.getCameraFpY();
-
-        int shadowDrawDistance = 90;
-        int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
-        int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
-        int west = Math.max(camX - drawDistanceSceneUnits, 0);
-        int north = Math.min(camY + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
-        int south = Math.max(camY - drawDistanceSceneUnits, 0);
-        int width = east - west;
-        int height = north - south;
-        int farPlane = 10000;
-
-        int maxDrawDistance = 100;
-        float maxScale = 0.7f;
-        float minScale = 0.4f;
-        float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
-        float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
-        Mat4.mul(lightProjectionMatrix, Mat4.scale(scale, scale, scale));
-        Mat4.mul(lightProjectionMatrix, Mat4.ortho(width, height, farPlane));
-        Mat4.mul(lightProjectionMatrix, lightViewMatrix);
-        Mat4.mul(lightProjectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
+        mainLight.type = Light.LightType.Directional;
+        mainLight.color = currentEnvironment.LightColor;
+        mainLight.intensity = 1;
+        mainLight.radius = 0;
+        mainLight.plane = 0;
+        mainLight.position = new Vector4(lightPitch, lightYaw, 0, 0);
+        mainLight.isDynamic = false;
+        mainLight.UpdateProjectionViewMatrix(camX, camY);
     }
 
     private Environment GetDefaultEnvironment()

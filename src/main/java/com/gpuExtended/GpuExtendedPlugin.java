@@ -1629,8 +1629,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void updateUniformBlocks()
 	{
-//		uniformsStopwatch.reset();
-//		uniformsStopwatch.start();
 		if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
 		{
 			return;
@@ -1652,7 +1650,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		Bounds currentBounds = environmentManager.currentBounds;
 		boolean roofFadingEnabled = currentBounds != null ? currentBounds.isAllowRoofFading() : true;
-
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
 			bBufferCameraBlock.clear();
@@ -1726,10 +1723,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 
 			// Pack Main Light
+
+			Light mainLight = environmentManager.mainLight;
 			// Pos
-			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[2]);
-			bBufferEnvironmentBlock.putFloat(-environmentManager.lightViewMatrix[6]);
-			bBufferEnvironmentBlock.putFloat(environmentManager.lightViewMatrix[10]);
+			bBufferEnvironmentBlock.putFloat(mainLight.viewMatrix[2]);
+			bBufferEnvironmentBlock.putFloat(-mainLight.viewMatrix[6]);
+			bBufferEnvironmentBlock.putFloat(mainLight.viewMatrix[10]);
 			bBufferEnvironmentBlock.putFloat(client.getPlane()); // light type / directional
 
 			// Offset
@@ -1749,9 +1748,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putInt(0); // light animation
 			bBufferEnvironmentBlock.putFloat(0); // pad
 
-			for(int i = 0; i < environmentManager.lightProjectionMatrix.length; i++)
+			for(int i = 0; i < mainLight.projectionMatrix.length; i++)
 			{
-				bBufferEnvironmentBlock.putFloat(environmentManager.lightProjectionMatrix[i]);
+				bBufferEnvironmentBlock.putFloat(mainLight.projectionMatrix[i]);
 			}
 
 			// Pack Lights
@@ -1962,36 +1961,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glDispatchCompute(EXTENDED_SCENE_SIZE / 8, EXTENDED_SCENE_SIZE / 8, MAX_Z);
 		glUseProgram(0);
-//		uniformsStopwatch.stop();
-	}
-
-	private void PushEmptyLightToBuffer()
-	{
-		// push an empty light
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putFloat(0);
-		bBufferEnvironmentBlock.putInt(0);
-		bBufferEnvironmentBlock.putInt(0);
-
-		for(int j = 0; j < environmentManager.lightProjectionMatrix.length; j++)
-		{
-			bBufferEnvironmentBlock.putFloat(0);
-		}
 	}
 
 	private void drawMainPass()
