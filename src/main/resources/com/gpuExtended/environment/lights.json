@@ -109,8 +109,8 @@
     "type": "point",
     "color": [1.00, 0.52, 0.00],
     "offset": [0, 0, 0.6],
-    "intensity": 1.5,
-    "radius": 5,
+    "intensity": 1,
+    "radius": 3,
     "animation": "flicker",
     "gameObjects": [
       24970

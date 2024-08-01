@@ -78,6 +78,8 @@ public class LightOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics2D) {
+        graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
         float pitch = (float) -(Math.PI - plugin.cameraPitch);
         float yaw = (float)plugin.cameraYaw;
 
@@ -149,21 +151,16 @@ public class LightOverlay extends Overlay {
             );
             float distanceToCamera = lightToCamera.Length();
 
-//            drawRing(graphics2D, x, y, 12, light.color, new BasicStroke(12));
-//            if (pointLightSprite != null) {
-//                int imageWidth = pointLightSprite.getWidth();
-//                int imageHeight = pointLightSprite.getHeight();
-//                int scaledWidth = imageWidth / 4;  // Example: scaling the image to half its original size
-//                int scaledHeight = imageHeight / 4;
-//
-//                graphics2D.drawImage(pointLightSprite, x - scaledWidth / 2, y - scaledHeight / 2, scaledWidth, scaledHeight, null);
-//            } else {
-//                // Fallback to drawing a ring if image is not loaded
-//
-//            }
+            if (pointLightSprite != null) {
+                BufferedImage tinted = tintImage(pointLightSprite, light.color);
+                int targetImageSize = 16;
+                graphics2D.drawImage(tinted, x - targetImageSize / 2, y - targetImageSize / 2, targetImageSize, targetImageSize, null);
+            } else {
+                // Fallback to drawing a ring if image is not loaded
+                drawRing(graphics2D, x, y, 10, Color.BLACK, new BasicStroke(3));
+                drawRing(graphics2D, x, y, 10, light.color, new BasicStroke(2));
+            }
 
-            drawRing(graphics2D, x, y, 10, Color.BLACK, new BasicStroke(3));
-            drawRing(graphics2D, x, y, 10, light.color, new BasicStroke(2));
             drawAlignedString(graphics2D, light.name, x, y + 20, TextAlignment.CENTER_ON_COLONS);
         }
 
@@ -271,5 +268,26 @@ public class LightOverlay extends Overlay {
                 yOffset += fontHeight;
             }
         }
+    }
+
+
+    public BufferedImage tintImage(BufferedImage src, Color color) {
+        BufferedImage tinted = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = tinted.createGraphics();
+
+        // Draw the original image
+        g2d.drawImage(src, 0, 0, null);
+
+        // Set the composite mode to SRC_ATOP to blend the color
+        g2d.setComposite(AlphaComposite.SrcAtop);
+
+        // Fill with the tint color
+        g2d.setColor(color);
+        g2d.fillRect(0, 0, src.getWidth(), src.getHeight());
+
+        // Dispose the graphics context
+        g2d.dispose();
+
+        return tinted;
     }
 }

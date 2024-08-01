@@ -119,6 +119,10 @@ int getLightBinIndex(int binSubIndex, int tileX, int tileY, int tileZ)
 void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec3 normal, vec3 fragPos)
 {
     int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
+//    vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
+//    //    image = mix(image, vec3(1), lightDebug);
+//    image = lightDebug;
+
     if(numLights == 0) return;
 
     for(int binIndex = 0; binIndex < numLights; binIndex++)
@@ -140,8 +144,4 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
         }
     }
-
-//   vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
-////    image = mix(image, vec3(1), lightDebug);
-//   image = lightDebug;
 }
