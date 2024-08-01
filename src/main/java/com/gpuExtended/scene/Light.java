@@ -9,7 +9,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.Perspective;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -21,6 +23,7 @@ import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
+@Slf4j
 public class Light
 {
     public enum LightType
@@ -124,14 +127,69 @@ public class Light
         this.projectiles = projectiles;
     }
 
-    public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane)
+    private static Vector4 GetLightPositionWithOffset(Vector3 position, Vector3 offset, int orientation)
+    {
+        Vector4 pos = new Vector4(position.x, position.y, position.z, 0);
+        Vector4 off = new Vector4(offset.x * LOCAL_TILE_SIZE, offset.y * LOCAL_TILE_SIZE, offset.z * LOCAL_TILE_SIZE, 0);
+
+        switch (orientation)
+        {
+            case 0: // Rotated 180 degrees
+                pos.x -= off.x;
+                pos.y -= off.y;
+                break;
+
+            case 1: // Rotated 90 degrees counter-clockwise
+                pos.x -= off.y;
+                pos.y += off.x;
+                break;
+
+            case 2: // Not rotated
+                pos.x += off.x;
+                pos.y += off.y;
+                break;
+
+            case 3: // Rotated 90 degrees clockwise
+                pos.x += off.y;
+                pos.y -= off.x;
+                break;
+
+            case 16: // south-east (config orientation = 0)
+                pos.x += off.x;
+                pos.y -= off.y;
+                break;
+
+            case 32: // south-west (config orientation = 1)
+                pos.x -= off.y;
+                pos.y += off.x;
+                break;
+
+            case 64: // north-west (config orientation = 2)
+                pos.x -= off.x;
+                pos.y += off.y;
+                break;
+
+            case 128: // north-east (config orientation = 3)
+                pos.x += off.y;
+                pos.y -= off.x;
+                break;
+
+            default:
+                break;
+        }
+
+        pos.z -= off.z;
+        return pos;
+    }
+
+    public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane, int orientation)
     {
         Light light = new Light();
         light.name = template.name;
         light.type = template.type;
         light.animation = template.animation;
         light.color = template.color;
-        light.position = position;
+        light.position = GetLightPositionWithOffset(position, template.offset, orientation);
         light.offset = new Vector3(template.offset.x, template.offset.y, template.offset.z);
         light.intensity = template.intensity;
         light.radius = template.radius;

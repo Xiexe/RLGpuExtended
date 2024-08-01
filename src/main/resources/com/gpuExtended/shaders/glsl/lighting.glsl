@@ -87,39 +87,39 @@ float GetShadowMap(vec3 fragPos, float ndl) {
     }
 }
 
-vec3 OffsetLight(Light light)
-{
-    vec3 pos = light.pos.xyz;
-    vec3 offset = light.offset.xyz * TILE_SIZE;
-    offset.x = -offset.x;
-
-    int orientation = int(light.pos.w);
-    switch (orientation)
-    {
-        case 0: // Rotated 180 degrees
-        pos.x -= offset.x;
-        pos.y -= offset.y;
-        break;
-
-        case 1: // Rotated 90 degrees counter-clockwise
-        pos.x -= offset.y;
-        pos.y += offset.x;
-        break;
-
-        case 2: // Not rotated
-        pos.x += offset.x;
-        pos.y += offset.y;
-        break;
-
-        case 3: // Rotated 90 degrees clockwise
-        pos.x += offset.y;
-        pos.y -= offset.x;
-        break;
-    }
-
-    pos.z -= offset.z;
-    return pos;
-}
+//vec3 OffsetLight(Light light)
+//{
+//    vec3 pos = light.pos.xyz;
+//    vec3 offset = light.offset.xyz * TILE_SIZE;
+//    offset.x = -offset.x;
+//
+//    int orientation = int(light.pos.w);
+//    switch (orientation)
+//    {
+//        case 0: // Rotated 180 degrees
+//        pos.x -= offset.x;
+//        pos.y -= offset.y;
+//        break;
+//
+//        case 1: // Rotated 90 degrees counter-clockwise
+//        pos.x -= offset.y;
+//        pos.y += offset.x;
+//        break;
+//
+//        case 2: // Not rotated
+//        pos.x += offset.x;
+//        pos.y += offset.y;
+//        break;
+//
+//        case 3: // Rotated 90 degrees clockwise
+//        pos.x += offset.y;
+//        pos.y -= offset.x;
+//        break;
+//    }
+//
+//    pos.z -= offset.z;
+//    return pos;
+//}
 
 void ApplyLightAnimation(inout Light light)
 {
@@ -165,7 +165,7 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
         int lightIndex = lightBinIndicies[oneDIndex];
         if(lightIndex >= 0) {
             Light light = additiveLights[lightIndex];
-            light.pos.xyz = OffsetLight(light);
+//            light.pos.xyz = OffsetLight(light);
 
             vec3 toLight = ((light.pos.xyz / TILE_SIZE) - (fragPos.xzy / TILE_SIZE));
             float distToLight = length(toLight);
@@ -173,7 +173,7 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
             toLight = normalize(toLight);
             toLight.z = -toLight.z;
 
-            ApplyLightAnimation(light);
+//            ApplyLightAnimation(light);
             float atten = LightAttenuation(distToLight, light.radius);
             float ndl = max(dot(normal.xzy, toLight), 0);
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
