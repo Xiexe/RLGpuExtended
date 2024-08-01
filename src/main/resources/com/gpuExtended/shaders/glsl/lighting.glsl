@@ -87,58 +87,21 @@ float GetShadowMap(vec3 fragPos, float ndl) {
     }
 }
 
-//vec3 OffsetLight(Light light)
-//{
-//    vec3 pos = light.pos.xyz;
-//    vec3 offset = light.offset.xyz * TILE_SIZE;
-//    offset.x = -offset.x;
-//
-//    int orientation = int(light.pos.w);
-//    switch (orientation)
-//    {
-//        case 0: // Rotated 180 degrees
-//        pos.x -= offset.x;
-//        pos.y -= offset.y;
-//        break;
-//
-//        case 1: // Rotated 90 degrees counter-clockwise
-//        pos.x -= offset.y;
-//        pos.y += offset.x;
-//        break;
-//
-//        case 2: // Not rotated
-//        pos.x += offset.x;
-//        pos.y += offset.y;
-//        break;
-//
-//        case 3: // Rotated 90 degrees clockwise
-//        pos.x += offset.y;
-//        pos.y -= offset.x;
-//        break;
-//    }
-//
-//    pos.z -= offset.z;
-//    return pos;
-//}
-
-void ApplyLightAnimation(inout Light light)
+void AnimateLight(inout Light light)
 {
     if(light.animation == LIGHT_ANIM_NONE) return;
-
-    float hashXY = hash21(vec2(light.pos.x, light.pos.z)) * (EXTENDED_SCENE_SIZE * TILE_SIZE);
-    float hashHZ = hash21(vec2(light.pos.y, light.pos.y)) * (EXTENDED_SCENE_SIZE * TILE_SIZE);
-    float offset = (hashXY + hashHZ);
+    float hash = light.offset.w / 2000;
 
     switch(light.animation)
     {
         case LIGHT_ANIM_FLICKER:
-        float flicker = sin((time / 75) - hashXY) * 0.05 + 0.95;
-        float flicker2 = sin((time / 45) - hashHZ) * 0.05 + 0.95;
+        float flicker = sin((time / 75) - hash) * 0.05 + 0.95;
+        float flicker2 = sin((time / 45) - hash * 2) * 0.05 + 0.95;
         light.intensity *= flicker * flicker2;
         break;
 
         case LIGHT_ANIM_PULSE:
-        float pulse = sin((time / 500) - offset) * 0.5 + 1.5;
+        float pulse = sin((time / 500) - hash) * 0.5 + 1.5;
         light.intensity *= pulse;
         break;
     }
@@ -165,7 +128,6 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
         int lightIndex = lightBinIndicies[oneDIndex];
         if(lightIndex >= 0) {
             Light light = additiveLights[lightIndex];
-//            light.pos.xyz = OffsetLight(light);
 
             vec3 toLight = ((light.pos.xyz / TILE_SIZE) - (fragPos.xzy / TILE_SIZE));
             float distToLight = length(toLight);
@@ -173,7 +135,7 @@ void ApplyAdditiveLighting(inout vec3 image, vec3 albedo, vec3 normal, vec3 frag
             toLight = normalize(toLight);
             toLight.z = -toLight.z;
 
-//            ApplyLightAnimation(light);
+            AnimateLight(light);
             float atten = LightAttenuation(distToLight, light.radius);
             float ndl = max(dot(normal.xzy, toLight), 0);
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;

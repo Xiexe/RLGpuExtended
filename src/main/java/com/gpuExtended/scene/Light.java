@@ -15,6 +15,8 @@ import net.runelite.api.Perspective;
 
 import javax.annotation.Nullable;
 import java.awt.*;
+import java.util.Arrays;
+import java.util.Objects;
 
 import static net.runelite.api.Constants.SCENE_SIZE;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
@@ -106,10 +108,15 @@ public class Light
 
     @Nullable
     public float[] projectionMatrix = Mat4.identity();
+
+    @Nullable
     public float[] viewMatrix = Mat4.identity();
 
     @Nullable
     public boolean isDynamic = false;
+
+    @Nullable
+    public float hash = -1;
 
     public Light (String name, LightType type, LightAnimation animation, Color color, Vector3 offset, float intensity, float radius, int[][] tiles, int[] decorations, int[] gameObjects, int[] walls, int[] projectiles)
     {
@@ -184,16 +191,19 @@ public class Light
 
     public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane, int orientation)
     {
+        Vector4 pos = GetLightPositionWithOffset(position, template.offset, orientation);
+
         Light light = new Light();
         light.name = template.name;
         light.type = template.type;
         light.animation = template.animation;
         light.color = template.color;
-        light.position = GetLightPositionWithOffset(position, template.offset, orientation);
+        light.position = pos;
         light.offset = new Vector3(template.offset.x, template.offset.y, template.offset.z);
         light.intensity = template.intensity;
         light.radius = template.radius;
         light.plane = plane;
+        light.hash = light.generateHash();
 
         if(template.tiles != null)
             light.tiles = template.tiles.clone();
@@ -248,5 +258,20 @@ public class Light
     public String toString()
     {
         return "Light: " + name + " Type: " + type + " Animation: " + animation + " Color: " + color + " Position: " + position + " Offset: " + offset + " Intensity: " + intensity + " Radius: " + radius;
+    }
+
+    public float generateHash()
+    {
+        return Objects.hash(
+                this.name,
+                this.type,
+                this.animation,
+                this.color,
+                this.position,
+                this.offset,
+                this.intensity,
+                this.radius,
+                this.plane
+        );
     }
 }

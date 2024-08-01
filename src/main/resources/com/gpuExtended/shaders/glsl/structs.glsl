@@ -1,7 +1,7 @@
 struct Light
 {
     vec4 pos; // 16 bytes // w = plane, xyz = position or direction for directional light
-    vec4 offset; // 16 bytes
+    vec4 offset; // 16 bytes // xyz = offset, w = hash
     vec4 color; // 16 bytes
     float intensity; // 4 bytes
     float radius; // 4 bytes

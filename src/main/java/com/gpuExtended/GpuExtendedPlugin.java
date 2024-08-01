@@ -1761,28 +1761,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				Light light = environmentManager.GetLightAtIndex(i);
 				if(light != null)
 				{
-					//log.info("Pushing Light Index: {}", i);
-
-					float dx = playerX - light.position.x;
-					float dy = playerY - light.position.y;
-					float distanceSquared = dx * dx + dy * dy;
-					float renderDistance = MAX_LIGHT_RENDER_DISTANCE * LOCAL_TILE_SIZE;
-					float maxDistanceSquared = renderDistance * renderDistance;
-					//log.info("Light Distance: {}", distanceSquared);
-//					if(distanceSquared > maxDistanceSquared)
-//					{
-//						PushEmptyLightToBuffer();
-//						continue;
-//					}
-
-//					log.info("light position: {}, {}, {}", light.position.x, light.position.y, light.position.z);
-
-//					float normalizedDistance = InverseLerp(0.0f, maxDistanceSquared, distanceSquared);
-//					float fadeMultiplier = (float) (1.0f - Math.pow(normalizedDistance, 5.0));
-//					fadeMultiplier = Math.max(0.0f, Math.min(1.0f, fadeMultiplier)); // Clamp between 0 and 1
-
-					float intensity = light.intensity;// * fadeMultiplier;
-
 					bBufferEnvironmentBlock.putFloat(light.position.x);
 					bBufferEnvironmentBlock.putFloat(light.position.y);
 					bBufferEnvironmentBlock.putFloat(light.position.z);
@@ -1791,14 +1769,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					bBufferEnvironmentBlock.putFloat(light.offset.x);
 					bBufferEnvironmentBlock.putFloat(light.offset.y);
 					bBufferEnvironmentBlock.putFloat(light.offset.z);
-					bBufferEnvironmentBlock.putFloat(0);
+					bBufferEnvironmentBlock.putFloat(light.hash);
 
 					bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
 					bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
 					bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
 					bBufferEnvironmentBlock.putFloat(0);
 
-					bBufferEnvironmentBlock.putFloat(intensity);
+					bBufferEnvironmentBlock.putFloat(light.intensity);
 					bBufferEnvironmentBlock.putFloat(light.radius);
 					bBufferEnvironmentBlock.putInt(light.animation.ordinal());
 					bBufferEnvironmentBlock.putInt(light.type.ordinal());

@@ -17,9 +17,9 @@
     "name": "GENERIC_TORCHES",
     "type": "point",
     "color": [1.00, 0.52, 0.00],
-    "offset": [-0.5, 0, 1.5],
+    "offset": [0, 0, 1.5],
     "intensity": 0.5,
-    "radius": 5,
+    "radius": 4,
     "animation": "flicker",
     "decorations": [
       196,

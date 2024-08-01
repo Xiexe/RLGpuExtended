@@ -23,7 +23,6 @@ void main() {
     ivec3 tilePosition = ivec3(gl_GlobalInvocationID.xyz);
     tilePosition.xy -= SCENE_OFFSET;
 
-
     int numLightsTile = 0;
     // writing to last index so it doesnt get overwritten later with a light??? (on purpose)
     int lastLightIndex = getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, tileIndex.x, tileIndex.y, tileIndex.z);
@@ -34,9 +33,7 @@ void main() {
         Light light = additiveLights[i];
         vec3 lightPos = light.pos.xyz;
         lightPos.xy /= TILE_SIZE;
-
         if(light.intensity == 0) continue;
-//        if(int(light.pos.w) != tileIndex.z) continue;
 
         float lightRadius = light.radius;
         float distanceTileToLight = distance(lightPos.xy, vec2(tilePosition.xy) + vec2(0.5));
