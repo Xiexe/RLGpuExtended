@@ -10,6 +10,7 @@ in float fFogAmount;
 in float fSurfaceDepth;
 in flat int isEmissive;
 in flat ivec4 fFlags;
+
 out vec4 FragColor;
 
 #include "shaders/glsl/constants.glsl"

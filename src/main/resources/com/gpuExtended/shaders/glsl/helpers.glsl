@@ -72,7 +72,7 @@ void PopulateSurfaceColor(inout Surface s)
 
         if(CheckIsUnlitTexture(fTextureId))
         {
-            textureColor *= 1.2;
+            textureColor.rgb *= 1.2;
         }
         else
         {

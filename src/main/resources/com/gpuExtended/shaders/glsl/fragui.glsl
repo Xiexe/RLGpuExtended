@@ -7,7 +7,8 @@
 #include "SHADOW_MAP_OVERLAY"
 #include "TILE_MASK_OVERLAY"
 
-uniform sampler2D tex;
+uniform sampler2D mainTexture;
+uniform sampler2D interfaceTexture;
 
 uniform int samplingMode;
 uniform ivec2 sourceDimensions;
@@ -19,14 +20,12 @@ uniform vec4 alphaOverlay;
 uniform sampler2D shadowMap;
 uniform ivec4 shadowMapOverlayDimensions;
 #endif
-
 #if TILE_MASK_OVERLAY
 uniform sampler2D tileMask;
 uniform ivec4 tileMaskOverlayDimensions;
 #endif
 
 #include "scale/bicubic.glsl"
-
 #include "scale/xbr_lv2_frag.glsl"
 #include "shaders/glsl/colorblind.glsl"
 
@@ -39,6 +38,43 @@ vec4 alphaBlend(vec4 src, vec4 dst) {
   return vec4(src.rgb + dst.rgb * (1.0f - src.a), src.a + dst.a * (1.0f - src.a));
 }
 
+vec4 sampleMainColor()
+{
+  vec2 uv = vec2(TexCoord.x, 1.0 - TexCoord.y);
+  return texture(mainTexture, uv);
+}
+
+vec4 sampleUiTexture()
+{
+  vec4 frag = vec4(0);
+
+  switch(samplingMode)
+  {
+    case SAMPLING_MITCHELL:
+    case SAMPLING_CATROM:
+    {
+      frag = textureCubic(interfaceTexture, TexCoord, samplingMode);
+      break;
+    }
+
+    case SAMPLING_XBR:
+    {
+      frag = textureXBR(interfaceTexture, TexCoord, xbrTable, ceil(1.0 * targetDimensions.x / sourceDimensions.x));
+      break;
+    }
+
+    default:
+    {
+        frag = texture(interfaceTexture, TexCoord);
+      break;
+    }
+  }
+
+  frag = alphaBlend(frag, alphaOverlay);
+  frag.rgb = colorblind(colorBlindMode, frag.rgb);
+  return frag;
+}
+
 void main() {
   #if SHADOW_MAP_OVERLAY
     vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
@@ -47,7 +83,6 @@ void main() {
       return;
     }
   #endif
-
   #if TILE_MASK_OVERLAY
     vec2 uv = (gl_FragCoord.xy - tileMaskOverlayDimensions.xy) / tileMaskOverlayDimensions.zw;
     if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
@@ -56,18 +91,8 @@ void main() {
     }
   #endif
 
-  vec4 c;
-
-  if (samplingMode == SAMPLING_CATROM || samplingMode == SAMPLING_MITCHELL) {
-    c = textureCubic(tex, TexCoord, samplingMode);
-  } else if (samplingMode == SAMPLING_XBR) {
-    c = textureXBR(tex, TexCoord, xbrTable, ceil(1.0 * targetDimensions.x / sourceDimensions.x));
-  } else {  // NEAREST or LINEAR, which uses GL_TEXTURE_MIN_FILTER/GL_TEXTURE_MAG_FILTER to affect sampling
-    c = texture(tex, TexCoord);
-  }
-
-  c = alphaBlend(c, alphaOverlay);
-  c.rgb = colorblind(colorBlindMode, c.rgb);
-
-  FragColor = c;
+  vec4 frag = sampleMainColor();
+  vec4 uiFrag = sampleUiTexture();
+  frag.rgb = mix(frag.rgb, uiFrag.rgb, uiFrag.a);
+  FragColor = frag;
 }

@@ -13,7 +13,8 @@ public class Uniforms
     {
         public int ColorBlindMode;
         public int UiColorBlindMode;
-        public int Tex;
+        public int InterfaceTexture;
+        public int MainTexture;
         public int TexSamplingMode;
         public int TexSourceDimensions;
         public int TexTargetDimensions;
@@ -58,7 +59,8 @@ public class Uniforms
         shaderVariables.Textures = glGetUniformLocation(shader, "textures");
         shaderVariables.TextureAnimations = glGetUniformLocation(shader, "textureAnimations");
 
-        shaderVariables.Tex = glGetUniformLocation(shader, "tex");
+        shaderVariables.InterfaceTexture = glGetUniformLocation(shader, "interfaceTexture");
+        shaderVariables.MainTexture = glGetUniformLocation(shader, "mainTexture");
         shaderVariables.TexSamplingMode = glGetUniformLocation(shader, "samplingMode");
         shaderVariables.TexTargetDimensions = glGetUniformLocation(shader, "targetDimensions");
         shaderVariables.TexSourceDimensions = glGetUniformLocation(shader, "sourceDimensions");

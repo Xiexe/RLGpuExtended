@@ -507,6 +507,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initVao();
 				initShaders();
 				initInterfaceTexture();
+				initColorFramebuffer();
 				initShadowMapTexture();
 				initDepthMapTexture();
 
@@ -1176,6 +1177,26 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		depthMapFramebuffer = new FrameBuffer(fboSettings, textureSettings);
 	}
 
+	private void initColorFramebuffer()
+	{
+		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
+		fboSettings.width = 64;
+		fboSettings.height = 64;
+		fboSettings.glAttachment = GL_COLOR_ATTACHMENT0;
+		fboSettings.awtContext = awtContext;
+
+		Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
+		textureSettings.internalFormat = GL_RGBA16F;
+		textureSettings.format = GL_RGBA;
+		textureSettings.type = GL_FLOAT;
+		textureSettings.minFilter = GL_LINEAR;
+		textureSettings.magFilter = GL_LINEAR;
+		textureSettings.wrapS = GL_REPEAT;
+		textureSettings.wrapT = GL_REPEAT;
+
+		colorFramebuffer = new FrameBuffer(fboSettings, textureSettings);
+	}
+
 	private void shutdownInterfaceTexture()
 	{
 		glDeleteBuffers(interfacePbo);
@@ -1494,8 +1515,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glClearColor(env.SkyColor.getRed() / 255f, env.SkyColor.getGreen() / 255f, env.SkyColor.getBlue() / 255f, 1f);
 		}
 
-		glClear(GL_COLOR_BUFFER_BIT);
-
 		// Draw 3d scene
 		if (gameState.getState() >= GameState.LOADING.getState())
 		{
@@ -1600,7 +1619,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		tempOffset = 0;
 		tempUvOffset = 0;
 
-		// Texture on UI
 		drawUi(overlayColor, canvasHeight, canvasWidth);
 
 		try
@@ -1947,33 +1965,40 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
 
+		if(colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3])
+		{
+			log.info("Resizing Color Framebuffer: {}x{}", currentViewport[2], currentViewport[3]);
+			colorFramebuffer.resize(currentViewport[2], currentViewport[3]);
+		}
+
+		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
+		colorFramebuffer.bind();
+
+		glClear(GL_COLOR_BUFFER_BIT);
+
 		glUseProgram(glProgram);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glProgram);
 
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
 		glUniform1i(uni.ShadowMap, 2);
-		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileFillColorTexture.getId());
 		glUniform1i(uni.TileMarkerFillColorMap, 3);
-		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE4);
 		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileBorderColorTexture.getId());
 		glUniform1i(uni.TileMarkerBorderColorMap, 4);
-		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileSettingsTexture.getId());
 		glUniform1i(uni.TileMarkerSettingsMap, 5);
-		glActiveTexture(GL_TEXTURE0);
 
 		glActiveTexture(GL_TEXTURE6);
 		glBindTexture(GL_TEXTURE_3D, tileMarkerManager.roofMaskTexture.getId());
 		glUniform1i(uni.RoofMaskTextureMap, 6);
-		glActiveTexture(GL_TEXTURE0);
 
 		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
@@ -2025,6 +2050,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glDisable(GL_BLEND);
 		glDisable(GL_CULL_FACE);
+		glActiveTexture(GL_TEXTURE0);
+		colorFramebuffer.unbind();
 		glUseProgram(0);
 
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
@@ -2035,7 +2062,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 
 		glViewport(0, 0, shadowMapFramebuffer.getTexture().getWidth(), shadowMapFramebuffer.getTexture().getHeight());
-		glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFramebuffer.getId());
+		shadowMapFramebuffer.bind();
 
 		glClearDepthf(1);
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -2059,23 +2086,29 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
+		shadowMapFramebuffer.unbind();
 		glUseProgram(0);
 
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 	}
 
+	//todo:: rename to something?
 	private void drawUi(final int overlayColor, final int canvasHeight, final int canvasWidth)
 	{
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
-
 		// Use the texture bound in the first pass
 		final UIScalingMode uiScalingMode = config.uiScalingMode();
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glUiProgram);
+
 		glUseProgram(glUiProgram);
-		glUniform1i(uni.Tex, 0);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glUiProgram);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, colorFramebuffer.getTexture().getId());
+		glUniform1i(uni.MainTexture, 1);
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
+		glUniform1i(uni.InterfaceTexture, 2);
+
 		glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
 		glUniform2i(uni.TexSourceDimensions, canvasWidth, canvasHeight);
 		glUniform1i(uni.UiColorBlindMode, config.colorBlindMode().ordinal());
@@ -2109,16 +2142,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, function);
 		}
 
-		// Texture on UI
 		glBindVertexArray(vaoUiHandle);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
 		// Reset
 		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE0);
 		glBindVertexArray(0);
 		glUseProgram(0);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDisable(GL_BLEND);
 	}
 
 	/**
