@@ -317,9 +317,9 @@ public class EnvironmentManager
                         };
 
                         int hash = GenerateTileHash(worldLocation);
-                        if (tileLights.containsKey(hash)) {
+                        if (tileLights.containsKey(hash))
+                        {
                             ArrayList<Light> lightsForTile = tileLights.get(hash);
-
                             LocalPoint location = tile.getLocalLocation();
                             Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
                             for (int i = 0; i < lightsForTile.size(); i++) {
@@ -332,47 +332,53 @@ public class EnvironmentManager
                         if(wallObject != null)
                         {
                             ArrayList<Light> lightsForWallObject = wallLights.get(wallObject.getId());
-                            if (lightsForWallObject == null) continue;
+                            if (lightsForWallObject != null)
+                            {
+                                int orientation = wallObject.getOrientationA();
+                                LocalPoint location = wallObject.getLocalLocation();
+                                Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
 
-                            int orientation = wallObject.getOrientationA();
-                            LocalPoint location = wallObject.getLocalLocation();
-                            Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
-
-                            for (int i = 0; i < lightsForWallObject.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation);
-                                sceneLights.add(light);
+                                for (int i = 0; i < lightsForWallObject.size(); i++) {
+                                    Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation);
+                                    sceneLights.add(light);
+                                }
                             }
                         }
 
                         DecorativeObject decorativeObject = tile.getDecorativeObject();
-                        if (decorativeObject != null) {
+                        if (decorativeObject != null)
+                        {
                             ArrayList<Light> lightsForDecoration = decorationLights.get(decorativeObject.getId());
-                            if (lightsForDecoration == null) continue;
+                            if (lightsForDecoration != null)
+                            {
+                                int orientation = decorativeObject.getConfig() >> 6 & 3;
+                                LocalPoint location = decorativeObject.getLocalLocation();
+                                Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), orientation);
 
-                            int orientation = decorativeObject.getConfig() >> 6 & 3;
-                            LocalPoint location = decorativeObject.getLocalLocation();
-                            Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), orientation);
+                                for (int i = 0; i < lightsForDecoration.size(); i++) {
 
-                            for (int i = 0; i < lightsForDecoration.size(); i++) {
-
-                                Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position, tile.getPlane(), orientation);
-                                sceneLights.add(light);
+                                    Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position, tile.getPlane(), orientation);
+                                    sceneLights.add(light);
+                                }
                             }
                         }
 
-                        for (GameObject gameObject : tile.getGameObjects()) {
-                            if (gameObject == null) continue;
+                        for (GameObject gameObject : tile.getGameObjects())
+                        {
+                            if (gameObject != null)
+                            {
+                                ArrayList<Light> lightsForGameobject = gameObjectLights.get(gameObject.getId());
+                                if (lightsForGameobject != null)
+                                {
+                                    int orientation = gameObject.getConfig() >> 6 & 3;
+                                    LocalPoint location = gameObject.getLocalLocation();
+                                    Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), 0);
 
-                            ArrayList<Light> lightsForGameobject = gameObjectLights.get(gameObject.getId());
-                            if (lightsForGameobject == null) continue;
-
-                            int orientation = gameObject.getConfig() >> 6 & 3;
-                            LocalPoint location = gameObject.getLocalLocation();
-                            Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), 0);
-
-                            for (int i = 0; i < lightsForGameobject.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation);
-                                sceneLights.add(light);
+                                    for (int i = 0; i < lightsForGameobject.size(); i++) {
+                                        Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation);
+                                        sceneLights.add(light);
+                                    }
+                                }
                             }
                         }
                     }
@@ -722,6 +728,7 @@ public class EnvironmentManager
         }
     }
 
+    //TODO:: make sure gameobject is not static.
     public void OnGameObjectSpawned(GameObjectSpawned event)
     {
         GameObject gameObject = event.getGameObject();
@@ -743,7 +750,6 @@ public class EnvironmentManager
                 Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position, gameObject.getPlane(), orientation);
                 sceneLights.add(light);
                 gameObjectLightHashMap.put(gameObject, light);
-                log.info("GameObject added: " + gameObject.getId());
             }
         }
     }

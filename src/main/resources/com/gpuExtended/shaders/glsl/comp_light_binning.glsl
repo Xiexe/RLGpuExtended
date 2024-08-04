@@ -24,7 +24,7 @@ void main() {
     tilePosition.xy -= SCENE_OFFSET;
 
     int numLightsTile = 0;
-    // writing to last index so it doesnt get overwritten later with a light??? (on purpose)
+    // writing to last index so it doesnt get overwritten later with a light (on purpose)
     int lastLightIndex = getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, tileIndex.x, tileIndex.y, tileIndex.z);
     lightBinIndiciesOut[lastLightIndex] = 0;
 
