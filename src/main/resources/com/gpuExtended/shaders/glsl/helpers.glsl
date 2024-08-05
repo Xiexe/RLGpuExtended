@@ -72,7 +72,7 @@ void PopulateSurfaceColor(inout Surface s)
 
         if(CheckIsUnlitTexture(fTextureId))
         {
-            textureColor.rgb *= 1.5;
+            textureColor.rgb *= 3;
         }
         else
         {
@@ -114,47 +114,6 @@ void PopulateVertexFlags(inout VertexFlags flags, ivec4 fFlags)
     flags.isTerrain         = ((fFlags.x >> BIT_ISTERRAIN) & 1) > 0;
     flags.isDynamicModel    = ((fFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
     flags.isOnBridge        = ((fFlags.x >> BIT_ISONBRIDGE) & 1) > 0;
-}
-
-// Function to adjust saturation
-vec3 adjustSaturation(vec3 color, float saturation) {
-    // Convert RGB to grayscale by calculating luminance
-    float gray = dot(color, vec3(0.299, 0.587, 0.114));
-    // Linearly interpolate between the grayscale value and the original color
-    return mix(vec3(gray), color, saturation);
-}
-
-// Function to adjust contrast
-vec3 adjustContrast(vec3 color, float contrast) {
-    // Shift the color by 0.5 to center it, scale it by the contrast factor, and then shift it back
-    return (color - 0.5) * contrast + 0.5;
-}
-
-// Main function to adjust both saturation and contrast
-vec3 adjustSaturationAndContrast(vec3 color, float saturation, float contrast) {
-    color = adjustSaturation(color, saturation);
-    color = adjustContrast(color, contrast);
-    return color;
-}
-
-vec3 adjustBrightness(vec3 color, float brightnessAdjust) {
-    return color * brightnessAdjust;
-}
-
-// Function to combine upper and lower parts to form a 32-bit integer
-int combine16(int upper, int lower) {
-    return (upper << 16) | lower;
-}
-
-
-void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff, int isEmissive)
-{
-    image = mix(adjustSaturationAndContrast(image, 1.2, 1.0), image, fogFalloff);
-    image = adjustBrightness(image, 0.8);
-
-    if (colorBlindMode > 0) {
-        image = colorblind(colorBlindMode, image);
-    }
 }
 
 vec4 intToColor(int color) {
@@ -210,8 +169,8 @@ void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, f
             (tileUv.y > 1.0 - outlineWidth && tileUv.x > 1.0 - cornerLength)
         );
 
-        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder));
-        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder));
+        image = mix(image, fillColor.rgb * 1.5, fillColor.a * float(!isBorder));
+        image = mix(image, outlineColor.rgb * 1.5, outlineColor.a * float(isBorder));
     }
 }
 
@@ -256,11 +215,11 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
             );
             if (isBorder)
             {
-                image = mix(image, borderColor.rgb, borderColor.a);
+                image = mix(image, borderColor.rgb * 1.5, borderColor.a);
             }
             else
             {
-                image = mix(image, fillColor.rgb, fillColor.a);
+                image = mix(image, fillColor.rgb * 1.5, fillColor.a);
             }
         }
     }

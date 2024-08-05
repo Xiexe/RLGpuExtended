@@ -94,7 +94,7 @@ void main() {
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
-    vec3 litFragment = s.albedo.rgb * (mainLight.color.rgb * ((shadowMap * ndl)) + ambientColor.rgb);
+    vec3 litFragment = s.albedo.rgb * ((mainLight.color.rgb) * ((shadowMap * ndl)) + (ambientColor.rgb));
 
     float maxDistance = drawDistance * TILE_SIZE;
     float fogStart = maxDistance * (1.0 - (fogDepth / drawDistance));
@@ -106,8 +106,7 @@ void main() {
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
     ApplyAdditiveLighting(finalColor, flags, s.albedo.rgb, s.normal.xyz, fPosition);
-    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
-    PostProcessImage(finalColor, colorBlindMode, fog, isEmissive);
+    //FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     finalColor = mix(finalColor, skyColor.rgb, fog);
 
     if(!flags.isDynamicModel)

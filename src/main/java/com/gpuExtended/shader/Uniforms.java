@@ -1,6 +1,5 @@
 package com.gpuExtended.shader;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.gpuExtended.GpuExtendedPlugin;
 
 import java.util.HashMap;
@@ -15,6 +14,7 @@ public class Uniforms
         public int UiColorBlindMode;
         public int InterfaceTexture;
         public int MainTexture;
+        public int BloomTexture;
         public int TexSamplingMode;
         public int TexSourceDimensions;
         public int TexTargetDimensions;
@@ -35,6 +35,12 @@ public class Uniforms
         public int TileMarkerFillColorMap;
         public int TileMarkerSettingsMap;
         public int RoofMaskTextureMap;
+        
+        public int SourceTexture;
+        public int DestinationTexture;
+        public int SourceResolution;
+        public int DestinationResolution;
+        public int MipmapLevel;
     }
 
     public HashMap<Integer, ShaderVariables> map;
@@ -54,6 +60,12 @@ public class Uniforms
         shaderVariables.TileMarkerBorderColorMap = glGetUniformLocation(shader, "tileBorderColorMap");
         shaderVariables.TileMarkerSettingsMap = glGetUniformLocation(shader, "tileSettingsMap");
         shaderVariables.RoofMaskTextureMap = glGetUniformLocation(shader, "roofMaskMap");
+        
+        shaderVariables.SourceTexture = glGetUniformLocation(shader, "srcTexture");
+        shaderVariables.DestinationTexture = glGetUniformLocation(shader, "dstTexture");
+        shaderVariables.SourceResolution = glGetUniformLocation(shader, "srcResolution");
+        shaderVariables.DestinationResolution = glGetUniformLocation(shader, "dstResolution");
+        shaderVariables.MipmapLevel = glGetUniformLocation(shader, "mipMapLevel");
 
         shaderVariables.ColorBlindMode = glGetUniformLocation(shader, "colorBlindMode");
         shaderVariables.Textures = glGetUniformLocation(shader, "textures");
@@ -61,6 +73,7 @@ public class Uniforms
 
         shaderVariables.InterfaceTexture = glGetUniformLocation(shader, "interfaceTexture");
         shaderVariables.MainTexture = glGetUniformLocation(shader, "mainTexture");
+        shaderVariables.BloomTexture = glGetUniformLocation(shader, "bloomTexture");
         shaderVariables.TexSamplingMode = glGetUniformLocation(shader, "samplingMode");
         shaderVariables.TexTargetDimensions = glGetUniformLocation(shader, "targetDimensions");
         shaderVariables.TexSourceDimensions = glGetUniformLocation(shader, "sourceDimensions");

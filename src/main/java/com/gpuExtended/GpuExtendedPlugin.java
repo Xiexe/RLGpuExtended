@@ -60,9 +60,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.opencl.CL10GL;
 import org.lwjgl.opencl.CL12;
-import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GLCapabilities;
-import org.lwjgl.opengl.GLUtil;
+import org.lwjgl.opengl.*;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
 
@@ -80,6 +78,7 @@ import com.gpuExtended.shader.ShaderException;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.*;
 
+import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
 import static com.gpuExtended.util.ConstantVariables.*;
 import static com.gpuExtended.util.ResourcePath.path;
 import static net.runelite.api.Constants.*;
@@ -232,6 +231,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		.add(GL_VERTEX_SHADER, "vertui.glsl")
 		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
 
+	static final Shader BLOOM_DOWNSAMPLE_PROGRAM = new Shader()
+		.add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
+		.add(GL_FRAGMENT_SHADER, "bloom_downsample.glsl");
+
+	static final Shader BLOOM_UPSAMPLE_PROGRAM = new Shader()
+		.add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
+		.add(GL_FRAGMENT_SHADER, "bloom_upsample.glsl");
+
+	static final Shader BLOOM_PREFILTER_PROGRAM = new Shader()
+		.add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
+		.add(GL_FRAGMENT_SHADER, "bloom_prefilter.glsl");
+
 	private static final ResourcePath SHADER_PATH = Props
 			.getPathOrDefault("shader-path", () -> path(GpuExtendedPlugin.class))
 			.chroot();
@@ -250,6 +261,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int glLightBinningComputeProgram;
 	public int glUiProgram;
 
+	public int glBloomUpsampleProgram;
+	public int glBloomDownsampleProgram;
+	public int glBloomPrefilterProgram;
+
 	private int mainDrawVertexArrayObject;
 	private int mainDrawTempVertexArrayObject;
 
@@ -257,6 +272,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int interfacePbo;
 
 	private FrameBuffer colorFramebuffer;
+	private FrameBuffer bloomFramebuffer;
 	private FrameBuffer shadowMapFramebuffer;
 	private FrameBuffer depthMapFramebuffer;
 
@@ -610,6 +626,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					colorFramebuffer = null;
 				}
 
+				if (bloomFramebuffer != null)
+				{
+					bloomFramebuffer.cleanup();
+					bloomFramebuffer = null;
+				}
+
 				if (shadowMapFramebuffer != null)
 				{
 					shadowMapFramebuffer.cleanup();
@@ -863,6 +885,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUiProgram = UI_PROGRAM.compile(template);
 		glShadowProgram = SHADOW_PROGRAM.compile(template);
 		glDepthProgram = DETPH_PROGRAM.compile(template);
+		glBloomDownsampleProgram = BLOOM_DOWNSAMPLE_PROGRAM.compile(template);
+		glBloomUpsampleProgram = BLOOM_UPSAMPLE_PROGRAM.compile(template);
+		glBloomPrefilterProgram = BLOOM_PREFILTER_PROGRAM.compile(template);
 
 		if (computeMode == ComputeMode.OPENGL)
 		{
@@ -887,6 +912,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		uniforms.InitializeShaderUniformsForShader(glProgram, computeMode);
 		uniforms.InitializeShaderUniformsForShader(glUiProgram, computeMode);
+		uniforms.InitializeShaderUniformsForShader(glBloomUpsampleProgram, computeMode);
+		uniforms.InitializeShaderUniformsForShader(glBloomDownsampleProgram, computeMode);
+		uniforms.InitializeShaderUniformsForShader(glBloomPrefilterProgram, computeMode);
 		uniforms.InitializeShaderUniformsForShader(glShadowProgram, computeMode);
 		uniforms.InitializeShaderUniformsForShader(glDepthProgram, computeMode);
 		uniforms.InitializeShaderUniformsForShader(glComputeProgram, computeMode);
@@ -919,6 +947,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glDeleteProgram(glShadowProgram);
 		glShadowProgram = -1;
+
+		glDeleteProgram(glDepthProgram);
+		glDepthProgram = -1;
+
+		glDeleteProgram(glBloomUpsampleProgram);
+		glBloomUpsampleProgram = -1;
+
+		glDeleteProgram(glBloomDownsampleProgram);
+		glBloomDownsampleProgram = -1;
+
+		glDeleteProgram(glBloomPrefilterProgram);
+		glBloomPrefilterProgram = -1;
 	}
 
 	private void initVao(int vaoHandle)
@@ -1140,6 +1180,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initShadowMapTexture()
 	{
 		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
+		fboSettings.name = "shadow";
 		fboSettings.width = config.shadowResolution().getValue();
 		fboSettings.height = config.shadowResolution().getValue();
 		fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
@@ -1160,6 +1201,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initDepthMapTexture()
 	{
 		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
+		fboSettings.name = "depth";
 		fboSettings.width = 64;
 		fboSettings.height = 64;
 		fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
@@ -1180,21 +1222,31 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initColorFramebuffer()
 	{
 		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
+		fboSettings.name = "color";
 		fboSettings.width = 64;
 		fboSettings.height = 64;
 		fboSettings.glAttachment = GL_COLOR_ATTACHMENT0;
 		fboSettings.awtContext = awtContext;
 
+		// Bloom
+		FrameBuffer.FrameBufferSettings fboSettingsB = new FrameBuffer.FrameBufferSettings();
+		fboSettingsB.name = "bloom";
+		fboSettingsB.width = 64;
+		fboSettingsB.height = 64;
+		fboSettingsB.glAttachment = GL_COLOR_ATTACHMENT0;
+		fboSettingsB.awtContext = awtContext;
+
 		Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
 		textureSettings.internalFormat = GL_RGBA16F;
 		textureSettings.format = GL_RGBA;
 		textureSettings.type = GL_FLOAT;
-		textureSettings.minFilter = GL_LINEAR;
+		textureSettings.minFilter = GL_LINEAR_MIPMAP_LINEAR;
 		textureSettings.magFilter = GL_LINEAR;
-		textureSettings.wrapS = GL_REPEAT;
-		textureSettings.wrapT = GL_REPEAT;
+		textureSettings.wrapS = GL_CLAMP_TO_EDGE;
+		textureSettings.wrapT = GL_CLAMP_TO_EDGE;
 
 		colorFramebuffer = new FrameBuffer(fboSettings, textureSettings);
+		bloomFramebuffer = new FrameBuffer(fboSettingsB, textureSettings);
 	}
 
 	private void shutdownInterfaceTexture()
@@ -1582,6 +1634,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			currentPlane = client.getPlane();
 		}
 
+		// TODO:: fix aa
 		if (aaEnabled)
 		{
 			int width = lastStretchedCanvasWidth;
@@ -1596,8 +1649,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				height = getScaledValue(transform.getScaleY(), height);
 			}
 
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, fboSceneHandle);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, awtContext.getFramebuffer(false));
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, colorFramebuffer.getId());
+			glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, colorFramebuffer.getId());
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
 			glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
 				GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
@@ -1964,11 +2021,16 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void drawMainPass()
 	{
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
-
 		if(colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3])
 		{
-			log.info("Resizing Color Framebuffer: {}x{}", currentViewport[2], currentViewport[3]);
+			int bloomWidth = Math.min(1920, currentViewport[2]);
+			int bloomHeight = Math.min(1080, currentViewport[3]);
+
 			colorFramebuffer.resize(currentViewport[2], currentViewport[3]);
+			bloomFramebuffer.resize(bloomWidth, bloomHeight);
+
+			log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
+			log.info("Resizing Bloom Framebuffers: {}x{}", bloomWidth, bloomHeight);
 		}
 
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
@@ -2054,6 +2116,76 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		colorFramebuffer.unbind();
 		glUseProgram(0);
 
+		// TODO:: move bloom to its own method.
+		colorFramebuffer.generateMipmaps();
+		colorFramebuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
+
+		bloomFramebuffer.bind();
+			glBindVertexArray(vaoUiHandle);
+
+			// Prefilter
+				glUseProgram(glBloomPrefilterProgram);
+				Uniforms.ShaderVariables uniP = uniforms.GetUniforms(glBloomPrefilterProgram);
+				glActiveTexture(GL_TEXTURE1);
+
+				glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+				glUniform1i(uniP.SourceTexture, 1);
+				glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+			// ---
+		bloomFramebuffer.unbind();
+
+		bloomFramebuffer.generateMipmaps();
+		bloomFramebuffer.bind();
+			// Downsample
+				glUseProgram(glBloomDownsampleProgram);
+				Uniforms.ShaderVariables uniB = uniforms.GetUniforms(glBloomDownsampleProgram);
+
+				glActiveTexture(GL_TEXTURE1);
+				glUniform1i(uniB.SourceTexture, 1);
+				glUniform2f(uniB.SourceResolution, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
+				glUniform1i(uniB.MipmapLevel, 0);
+
+				for (int i = 0; i < MIP_LEVELS; i++) {
+					int mipWidth = bloomFramebuffer.getTexture().getWidth() >> i;
+					int mipHeight = bloomFramebuffer.getTexture().getHeight() >> i;
+
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), i);
+					glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+
+					glViewport(0, 0, mipWidth, mipHeight);
+					glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+					// Set current mip as src for next iteration
+					glUniform2f(uniB.SourceResolution, mipWidth, mipHeight);
+					glUniform1i(uniB.MipmapLevel, i);
+				}
+
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
+			// ---
+
+			// Upsample
+				glUseProgram(glBloomUpsampleProgram);
+				Uniforms.ShaderVariables uniU = uniforms.GetUniforms(glBloomUpsampleProgram);
+
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+				glUniform1i(uniU.SourceTexture, 1);
+
+				glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
+			// ---
+
+			// Reset
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glActiveTexture(GL_TEXTURE0);
+			glBindVertexArray(0);
+			glUseProgram(0);
+		bloomFramebuffer.unbind();
+
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
 	}
 
@@ -2106,8 +2238,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uni.MainTexture, 1);
 
 		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+		glUniform1i(uni.BloomTexture, 2);
+
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
-		glUniform1i(uni.InterfaceTexture, 2);
+		glUniform1i(uni.InterfaceTexture, 3);
 
 		glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
 		glUniform2i(uni.TexSourceDimensions, canvasWidth, canvasHeight);

@@ -5,8 +5,14 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL11;
 import net.runelite.rlawt.AWTContext;
 
+import java.nio.ByteBuffer;
+
+import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
+import static org.lwjgl.opengl.GL11C.*;
+
 public class FrameBuffer {
     public static class FrameBufferSettings {
+        public String name;
         public int width;
         public int height;
         public int glAttachment;
@@ -18,6 +24,9 @@ public class FrameBuffer {
 
     @Getter
     private Texture2D texture;
+    @Getter
+    private Texture2D[] mipChain;
+
     private FrameBufferSettings settings;
 
     @Getter
@@ -41,7 +50,7 @@ public class FrameBuffer {
         GL11.glReadBuffer(GL11.GL_NONE);
 
         if (GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
-            throw new RuntimeException("Framebuffer is not complete!");
+            throw new RuntimeException("Framebuffer " + settings.name + " is not complete!");
         }
 
         unbind();
@@ -78,6 +87,37 @@ public class FrameBuffer {
         GL11.glDrawBuffer(GL11.GL_NONE);
         GL11.glReadBuffer(GL11.GL_NONE);
 
+        unbind();
+    }
+
+    public void blit(FrameBuffer target, int srcAttachment, int dstAttachment, int interpolation)
+    {
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, this.id);
+        glReadBuffer(srcAttachment);
+
+        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, target.getId());
+        glDrawBuffer(dstAttachment);
+
+        GL30.glBlitFramebuffer(
+                0,
+                0,
+                texture.getWidth(),
+                texture.getHeight(),
+                0,
+                0,
+                target.getTexture().getWidth(),
+                target.getTexture().getHeight(),
+                GL_COLOR_BUFFER_BIT,
+                interpolation
+        );
+
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
+    }
+
+    public void generateMipmaps()
+    {
+        bind();
+        texture.generateMipmaps();
         unbind();
     }
 }
