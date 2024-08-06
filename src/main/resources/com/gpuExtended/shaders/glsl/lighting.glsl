@@ -43,7 +43,7 @@ float PCSSFilter(vec4 projCoords, float currentDepth, float penumbraSize) {
 float PCSSShadows(vec4 projCoords, float fadeOut, float shadowBias) {
     vec2 shadowRes = textureSize(shadowMap, 0);
     float currentDepth = projCoords.z - shadowBias;
-    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 10;
+    float penumbraSize = PCSSEstimatePenumbraSize(projCoords, currentDepth, lightSize) * 15;
     float shadow = PCSSFilter(projCoords, currentDepth, penumbraSize);
 
     return shadow * (1.0 - fadeOut);

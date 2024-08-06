@@ -12,6 +12,7 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
+import net.runelite.rlawt.AWTContext;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -20,6 +21,11 @@ import java.util.Objects;
 
 import static net.runelite.api.Constants.SCENE_SIZE;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
+import static org.lwjgl.opengl.GL11C.*;
+import static org.lwjgl.opengl.GL11C.GL_NEAREST;
+import static org.lwjgl.opengl.GL12C.GL_CLAMP_TO_EDGE;
+import static org.lwjgl.opengl.GL14C.GL_DEPTH_COMPONENT24;
+import static org.lwjgl.opengl.GL30C.GL_DEPTH_ATTACHMENT;
 
 @Data
 @NoArgsConstructor
@@ -102,6 +108,9 @@ public class Light
     public int[] gameObjects = new int[0];
     public int[] walls = new int[0];
     public int[] projectiles = new int[0];
+
+    @Nullable
+    public FrameBuffer shadowMapFramebuffer = null;
 
     @Nullable
     public float distanceSquared = 0;
@@ -189,7 +198,7 @@ public class Light
         return pos;
     }
 
-    public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane, int orientation)
+    public static Light CreateLightFromTemplate(Light template, Vector4 position, int plane, int orientation, AWTContext awtContext)
     {
         Vector4 pos = GetLightPositionWithOffset(position, template.offset, orientation);
 
@@ -217,6 +226,7 @@ public class Light
         if(template.projectiles != null)
             light.projectiles = template.projectiles.clone();
 
+        light.InitShadowMap(awtContext);
         return light;
     }
 
@@ -248,6 +258,27 @@ public class Light
         Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, 1, farPlane));
         Mat4.mul(this.projectionMatrix, this.viewMatrix);
         Mat4.mul(this.projectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
+    }
+
+    private void InitShadowMap(AWTContext awtContext)
+    {
+        FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
+        fboSettings.name = "shadow_light_" + name;
+        fboSettings.width = 128;
+        fboSettings.height = 128;
+        fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
+        fboSettings.awtContext = awtContext;
+
+        Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
+        textureSettings.internalFormat = GL_DEPTH_COMPONENT24;
+        textureSettings.format = GL_DEPTH_COMPONENT;
+        textureSettings.type = GL_FLOAT;
+        textureSettings.minFilter = GL_NEAREST;
+        textureSettings.magFilter = GL_NEAREST;
+        textureSettings.wrapS = GL_CLAMP_TO_EDGE;
+        textureSettings.wrapT = GL_CLAMP_TO_EDGE;
+
+        this.shadowMapFramebuffer = new FrameBuffer(fboSettings, textureSettings);
     }
 
     public void Animate(float time)

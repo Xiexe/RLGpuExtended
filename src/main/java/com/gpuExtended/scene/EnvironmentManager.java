@@ -320,7 +320,7 @@ public class EnvironmentManager
                             LocalPoint location = tile.getLocalLocation();
                             Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
                             for (int i = 0; i < lightsForTile.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position, tile.getPlane(), 0);
+                                Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position, tile.getPlane(), 0, plugin.awtContext);
                                 sceneLights.add(light);
                             }
                         }
@@ -336,7 +336,7 @@ public class EnvironmentManager
                                 Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
 
                                 for (int i = 0; i < lightsForWallObject.size(); i++) {
-                                    Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation);
+                                    Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
                                     sceneLights.add(light);
                                 }
                             }
@@ -354,7 +354,7 @@ public class EnvironmentManager
 
                                 for (int i = 0; i < lightsForDecoration.size(); i++) {
 
-                                    Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position, tile.getPlane(), orientation);
+                                    Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
                                     sceneLights.add(light);
                                 }
                             }
@@ -372,7 +372,7 @@ public class EnvironmentManager
                                     Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), 0);
 
                                     for (int i = 0; i < lightsForGameobject.size(); i++) {
-                                        Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation);
+                                        Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
                                         sceneLights.add(light);
                                     }
                                 }
@@ -706,7 +706,7 @@ public class EnvironmentManager
 
                     Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
                     for(int i = 0; i < lightsForProjectile.size(); i++) {
-                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position, client.getPlane(), 0);
+                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position, client.getPlane(), 0, plugin.awtContext);
                         light.isDynamic = true;
                         sceneLights.add(light);
                         projectileLightHashMap.put(projectile, light);
@@ -744,7 +744,7 @@ public class EnvironmentManager
             LocalPoint location = gameObject.getLocalLocation();
             Vector4 position = new Vector4(location.getX(), location.getY(), gameObject.getZ(), 0);
             for(int i = 0; i < lightsForGameObject.size(); i++) {
-                Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position, gameObject.getPlane(), orientation);
+                Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position, gameObject.getPlane(), orientation, plugin.awtContext);
                 sceneLights.add(light);
                 gameObjectLightHashMap.put(gameObject, light);
             }
