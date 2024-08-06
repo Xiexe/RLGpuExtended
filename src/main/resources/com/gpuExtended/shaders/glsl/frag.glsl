@@ -21,59 +21,9 @@ out vec4 FragColor;
 #include "shaders/glsl/helpers.glsl"
 #include "shaders/glsl/lighting.glsl"
 
-vec3 TranslatePositionToScene(vec3 position)
-{
-    vec2 normalizedPositionXZ = (position.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
-    return vec3(normalizedPositionXZ, position.y);
-}
-
-vec4 boxBlur(sampler2D tex, vec2 uv, vec2 texelSize) {
-    vec4 color = vec4(0.0);
-
-    // Sample the surrounding texels
-    color += texture(tex, uv + vec2(-texelSize.x, -texelSize.y));
-    color += texture(tex, uv + vec2(0.0, -texelSize.y));
-    color += texture(tex, uv + vec2(texelSize.x, -texelSize.y));
-
-    color += texture(tex, uv + vec2(-texelSize.x, 0.0));
-    color += texture(tex, uv);
-    color += texture(tex, uv + vec2(texelSize.x, 0.0));
-
-    color += texture(tex, uv + vec2(-texelSize.x, texelSize.y));
-    color += texture(tex, uv + vec2(0.0, texelSize.y));
-    color += texture(tex, uv + vec2(texelSize.x, texelSize.y));
-
-    // Average the colors
-    color /= 9.0;
-
-    return color;
-}
-
-// Simple noise function
-float noise(vec2 p) {
-    return fract(sin(dot(p ,vec2(127.1,311.7))) * 43758.5453);
-}
-
-// Interpolated noise
-float smoothNoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f*f*(3.0-2.0*f);
-    float n = mix(mix(noise(i + vec2(0.0, 0.0)), noise(i + vec2(1.0, 0.0)), f.x),
-    mix(noise(i + vec2(0.0, 1.0)), noise(i + vec2(1.0, 1.0)), f.x), f.y);
-    return n;
-}
-
-// Raymarching to calculate the distance to the underwater surface
-float raymarch(vec3 ro, vec3 rd) {
-    float depth = 0.0;
-    for (int i = 0; i < 100; i++) {
-        vec3 p = ro + depth * rd;
-        float h = smoothNoise(p.xz * 0.1 + vec2(time * 0.1, 0.0)) * 0.5;
-        if (p.y < h) break;
-        depth += 0.1;
-    }
-    return depth;
+int tile_height(int z, int x, int y) {
+    #define ESCENE_OFFSET 40 // (184-104)/2
+    return texelFetch(tileHeightMap, ivec3(x + ESCENE_OFFSET, y + ESCENE_OFFSET, z), 0).r << 3;
 }
 
 void main() {
@@ -85,6 +35,7 @@ void main() {
     PopulateSurfaceNormal(s, fNormal);
 
     vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
+    float tileHeight = tile_height(flags.plane, flags.tileX, flags.tileY);
 
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
@@ -96,6 +47,10 @@ void main() {
 
     vec3 litFragment = s.albedo.rgb * ((mainLight.color.rgb) * ((shadowMapSampled * ndl)) + (ambientColor.rgb));
 
+    float fogHeight = 3;
+    float distanceFogHeightFalloff = smoothstep(10.0, 0.0, (1-fPosition.y) / (TILE_SIZE * fogHeight));
+    float heightFogFalloff = smoothstep(20.0, 0.0, ((1-(fPosition.y - (1 * TILE_SIZE))) / (TILE_SIZE * fogHeight * 0.05)));
+
     float normalizedFogDistance = (fogDepth / drawDistance);
     float maxDistance = drawDistance * TILE_SIZE;
     float fogStart = maxDistance * (1.0 - normalizedFogDistance);
@@ -103,12 +58,14 @@ void main() {
     float fogEnd = fogStart + fogFalloff;
     float distanceFog = smoothstep(fogStart, fogEnd, distanceToCamera);
 
-    float fog = max(distanceFog, fFogAmount);
+    float fog = mix(0, max(distanceFog, fFogAmount), distanceFogHeightFalloff);
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
     ApplyAdditiveLighting(finalColor, flags, s.albedo.rgb, s.normal.xyz, fPosition);
     //FadeRoofs(flags, fPosition, dither, distanceToPlayer);
+    finalColor = mix(finalColor, vec3(1,1,1), heightFogFalloff);
     finalColor = mix(finalColor, skyColor.rgb, fog);
+
 
     if(!flags.isDynamicModel)
     {

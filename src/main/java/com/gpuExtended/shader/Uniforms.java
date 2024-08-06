@@ -37,6 +37,7 @@ public class Uniforms
         public int TileMarkerFillColorMap;
         public int TileMarkerSettingsMap;
         public int RoofMaskTextureMap;
+        public int TileHeightMap;
         
         public int SourceTexture;
         public int DestinationTexture;
@@ -62,6 +63,7 @@ public class Uniforms
         shaderVariables.TileMarkerBorderColorMap = glGetUniformLocation(shader, "tileBorderColorMap");
         shaderVariables.TileMarkerSettingsMap = glGetUniformLocation(shader, "tileSettingsMap");
         shaderVariables.RoofMaskTextureMap = glGetUniformLocation(shader, "roofMaskMap");
+        shaderVariables.TileHeightMap = glGetUniformLocation(shader, "tileHeightMap");
         
         shaderVariables.SourceTexture = glGetUniformLocation(shader, "srcTexture");
         shaderVariables.DestinationTexture = glGetUniformLocation(shader, "dstTexture");

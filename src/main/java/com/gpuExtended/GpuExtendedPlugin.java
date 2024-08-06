@@ -626,7 +626,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					allowRoofFading = bounds.isAllowRoofFading();
 				}
 
-				client.getScene().setRoofRemovalMode(allowRoofFading && config.roofFading() ? 16 : 0);
+//				client.getScene().setRoofRemovalMode(allowRoofFading && config.roofFading() ? 16 : 0);
 			}
 		}
 	}
@@ -1749,6 +1749,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glActiveTexture(GL_TEXTURE6);
 		glBindTexture(GL_TEXTURE_3D, tileMarkerManager.roofMaskTexture.getId());
 		glUniform1i(uni.RoofMaskTextureMap, 6);
+
+		glActiveTexture(GL_TEXTURE7);
+		glBindTexture(GL_TEXTURE_3D, tileHeightTex);
+		glUniform1i(uni.TileHeightMap, 7);
 
 		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
 		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
