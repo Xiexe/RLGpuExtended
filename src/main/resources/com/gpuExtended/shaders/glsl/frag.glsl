@@ -49,7 +49,7 @@ void main() {
 
     float fogHeight = 3;
     float distanceFogHeightFalloff = smoothstep(10.0, 0.0, (1-fPosition.y) / (TILE_SIZE * fogHeight));
-    float heightFogFalloff = smoothstep(20.0, 0.0, ((1-(fPosition.y - (1 * TILE_SIZE))) / (TILE_SIZE * fogHeight * 0.05)));
+    float heightFogFalloff = smoothstep(30.0, 0.0, ((1-(fPosition.y - (2.5 * TILE_SIZE))) / (TILE_SIZE * fogHeight * 0.05)));
 
     float normalizedFogDistance = (fogDepth / drawDistance);
     float maxDistance = drawDistance * TILE_SIZE;
