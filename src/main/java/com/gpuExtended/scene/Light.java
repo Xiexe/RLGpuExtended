@@ -245,7 +245,7 @@ public class Light
         float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
         float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
         Mat4.mul(this.projectionMatrix, Mat4.scale(scale, scale, scale));
-        Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, farPlane));
+        Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, 1, farPlane));
         Mat4.mul(this.projectionMatrix, this.viewMatrix);
         Mat4.mul(this.projectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
     }

@@ -72,9 +72,6 @@ public class EnvironmentManager
     @Inject
     private GpuExtendedConfig config;
 
-//    public float[] lightProjectionMatrix;
-//    public float[] lightViewMatrix;
-
     public Environment[] environments;
     public HashMap<String, Environment> environmentMap = new HashMap<>();
     public Environment currentEnvironment;

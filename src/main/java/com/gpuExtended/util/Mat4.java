@@ -141,15 +141,15 @@ public class Mat4
 		}
 	}
 
-	public static float[] ortho(float w, float h, float n)
+	public static float[] ortho(float width, float height, float near, float far)
 	{
 		return new float[]
-				{
-						2 / w, 0, 0, 0,
-						0, 2 / h, 0, 0,
-						0, 0, -1f / n, 0,
-						0, 0, 0, 1
-				};
+		{
+				2 / width, 0, 0, 0,
+				0, 2 / height, 0, 0,
+				0, 0, -1f / (far), 0,
+				0, 0, 0, 1
+		};
 	}
 
 	public static void mul(final float[] a, final float[] b)

@@ -89,12 +89,12 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = dot(s.normal.xyz, mainLight.pos.xyz) * 0.5 + 0.5;
-    float shadowMap = GetShadowMap(fPosition, ndl);
+    float shadowMapSampled = GetShadowMap(fPosition, ndl);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
-    vec3 litFragment = s.albedo.rgb * ((mainLight.color.rgb) * ((shadowMap * ndl)) + (ambientColor.rgb));
+    vec3 litFragment = s.albedo.rgb * ((mainLight.color.rgb) * ((shadowMapSampled * ndl)) + (ambientColor.rgb));
 
     float maxDistance = drawDistance * TILE_SIZE;
     float fogStart = maxDistance * (1.0 - (fogDepth / drawDistance));

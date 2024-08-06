@@ -2018,11 +2018,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUseProgram(0);
 	}
 
-	private void drawMainPass()
-	{
+	private void drawMainPass() {
+		if (client.getGameState().getState() != GameState.LOGGED_IN.getState()) {
+			return;
+		}
+
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
-		if(colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3])
-		{
+		if (colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3]) {
 			int bloomWidth = Math.min(1920, currentViewport[2]);
 			int bloomHeight = Math.min(1080, currentViewport[3]);
 
@@ -2063,7 +2065,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uni.RoofMaskTextureMap, 6);
 
 		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(glProgram, uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
 		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
@@ -2074,13 +2076,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		final TextureProvider textureProvider = client.getTextureProvider();
-		if (textureArrayId == -1)
-		{
+		if (textureArrayId == -1) {
 			// lazy init textures as they may not be loaded at plugin start.
 			// this will return -1 and retry if not all textures are loaded yet, too.
 			textureArrayId = textureManager.initTextureArray(textureProvider);
-			if (textureArrayId > -1)
-			{
+			if (textureArrayId > -1) {
 				// if texture upload is successful, compute and set texture animations
 				float[] texAnims = textureManager.computeTextureAnimations(textureProvider);
 				glUniform2fv(uni.TextureAnimations, texAnims);
@@ -2097,13 +2097,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glEnable(GL_BLEND);
 		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
-		if (computeMode == ComputeMode.OPENGL)
-		{
+		if (computeMode == ComputeMode.OPENGL) {
 			// Before reading the SSBOs written to from postDrawScene() we must insert a barrier
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-		}
-		else
-		{
+		} else {
 			// Wait for the command queue to finish, so that we know the compute is done
 			openCLManager.finish();
 		}
@@ -2116,67 +2113,67 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		colorFramebuffer.unbind();
 		glUseProgram(0);
 
-		// TODO:: move bloom to its own method.
-		colorFramebuffer.generateMipmaps();
-		colorFramebuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
+		if (client.getGameState().getState() == GameState.LOGGED_IN.getState()) {
+			colorFramebuffer.generateMipmaps();
+			colorFramebuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
 
-		bloomFramebuffer.bind();
+			bloomFramebuffer.bind();
 			glBindVertexArray(vaoUiHandle);
 
 			// Prefilter
-				glUseProgram(glBloomPrefilterProgram);
-				Uniforms.ShaderVariables uniP = uniforms.GetUniforms(glBloomPrefilterProgram);
-				glActiveTexture(GL_TEXTURE1);
+			glUseProgram(glBloomPrefilterProgram);
+			Uniforms.ShaderVariables uniP = uniforms.GetUniforms(glBloomPrefilterProgram);
+			glActiveTexture(GL_TEXTURE1);
 
-				glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
-				glUniform1i(uniP.SourceTexture, 1);
-				glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
-				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+			glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+			glUniform1i(uniP.SourceTexture, 1);
+			glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
+			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 			// ---
-		bloomFramebuffer.unbind();
+			bloomFramebuffer.unbind();
 
-		bloomFramebuffer.generateMipmaps();
-		bloomFramebuffer.bind();
+			bloomFramebuffer.generateMipmaps();
+			bloomFramebuffer.bind();
 			// Downsample
-				glUseProgram(glBloomDownsampleProgram);
-				Uniforms.ShaderVariables uniB = uniforms.GetUniforms(glBloomDownsampleProgram);
+			glUseProgram(glBloomDownsampleProgram);
+			Uniforms.ShaderVariables uniB = uniforms.GetUniforms(glBloomDownsampleProgram);
 
-				glActiveTexture(GL_TEXTURE1);
-				glUniform1i(uniB.SourceTexture, 1);
-				glUniform2f(uniB.SourceResolution, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
-				glUniform1i(uniB.MipmapLevel, 0);
+			glActiveTexture(GL_TEXTURE1);
+			glUniform1i(uniB.SourceTexture, 1);
+			glUniform2f(uniB.SourceResolution, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
+			glUniform1i(uniB.MipmapLevel, 0);
 
-				for (int i = 0; i < MIP_LEVELS; i++) {
-					int mipWidth = bloomFramebuffer.getTexture().getWidth() >> i;
-					int mipHeight = bloomFramebuffer.getTexture().getHeight() >> i;
+			for (int i = 0; i < MIP_LEVELS; i++) {
+				int mipWidth = bloomFramebuffer.getTexture().getWidth() >> i;
+				int mipHeight = bloomFramebuffer.getTexture().getHeight() >> i;
 
-					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), i);
-					glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), i);
+				glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
 
-					glViewport(0, 0, mipWidth, mipHeight);
-					glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				glViewport(0, 0, mipWidth, mipHeight);
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-					// Set current mip as src for next iteration
-					glUniform2f(uniB.SourceResolution, mipWidth, mipHeight);
-					glUniform1i(uniB.MipmapLevel, i);
-				}
+				// Set current mip as src for next iteration
+				glUniform2f(uniB.SourceResolution, mipWidth, mipHeight);
+				glUniform1i(uniB.MipmapLevel, i);
+			}
 
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
 			// ---
 
 			// Upsample
-				glUseProgram(glBloomUpsampleProgram);
-				Uniforms.ShaderVariables uniU = uniforms.GetUniforms(glBloomUpsampleProgram);
+			glUseProgram(glBloomUpsampleProgram);
+			Uniforms.ShaderVariables uniU = uniforms.GetUniforms(glBloomUpsampleProgram);
 
-				glActiveTexture(GL_TEXTURE1);
-				glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
-				glUniform1i(uniU.SourceTexture, 1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+			glUniform1i(uniU.SourceTexture, 1);
 
-				glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
-				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+			glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
+			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
 
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
 			// ---
 
 			// Reset
@@ -2184,13 +2181,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glActiveTexture(GL_TEXTURE0);
 			glBindVertexArray(0);
 			glUseProgram(0);
-		bloomFramebuffer.unbind();
+			bloomFramebuffer.unbind();
 
-		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+			performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+		}
 	}
 
 	private void drawShadowPass()
 	{
+		if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
+		{
+			return;
+		}
+
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 
 		glViewport(0, 0, shadowMapFramebuffer.getTexture().getWidth(), shadowMapFramebuffer.getTexture().getHeight());
@@ -2244,6 +2247,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
 		glUniform1i(uni.InterfaceTexture, 3);
+
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
+		glUniform1i(uni.ShadowMap, 4);
 
 		glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
 		glUniform2i(uni.TexSourceDimensions, canvasWidth, canvasHeight);

@@ -367,6 +367,13 @@
         "end": [1878, 5142, -1],
         "environment": "DARK_UNDERGROUND",
         "hideOtherAreas": true
+      },
+      {
+        "name": "MIME_SHOW",
+        "start": [1999, 4747, -1],
+        "end": [2019, 4771, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
       }
     ]
   },

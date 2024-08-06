@@ -1,5 +1,5 @@
 const float bias = 0.00065;
-const float lightSize = 0.01;
+const float lightSize = 0.0025;
 const int shadowSamples = 32;
 
 float LightAttenuation(float dist, float radius) {
@@ -23,7 +23,7 @@ float PCSSEstimatePenumbraSize(vec4 projCoords, float currentDepth, float search
     blockerDepthSum /= float(blockerCount);
 
     float estimatedPenumbra = (currentDepth - blockerDepthSum) * lightSize / blockerDepthSum;
-    return max(0, estimatedPenumbra);
+    return max(0, estimatedPenumbra + 0.00001);
 }
 
 float PCSSFilter(vec4 projCoords, float currentDepth, float penumbraSize) {
@@ -49,13 +49,13 @@ float PCSSShadows(vec4 projCoords, float fadeOut, float shadowBias) {
     return shadow * (1.0 - fadeOut);
 }
 
-float PCFShadows(vec4 projCoords, float fadeOut, float shadowBias) {
+float PCFShadows(vec4 projCoords, float fadeOut, float shadowBias, float spread) {
     float shadow = 0.0;
     float currentDepth = projCoords.z - shadowBias;
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
 
     for(int i = 0; i < shadowSamples; i++) {
-        vec2 offset = poissonDisk[i] * 0.005;
+        vec2 offset = poissonDisk[i] * spread;
         float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
         shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
     }
@@ -81,7 +81,7 @@ float GetShadowMap(vec3 fragPos, float ndl) {
         case ENV_TYPE_DEFAULT:
             return 1.0 - PCSSShadows(projCoords, fadeOut, bias);
         case ENV_TYPE_UNDERGROUND:
-            return 1.0 - PCFShadows(projCoords, fadeOut, bias);
+            return 1.0 - PCFShadows(projCoords, fadeOut, bias, 0.005);
         default:
             return 0.0;
     }
