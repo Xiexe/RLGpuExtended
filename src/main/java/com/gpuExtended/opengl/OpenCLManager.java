@@ -31,7 +31,6 @@ import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import javax.inject.Singleton;
 
-import com.gpuExtended.GpuExtendedPlugin;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Constants;
 import net.runelite.api.Scene;
@@ -40,6 +39,9 @@ import net.runelite.client.util.OSType;
 import net.runelite.rlawt.AWTContext;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.APPLEGLSharing;
+
+import static com.gpuExtended.util.constants.Variables.MAX_TRIANGLE;
+import static com.gpuExtended.util.constants.Variables.SMALL_TRIANGLE_COUNT;
 import static org.lwjgl.opencl.APPLEGLSharing.CL_CGL_DEVICE_FOR_CURRENT_VIRTUAL_SCREEN_APPLE;
 import static org.lwjgl.opencl.APPLEGLSharing.clGetGLContextInfoAPPLE;
 import org.lwjgl.opencl.CL;
@@ -86,8 +88,8 @@ public class OpenCLManager
 	private static final String KERNEL_NAME_LARGE = "computeLarge";
 
 	private static final int MIN_WORK_GROUP_SIZE = 256;
-	private static final int SMALL_SIZE = GpuExtendedPlugin.SMALL_TRIANGLE_COUNT;
-	private static final int LARGE_SIZE = GpuExtendedPlugin.MAX_TRIANGLE;
+	private static final int SMALL_SIZE = SMALL_TRIANGLE_COUNT;
+	private static final int LARGE_SIZE = MAX_TRIANGLE;
 	//  struct shared_data {
 	//      int totalNum[12];
 	//      int totalDistance[12];

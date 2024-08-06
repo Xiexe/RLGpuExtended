@@ -4,8 +4,8 @@ package com.gpuExtended;
 import com.gpuExtended.util.config.ShadowResolution;
 import net.runelite.client.config.*;
 
-import static com.gpuExtended.GpuExtendedPlugin.MAX_DISTANCE;
-import static com.gpuExtended.GpuExtendedPlugin.MAX_FOG_DEPTH;
+import static com.gpuExtended.util.constants.Variables.*;
+
 import com.gpuExtended.config.AntiAliasingMode;
 import com.gpuExtended.config.ColorBlindMode;
 import com.gpuExtended.config.UIScalingMode;

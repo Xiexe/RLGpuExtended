@@ -98,7 +98,9 @@ public class Uniforms
 
     public void ClearUniforms()
     {
-        map.clear();
+        if(map != null) {
+            map.clear();
+        }
     }
 
     public ShaderVariables GetUniforms(int shader)

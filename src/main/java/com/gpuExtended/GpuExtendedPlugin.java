@@ -4,28 +4,23 @@ import com.google.common.primitives.Ints;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
-
-import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
-import java.util.HashMap;
-import javax.annotation.Nonnull;
-import javax.inject.Inject;
-import javax.swing.SwingUtilities;
-
+import com.gpuExtended.config.AntiAliasingMode;
+import com.gpuExtended.config.UIScalingMode;
+import com.gpuExtended.opengl.GLBuffer;
+import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.overlays.*;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
+import com.gpuExtended.rendering.FrameBuffer;
+import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.scene.Environment;
+import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
+import com.gpuExtended.shader.ShaderHandler;
+import com.gpuExtended.shader.Uniforms;
+import com.gpuExtended.util.*;
 import com.gpuExtended.util.config.ShadowResolution;
 import com.gpuExtended.util.deserializers.AreaDeserializer;
 import com.gpuExtended.util.deserializers.ColorDeserializer;
@@ -34,7 +29,6 @@ import com.gpuExtended.util.deserializers.VectorDeserializer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.Constants;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameObjectDespawned;
@@ -51,7 +45,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
-
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.OSType;
@@ -60,79 +53,37 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.opencl.CL10GL;
 import org.lwjgl.opencl.CL12;
-import org.lwjgl.opengl.*;
+import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GLCapabilities;
+import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
 
-import com.gpuExtended.rendering.FrameBuffer;
-import com.gpuExtended.rendering.Texture2D;
-import com.gpuExtended.scene.Environment;
-import com.gpuExtended.config.AntiAliasingMode;
-import com.gpuExtended.config.UIScalingMode;
-import com.gpuExtended.shader.template.Template;
-import com.gpuExtended.opengl.GLBuffer;
-import com.gpuExtended.opengl.OpenCLManager;
-import com.gpuExtended.scene.EnvironmentManager;
-import com.gpuExtended.shader.Shader;
-import com.gpuExtended.shader.ShaderException;
-import com.gpuExtended.shader.Uniforms;
-import com.gpuExtended.util.*;
+import javax.annotation.Nonnull;
+import javax.inject.Inject;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
+import java.nio.*;
+import java.util.HashMap;
 
 import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
-import static com.gpuExtended.util.ConstantVariables.*;
-import static com.gpuExtended.util.ResourcePath.path;
-import static net.runelite.api.Constants.*;
+import static com.gpuExtended.util.constants.Variables.*;
+import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
+import static net.runelite.api.Constants.MAX_Z;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
 @PluginDescriptor(
-	name = "GPU Extended"
+	name = "_GPU Extended"
 )
 public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 {
 	public static GpuExtendedPlugin Instance;
-	// This is the maximum number of triangles the compute shaders support
-	public static final int MAX_TRIANGLE = 6144;
-	public static final int SMALL_TRIANGLE_COUNT = 512;
-	private static final int FLAG_SCENE_BUFFER = Integer.MIN_VALUE;
-	private static final int DEFAULT_DISTANCE = 25;
-	static final int MAX_DISTANCE = 184;
-	static final int MAX_FOG_DEPTH = 100;
-	public static final int SCENE_OFFSET = (EXTENDED_SCENE_SIZE - Constants.SCENE_SIZE) / 2; // offset for sxy -> msxy
-	private static final int GROUND_MIN_Y = 350; // how far below the ground models extend
-
-	// overlap is ok here because this is vtx attrib, and the other is uniform buffers
-	private int VPOS_BINDING_ID = 0;
-	private int VHSL_BINDING_ID = 1;
-	private int VUV_BINDING_ID = 2;
-	private int VNORM_BINDING_ID = 3;
-	private int VFLAGS_BINDING_ID = 4;
-
-	private int CAMERA_BUFFER_BINDING_ID = 0;
-	private int PLAYER_BUFFER_BINDING_ID = 1;
-	private int ENVIRONMENT_BUFFER_BINDING_ID = 2;
-	private int TILEMARKER_BUFFER_BINDING_ID = 3;
-	private int SYSTEMINFO_BUFFER_BINDING_ID = 4;
-	private int CONFIG_BUFFER_BINDING_ID = 5;
-	private int LIGHT_BINNING_BUFFER_BINDING_ID = 6;
-
-	private int MODEL_BUFFER_IN_BINDING_ID = 1;
-	private int VERTEX_BUFFER_OUT_BINDING_ID = 2;
-	private int VERTEX_BUFFER_IN_BINDING_ID = 3;
-	private int TEMP_VERTEX_BUFFER_IN_BINDING_ID = 4;
-	private int TEXTURE_BUFFER_OUT_BINDING_ID = 5;
-	private int TEXTURE_BUFFER_IN_BINDING_ID = 6;
-	private int TEMP_TEXTURE_BUFFER_IN_BINDING_ID = 7;
-	private int NORMAL_BUFFER_OUT_BINDING_ID = 8;
-	private int NORMAL_BUFFER_IN_BINDING_ID = 9;
-	private int TEMP_NORMAL_BUFFER_IN_BINDING_ID = 10;
-
-	private int FLAGS_BUFFER_OUT_BINDING_ID = 11;
-	private int FLAGS_BUFFER_IN_BINDING_ID = 12;
-	private int TEMP_FLAGS_BUFFER_IN_BINDING_ID = 13;
-
 
 	@Inject
 	private Client client;
@@ -167,7 +118,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Inject
 	private PluginManager pluginManager;
 
-	private Uniforms uniforms;
+	@Inject
+	public Uniforms uniforms;
+
+	@Inject
+	private ShaderHandler shaderHandler;
 
 	@Inject
 	public EnvironmentManager environmentManager;
@@ -185,7 +140,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		OPENCL
 	}
 
-	private ComputeMode computeMode = ComputeMode.OPENGL;
+	public ComputeMode computeMode = ComputeMode.OPENGL;
 
 	private Canvas canvas;
 	public AWTContext awtContext;
@@ -193,77 +148,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private GLCapabilities glCapabilities;
 
-	static final String LINUX_VERSION_HEADER =
-		"#version 430\n" +
-			"#extension GL_ARB_compute_shader : require\n" +
-			"#extension GL_ARB_shader_storage_buffer_object : require\n" +
-			"#extension GL_ARB_explicit_attrib_location : require\n";
-	static final String WINDOWS_VERSION_HEADER = "#version 430\n";
-
-	static final Shader PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "vert.glsl")
-		.add(GL_GEOMETRY_SHADER, "geom.glsl")
-		.add(GL_FRAGMENT_SHADER, "frag.glsl");
-
-	static final Shader SHADOW_PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "vert_shadow.glsl")
-		.add(GL_GEOMETRY_SHADER, "geom_depth.glsl")
-		.add(GL_FRAGMENT_SHADER, "frag_depth.glsl");
-
-	static final Shader DETPH_PROGRAM = new Shader()
-			.add(GL_VERTEX_SHADER, "vert_depth.glsl")
-			.add(GL_GEOMETRY_SHADER, "geom_depth.glsl")
-			.add(GL_FRAGMENT_SHADER, "frag_depth.glsl");
-
-	static final Shader COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "comp.glsl");
-
-	static final Shader SMALL_COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "comp.glsl");
-
-	static final Shader UNORDERED_COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "comp_unordered.glsl");
-
-	static final Shader LIGHT_BINNING_COMPUTE_PROGRAM = new Shader()
-		.add(GL_COMPUTE_SHADER, "comp_light_binning.glsl");
-
-	static final Shader UI_PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "vertui.glsl")
-		.add(GL_FRAGMENT_SHADER, "fragui.glsl");
-
-	static final Shader BLOOM_DOWNSAMPLE_PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
-		.add(GL_FRAGMENT_SHADER, "bloom_downsample.glsl");
-
-	static final Shader BLOOM_UPSAMPLE_PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
-		.add(GL_FRAGMENT_SHADER, "bloom_upsample.glsl");
-
-	static final Shader BLOOM_PREFILTER_PROGRAM = new Shader()
-		.add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
-		.add(GL_FRAGMENT_SHADER, "bloom_prefilter.glsl");
-
-	private static final ResourcePath SHADER_PATH = Props
-			.getPathOrDefault("shader-path", () -> path(GpuExtendedPlugin.class))
-			.chroot();
-
 	public boolean enableShadowMapOverlay = false;
 	public boolean enableTileMaskOverlay = false;
 	public boolean showRegionOverlay = false;
 	public boolean showPerformanceOverlay = false;
 	public boolean showLightOverlay = false;
-	private int glProgram;
-	private int glShadowProgram;
-	private int glDepthProgram;
-	private int glComputeProgram;
-	private int glSmallComputeProgram;
-	private int glUnorderedComputeProgram;
-	private int glLightBinningComputeProgram;
-	public int glUiProgram;
-
-	public int glBloomUpsampleProgram;
-	public int glBloomDownsampleProgram;
-	public int glBloomPrefilterProgram;
 
 	private int mainDrawVertexArrayObject;
 	private int mainDrawTempVertexArrayObject;
@@ -519,17 +408,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				setupSyncMode();
 
+				shaderHandler.Initialize();
+				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
+				environmentManager.Initialize();
+
+				eventBus.register(tileMarkerManager);
+
 				initBuffers();
 				initVao();
-				initShaders();
 				initInterfaceTexture();
 				initColorFramebuffer();
 				initShadowMapTexture();
 				initDepthMapTexture();
-
-				eventBus.register(tileMarkerManager);
-				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
-				environmentManager.Initialize();
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -789,176 +679,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		checkGLErrors();
 	}
 
-	private Template createTemplate(int threadCount, int facesPerThread)
-	{
-		//log.debug("Creating shader template with path: {}", SHADER_PATH.toPath().toAbsolutePath());
-		String versionHeader = OSType.getOSType() == OSType.Linux ? LINUX_VERSION_HEADER : WINDOWS_VERSION_HEADER;
-		Template template = new Template()
-			.addInclude("VERSION_HEADER", versionHeader)
-			.define("THREAD_COUNT", threadCount)
-			.define("FACES_PER_THREAD", facesPerThread)
-			.define("SHADOW_MAP_OVERLAY", enableShadowMapOverlay)
-			.define("TILE_MASK_OVERLAY", enableTileMaskOverlay)
-			.addIncludePath(SHADER_PATH);
-
-		return template;
-	}
-
-	public void initShaders() {
-		try
-		{
-			initShaderHotReloading();
-			compileShaders();
-		}
-		catch (ShaderException ex)
-		{
-			throw new RuntimeException(ex);
-		}
-	}
-
-	public void initShaderHotReloading() {
-		SHADER_PATH.watch("\\.(glsl|cl)$", path -> {
-			log.info("Recompiling shaders: {}", path);
-			clientThread.invoke(() -> {
-				try {
-					waitUntilIdle();
-					recompileShaders();
-				} catch (ShaderException | IOException ex) {
-					log.error("Error while recompiling shaders:", ex);
-					stopPlugin();
-				}
-			});
-		});
-	}
-
-	public void waitUntilIdle() {
-		if (computeMode == ComputeMode.OPENCL)
-			openCLManager.finish();
-		glFinish();
-	}
-
-	public void recompileShaders() throws ShaderException, IOException {
-		// Avoid recompiling if we haven't already compiled once
-		if (glProgram == 0)
-			return;
-
-		destroyShaders();
-		compileShaders();
-	}
-
-	private void destroyShaders() {
-		if (glProgram != 0)
-			glDeleteProgram(glProgram);
-		glProgram = 0;
-
-		if (glShadowProgram != 0)
-			glDeleteProgram(glShadowProgram);
-		glShadowProgram = 0;
-
-		if (glUiProgram != 0)
-			glDeleteProgram(glUiProgram);
-		glUiProgram = 0;
-
-		if (computeMode == ComputeMode.OPENGL) {
-			if (glComputeProgram != 0)
-				glDeleteProgram(glComputeProgram);
-			glComputeProgram = 0;
-
-			if (glSmallComputeProgram != 0)
-				glDeleteProgram(glSmallComputeProgram);
-			glSmallComputeProgram = 0;
-
-			if (glUnorderedComputeProgram != 0)
-				glDeleteProgram(glUnorderedComputeProgram);
-			glUnorderedComputeProgram = 0;
-		}
-		else
-		{
-			openCLManager.destroyPrograms();
-		}
-	}
-
-	private void compileShaders() throws ShaderException
-	{
-		Template template = createTemplate(-1, -1);
-		glProgram = PROGRAM.compile(template);
-		glUiProgram = UI_PROGRAM.compile(template);
-		glShadowProgram = SHADOW_PROGRAM.compile(template);
-		glDepthProgram = DETPH_PROGRAM.compile(template);
-		glBloomDownsampleProgram = BLOOM_DOWNSAMPLE_PROGRAM.compile(template);
-		glBloomUpsampleProgram = BLOOM_UPSAMPLE_PROGRAM.compile(template);
-		glBloomPrefilterProgram = BLOOM_PREFILTER_PROGRAM.compile(template);
-
-		if (computeMode == ComputeMode.OPENGL)
-		{
-			glComputeProgram = COMPUTE_PROGRAM.compile(createTemplate(1024, 6));
-			glSmallComputeProgram = SMALL_COMPUTE_PROGRAM.compile(createTemplate(512, 1));
-			glUnorderedComputeProgram = UNORDERED_COMPUTE_PROGRAM.compile(template);
-			glLightBinningComputeProgram = LIGHT_BINNING_COMPUTE_PROGRAM.compile(template);
-		}
-		else if (computeMode == ComputeMode.OPENCL)
-		{
-			openCLManager.init(awtContext);
-		}
-
-		if(uniforms == null)
-		{
-			uniforms = new Uniforms();
-		}
-		else
-		{
-			uniforms.ClearUniforms();
-		}
-
-		uniforms.InitializeShaderUniformsForShader(glProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glUiProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glBloomUpsampleProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glBloomDownsampleProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glBloomPrefilterProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glShadowProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glDepthProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glComputeProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glSmallComputeProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glUnorderedComputeProgram, computeMode);
-		uniforms.InitializeShaderUniformsForShader(glLightBinningComputeProgram, computeMode);
-	}
-
 	private void shutdownProgram()
 	{
 		FileWatcher.destroy();
-
-		glDeleteProgram(glProgram);
-		glProgram = -1;
-
-		glDeleteProgram(glComputeProgram);
-		glComputeProgram = -1;
-
-		glDeleteProgram(glSmallComputeProgram);
-		glSmallComputeProgram = -1;
-
-		glDeleteProgram(glUnorderedComputeProgram);
-		glUnorderedComputeProgram = -1;
-
-		glDeleteProgram(glLightBinningComputeProgram);
-		glLightBinningComputeProgram = -1;
-
-		glDeleteProgram(glUiProgram);
-		glUiProgram = -1;
-
-		glDeleteProgram(glShadowProgram);
-		glShadowProgram = -1;
-
-		glDeleteProgram(glDepthProgram);
-		glDepthProgram = -1;
-
-		glDeleteProgram(glBloomUpsampleProgram);
-		glBloomUpsampleProgram = -1;
-
-		glDeleteProgram(glBloomDownsampleProgram);
-		glBloomDownsampleProgram = -1;
-
-		glDeleteProgram(glBloomPrefilterProgram);
-		glBloomPrefilterProgram = -1;
+	    shaderHandler.cleanup();
 	}
 
 	private void initVao(int vaoHandle)
@@ -1386,15 +1110,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// TODO:: make OpenCL work. This is for Mac.
 
 		// Bind UBO to compute programs
-		glUniformBlockBinding(glSmallComputeProgram, uniforms.GetUniforms(glSmallComputeProgram).BlockSmall, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glSmallComputeProgram, uniforms.GetUniforms(shaderHandler.glSmallComputeProgram).BlockSmall, CAMERA_BUFFER_BINDING_ID);
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 
-		glUniformBlockBinding(glComputeProgram, uniforms.GetUniforms(glComputeProgram).BlockLarge, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glComputeProgram, uniforms.GetUniforms(shaderHandler.glComputeProgram).BlockLarge, CAMERA_BUFFER_BINDING_ID);
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 
-		dispatchModelSortingComputeShader(glUnorderedComputeProgram, unorderedModels, tmpModelBufferUnordered);
-		dispatchModelSortingComputeShader(glSmallComputeProgram, smallModels, tmpModelBufferSmall);
-		dispatchModelSortingComputeShader(glComputeProgram, largeModels, tmpModelBufferLarge);
+		dispatchModelSortingComputeShader(shaderHandler.glUnorderedComputeProgram, unorderedModels, tmpModelBufferUnordered);
+		dispatchModelSortingComputeShader(shaderHandler.glSmallComputeProgram, smallModels, tmpModelBufferSmall);
+		dispatchModelSortingComputeShader(shaderHandler.glComputeProgram, largeModels, tmpModelBufferLarge);
 
 		checkGLErrors();
 	}
@@ -1421,39 +1145,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_FLAGS_BUFFER_IN_BINDING_ID, tmpFlagsBuffer.glBufferId); // tempflagsbuffer_in
 
 		glDispatchCompute(models, 1, 1);
-	}
-
-	public void dispatchModelSortingComputeForMacOS()
-	{
-//		if (computeMode == ComputeMode.OPENCL)
-//		{
-//			// The docs for clEnqueueAcquireGLObjects say all pending GL operations must be completed before calling
-//			// clEnqueueAcquireGLObjects, and recommends calling glFinish() as the only portable way to do that.
-//			// However no issues have been observed from not calling it, and so will leave disabled for now.
-//			// glFinish();
-//
-//			openCLManager.compute
-//			(
-//				unorderedModels,
-//				smallModels,
-//				largeModels,
-//				sceneVertexBuffer,
-//				sceneUvBuffer,
-//				sceneNormalBuffer,
-//				tmpVertexBuffer,
-//				tmpUvBuffer,
-//				tmpModelBufferUnordered,
-//				tmpModelBufferSmall,
-//				tmpModelBufferLarge,
-//				renderVertexBuffer,
-//				renderUvBuffer,
-//				renderNormalBuffer,
-//				uniformBuffer
-//			);
-//
-//			checkGLErrors();
-//			return;
-//		}
 	}
 
 	private void prepareInterfaceTexture(int canvasWidth, int canvasHeight)
@@ -2010,9 +1701,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, lightClearValue);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
 
-		glUseProgram(glLightBinningComputeProgram);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glLightBinningComputeProgram);
-		glUniformBlockBinding(glLightBinningComputeProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glUseProgram(shaderHandler.glLightBinningComputeProgram);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glLightBinningComputeProgram);
+		glUniformBlockBinding(shaderHandler.glLightBinningComputeProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
 
 		glDispatchCompute(EXTENDED_SCENE_SIZE / 8, EXTENDED_SCENE_SIZE / 8, MAX_Z);
 		glUseProgram(0);
@@ -2040,9 +1731,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glUseProgram(glProgram);
+		glUseProgram(shaderHandler.glProgram);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glProgram);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glProgram);
 
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
@@ -2064,12 +1755,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindTexture(GL_TEXTURE_3D, tileMarkerManager.roofMaskTexture.getId());
 		glUniform1i(uni.RoofMaskTextureMap, 6);
 
-		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
@@ -2121,8 +1812,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBindVertexArray(vaoUiHandle);
 
 			// Prefilter
-			glUseProgram(glBloomPrefilterProgram);
-			Uniforms.ShaderVariables uniP = uniforms.GetUniforms(glBloomPrefilterProgram);
+			glUseProgram(shaderHandler.glBloomPrefilterProgram);
+			Uniforms.ShaderVariables uniP = uniforms.GetUniforms(shaderHandler.glBloomPrefilterProgram);
 			glActiveTexture(GL_TEXTURE1);
 
 			glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
@@ -2135,8 +1826,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bloomFramebuffer.generateMipmaps();
 			bloomFramebuffer.bind();
 			// Downsample
-			glUseProgram(glBloomDownsampleProgram);
-			Uniforms.ShaderVariables uniB = uniforms.GetUniforms(glBloomDownsampleProgram);
+			glUseProgram(shaderHandler.glBloomDownsampleProgram);
+			Uniforms.ShaderVariables uniB = uniforms.GetUniforms(shaderHandler.glBloomDownsampleProgram);
 
 			glActiveTexture(GL_TEXTURE1);
 			glUniform1i(uniB.SourceTexture, 1);
@@ -2162,8 +1853,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			// ---
 
 			// Upsample
-			glUseProgram(glBloomUpsampleProgram);
-			Uniforms.ShaderVariables uniU = uniforms.GetUniforms(glBloomUpsampleProgram);
+			glUseProgram(shaderHandler.glBloomUpsampleProgram);
+			Uniforms.ShaderVariables uniU = uniforms.GetUniforms(shaderHandler.glBloomUpsampleProgram);
 
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
@@ -2203,15 +1894,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glDepthFunc(GL_LEQUAL);
 
-		glUseProgram(glShadowProgram);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glShadowProgram);
+		glUseProgram(shaderHandler.glShadowProgram);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glShadowProgram);
 
-		glUniformBlockBinding(glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glUniformBlockBinding(glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
 		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
@@ -2233,8 +1924,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// Use the texture bound in the first pass
 		final UIScalingMode uiScalingMode = config.uiScalingMode();
 
-		glUseProgram(glUiProgram);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(glUiProgram);
+		glUseProgram(shaderHandler.glUiProgram);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glUiProgram);
 
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, colorFramebuffer.getTexture().getId());

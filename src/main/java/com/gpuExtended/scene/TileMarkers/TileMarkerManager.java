@@ -7,8 +7,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.regions.Area;
-import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.rendering.Texture3D;
 import com.gpuExtended.scene.EnvironmentManager;
@@ -32,11 +30,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
+import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Constants.MAX_Z;
 import static net.runelite.api.Constants.TILE_FLAG_UNDER_ROOF;
 import static org.lwjgl.opengl.GL11C.*;
-import static org.lwjgl.opengl.GL12C.*;
+import static org.lwjgl.opengl.GL12C.GL_CLAMP_TO_EDGE;
 
 @Slf4j
 @Singleton

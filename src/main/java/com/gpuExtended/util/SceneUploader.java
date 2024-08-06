@@ -4,10 +4,8 @@ package com.gpuExtended.util;
 import com.google.common.base.Stopwatch;
 
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -24,8 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 
-import static com.gpuExtended.GpuExtendedPlugin.SCENE_OFFSET;
-import static com.gpuExtended.util.ConstantVariables.*;
+import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Constants.*;
 
 @Singleton
@@ -572,7 +569,7 @@ public class SceneUploader
 									  boolean isStatic,
 									  ArrayListMultimap<Vector3, Integer> sharedVertexMap)
 	{
-		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
+		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
 		vertexBuffer.ensureCapacity(triCount * 12);
 		normalBuffer.ensureCapacity(triCount * 12);
 		uvBuffer.ensureCapacity(triCount * 12);

@@ -3,6 +3,7 @@ package com.gpuExtended.overlays;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.ShaderException;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -40,6 +41,9 @@ public class ShadowMapOverlay extends Overlay {
     @Inject
     private GpuExtendedPlugin plugin;
 
+    @Inject
+    private ShaderHandler shaderHandler;
+
     private boolean isActive;
 
     public ShadowMapOverlay() {
@@ -66,7 +70,7 @@ public class ShadowMapOverlay extends Overlay {
 
         clientThread.invoke(() -> {
             try {
-                plugin.recompileShaders();
+                shaderHandler.Recompile();
             } catch (IOException | ShaderException ex) {
                 log.error("Error while recompiling shaders:", ex);
                 plugin.stopPlugin();
@@ -77,8 +81,8 @@ public class ShadowMapOverlay extends Overlay {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
-            glUseProgram(plugin.glUiProgram);
-            int uniBounds = glGetUniformLocation(plugin.glUiProgram, "shadowMapOverlayDimensions");
+            glUseProgram(shaderHandler.glUiProgram);
+            int uniBounds = glGetUniformLocation(shaderHandler.glUiProgram, "shadowMapOverlayDimensions");
             if (uniBounds != -1)
                 glUniform4i(uniBounds, 0, 0, 0, 0);
         }
@@ -89,15 +93,15 @@ public class ShadowMapOverlay extends Overlay {
         var bounds = getBounds();
 
         clientThread.invoke(() -> {
-            if (plugin.glUiProgram == 0) {
+            if (shaderHandler.glUiProgram == 0) {
                 log.error("ShadowMapOverlay: glUiProgram is 0");
                 return;
             }
-            glUseProgram(plugin.glUiProgram);
-            int uniShadowMap = glGetUniformLocation(plugin.glUiProgram, "shadowMap");
+            glUseProgram(shaderHandler.glUiProgram);
+            int uniShadowMap = glGetUniformLocation(shaderHandler.glUiProgram, "shadowMap");
             glUniform1i(uniShadowMap, 2);
 
-            int uniBounds = glGetUniformLocation(plugin.glUiProgram, "shadowMapOverlayDimensions");
+            int uniBounds = glGetUniformLocation(shaderHandler.glUiProgram, "shadowMapOverlayDimensions");
             if (uniBounds != -1) {
                 if (client.getGameState().getState() < GameState.LOGGED_IN.getState()) {
                     glUniform4i(uniBounds, 0, 0, 0, 0);
