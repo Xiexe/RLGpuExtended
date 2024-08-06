@@ -90,7 +90,7 @@ vec4 sampleUiTexture()
 // Function to adjust saturation
 vec3 adjustSaturation(vec3 color, float saturation) {
   // Convert RGB to grayscale by calculating luminance
-  float gray = dot(color, vec3(0.299, 0.587, 0.114));
+  float gray = dot(color, vec3(0.2126f, 0.7152f, 0.0722f));
   // Linearly interpolate between the grayscale value and the original color
   return mix(vec3(gray), color, saturation);
 }
@@ -112,10 +112,10 @@ int combine16(int upper, int lower) {
 
 void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff, int isEmissive)
 {
-  image = reinhard2(image);
-  image = adjustBrightness(image, 1);
-  image = adjustContrast(image, 1.1);
-  image = adjustSaturation(image, 1.2);
+  image = agx(image);
+  image = adjustBrightness(image, 1.2);
+  image = adjustContrast(image, 1.4);
+  image = adjustSaturation(image, 1.1);
 
   if (colorBlindMode > 0) {
     image = colorblind(colorBlindMode, image);
@@ -140,12 +140,13 @@ void main() {
 //    }
 //  #endif
 
-  vec4 frag = sampleMainColor();
+  vec4 mainColor = sampleMainColor();
   vec4 bloom = sampleBloom();
-  vec3 composite = frag.rgb + bloom.rgb;
+  vec4 ui = sampleUiTexture();
+
+  vec3 composite = mainColor.rgb + bloom.rgb;
   PostProcessImage(composite, colorBlindMode, 0.0, 0);
 
-  vec4 uiFrag = sampleUiTexture();
-  composite.rgb = mix(composite.rgb, uiFrag.rgb, uiFrag.a);
+  composite.rgb = mix(composite.rgb, ui.rgb, ui.a);
   FragColor = vec4(composite, 1);
 }

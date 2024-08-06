@@ -87,7 +87,7 @@ float GetShadowMap(vec3 fragPos, float ndl) {
     }
 }
 
-void AnimateLight(inout Light light)
+void AnimateLight(inout Light light, inout float bandWidth)
 {
     if(light.animation == LIGHT_ANIM_NONE) return;
     float hash = light.offset.w / 2000;
@@ -116,6 +116,17 @@ int getLightBinIndex(int binSubIndex, int tileX, int tileY, int tileZ)
         tileX * EXTENDED_SCENE_SIZE * MAX_Z_HEIGHT * (LIGHTS_PER_TILE+1);
 }
 
+vec3 imaBandEdge(float bandDistance, float distToLight)
+{
+    vec3 band = vec3(0);
+    if(distToLight > bandDistance * 0.999 && distToLight < bandDistance * 1.001)
+    {
+        band = vec3(1,0,1);
+    }
+
+    return band;
+}
+
 void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec3 normal, vec3 fragPos)
 {
     int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
@@ -123,6 +134,7 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
 //    //    image = mix(image, vec3(1), lightDebug);
 //    image = lightDebug;
 
+//    image = vec3(0);
     if(numLights == 0) return;
 
     for(int binIndex = 0; binIndex < numLights; binIndex++)
@@ -138,13 +150,23 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
             toLight = normalize(toLight);
             toLight.z = -toLight.z;
 
-            AnimateLight(light);
-            float atten = LightAttenuation(distToLight, light.radius);
+
+            float bandWidth = 0.04f * light.radius;
+            AnimateLight(light, bandWidth);
+
             if((smoothBanding > 0))
             {
-                atten = round(atten * 10) / 10;
+//                for(int i = 0; i < floor(light.radius / bandWidth); i++)
+//                {
+//                    image += imaBandEdge(i*bandWidth, distToLight);
+//                }
+
+                distToLight /= bandWidth;
+                distToLight = floor(distToLight) * bandWidth;
             }
 
+
+            float atten = LightAttenuation(distToLight, light.radius);
             float ndl = max(dot(normal.xzy, toLight), 0);
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
         }

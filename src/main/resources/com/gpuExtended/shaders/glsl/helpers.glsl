@@ -72,7 +72,7 @@ void PopulateSurfaceColor(inout Surface s)
 
         if(CheckIsUnlitTexture(fTextureId))
         {
-            textureColor.rgb *= 2;
+            textureColor.rgb *= 2.2;
         }
         else
         {
@@ -169,8 +169,8 @@ void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, f
             (tileUv.y > 1.0 - outlineWidth && tileUv.x > 1.0 - cornerLength)
         );
 
-        image = mix(image, fillColor.rgb * 1.5, fillColor.a * float(!isBorder));
-        image = mix(image, outlineColor.rgb * 1.5, outlineColor.a * float(isBorder));
+        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder));
+        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder));
     }
 }
 
@@ -215,11 +215,11 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
             );
             if (isBorder)
             {
-                image = mix(image, borderColor.rgb * 1.5, borderColor.a);
+                image = mix(image, borderColor.rgb, borderColor.a);
             }
             else
             {
-                image = mix(image, fillColor.rgb * 1.5, fillColor.a);
+                image = mix(image, fillColor.rgb, fillColor.a);
             }
         }
     }
