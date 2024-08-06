@@ -29,6 +29,11 @@ uniform ivec4 tileMaskOverlayDimensions;
 #include "scale/bicubic.glsl"
 #include "scale/xbr_lv2_frag.glsl"
 #include "shaders/glsl/colorblind.glsl"
+#include "shaders/glsl/tonemapping/aces.glsl"
+#include "shaders/glsl/tonemapping/agx.glsl"
+#include "shaders/glsl/tonemapping/filmic.glsl"
+#include "shaders/glsl/tonemapping/neutral.glsl"
+#include "shaders/glsl/tonemapping/reinhard2.glsl"
 
 in vec2 TexCoord;
 in XBRTable xbrTable;
@@ -82,24 +87,6 @@ vec4 sampleUiTexture()
   return frag;
 }
 
-vec3 ACESFitted(vec3 color)
-{
-  // ACES fitted curve constants
-  const float a = 2.51;
-  const float b = 0.03;
-  const float c = 2.43;
-  const float d = 0.59;
-  const float e = 0.14;
-
-  return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
-}
-
-vec3 ReinhardTonemap(vec3 color, float exposure)
-{
-  color *= exposure;
-  return color / (color + vec3(1.0));
-}
-
 // Function to adjust saturation
 vec3 adjustSaturation(vec3 color, float saturation) {
   // Convert RGB to grayscale by calculating luminance
@@ -125,10 +112,10 @@ int combine16(int upper, int lower) {
 
 void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff, int isEmissive)
 {
-  image = adjustBrightness(image, 0.65);
-  image = ACESFitted(image);
-  image = adjustContrast(image, 1.3);
-  image = adjustSaturation(image, 1.1);
+  image = reinhard2(image);
+  image = adjustBrightness(image, 1);
+  image = adjustContrast(image, 1.1);
+  image = adjustSaturation(image, 1.2);
 
   if (colorBlindMode > 0) {
     image = colorblind(colorBlindMode, image);

@@ -140,6 +140,11 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
 
             AnimateLight(light);
             float atten = LightAttenuation(distToLight, light.radius);
+            if((smoothBanding > 0))
+            {
+                atten = round(atten * 10) / 10;
+            }
+
             float ndl = max(dot(normal.xzy, toLight), 0);
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
         }
