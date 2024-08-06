@@ -81,8 +81,8 @@ public class ShadowMapOverlay extends Overlay {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
-            glUseProgram(shaderHandler.glUiProgram);
-            int uniBounds = glGetUniformLocation(shaderHandler.glUiProgram, "shadowMapOverlayDimensions");
+            glUseProgram(shaderHandler.uiShader.id());
+            int uniBounds = glGetUniformLocation(shaderHandler.uiShader.id(), "shadowMapOverlayDimensions");
             if (uniBounds != -1)
                 glUniform4i(uniBounds, 0, 0, 0, 0);
         }
@@ -93,15 +93,15 @@ public class ShadowMapOverlay extends Overlay {
         var bounds = getBounds();
 
         clientThread.invoke(() -> {
-            if (shaderHandler.glUiProgram == 0) {
+            if (shaderHandler.uiShader.id() == 0) {
                 log.error("ShadowMapOverlay: glUiProgram is 0");
                 return;
             }
-            glUseProgram(shaderHandler.glUiProgram);
-            int uniShadowMap = glGetUniformLocation(shaderHandler.glUiProgram, "shadowMap");
+            glUseProgram(shaderHandler.uiShader.id());
+            int uniShadowMap = glGetUniformLocation(shaderHandler.uiShader.id(), "shadowMap");
             glUniform1i(uniShadowMap, 2);
 
-            int uniBounds = glGetUniformLocation(shaderHandler.glUiProgram, "shadowMapOverlayDimensions");
+            int uniBounds = glGetUniformLocation(shaderHandler.uiShader.id(), "shadowMapOverlayDimensions");
             if (uniBounds != -1) {
                 if (client.getGameState().getState() < GameState.LOGGED_IN.getState()) {
                     glUniform4i(uniBounds, 0, 0, 0, 0);

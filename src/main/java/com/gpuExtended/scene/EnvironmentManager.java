@@ -163,7 +163,7 @@ public class EnvironmentManager
                         }
                     }
                     areaMap.put(bounds, area);
-                    log.info("Loaded area: " + area.getName() + " with bounds: " + bounds);
+                    //log.info("Loaded area: " + area.getName() + " with bounds: " + bounds);
                 }
             }
         } catch (Exception e) {

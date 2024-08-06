@@ -226,7 +226,7 @@ public class Light
         if(template.projectiles != null)
             light.projectiles = template.projectiles.clone();
 
-        light.InitShadowMap(awtContext);
+        //light.InitShadowMap(awtContext);
         return light;
     }
 

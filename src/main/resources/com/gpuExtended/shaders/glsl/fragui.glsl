@@ -77,7 +77,7 @@ vec4 sampleUiTexture()
 
     default:
     {
-        frag = texture(interfaceTexture, TexCoord);
+      frag = texture(interfaceTexture, TexCoord);
       break;
     }
   }

@@ -120,4 +120,12 @@ public class FrameBuffer {
         texture.generateMipmaps();
         unbind();
     }
+
+    public void clearFramebuffer()
+    {
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.id);
+        GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.awtContext.getFramebuffer(false));
+    }
 }

@@ -80,8 +80,8 @@ public class SceneTileMaskOverlay extends Overlay {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
-            glUseProgram(shaderHandler.glUiProgram);
-            int uniBounds = glGetUniformLocation(shaderHandler.glUiProgram, "tileMaskOverlayDimensions");
+            glUseProgram(shaderHandler.uiShader.id());
+            int uniBounds = glGetUniformLocation(shaderHandler.uiShader.id(), "tileMaskOverlayDimensions");
             if (uniBounds != -1)
                 glUniform4i(uniBounds, 0, 0, 0, 0);
         }
@@ -92,15 +92,15 @@ public class SceneTileMaskOverlay extends Overlay {
         var bounds = getBounds();
 
         clientThread.invoke(() -> {
-            if (shaderHandler.glUiProgram == 0) {
+            if (shaderHandler.uiShader.id() == 0) {
                 log.error("TileMaskOverlay: glUiProgram is 0");
                 return;
             }
-            glUseProgram(shaderHandler.glUiProgram);
-            int uniTileMask = glGetUniformLocation(shaderHandler.glUiProgram, "tileMask");
+            glUseProgram(shaderHandler.uiShader.id());
+            int uniTileMask = glGetUniformLocation(shaderHandler.uiShader.id(), "tileMask");
             glUniform1i(uniTileMask, 3);
 
-            int uniBounds = glGetUniformLocation(shaderHandler.glUiProgram, "tileMaskOverlayDimensions");
+            int uniBounds = glGetUniformLocation(shaderHandler.uiShader.id(), "tileMaskOverlayDimensions");
             if (uniBounds != -1) {
                 if (client.getGameState().getState() < GameState.LOGGED_IN.getState()) {
                     glUniform4i(uniBounds, 0, 0, 0, 0);

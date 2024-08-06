@@ -896,8 +896,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
@@ -1110,15 +1110,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// TODO:: make OpenCL work. This is for Mac.
 
 		// Bind UBO to compute programs
-		glUniformBlockBinding(shaderHandler.glSmallComputeProgram, uniforms.GetUniforms(shaderHandler.glSmallComputeProgram).BlockSmall, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.smallOrderedComputeShader.id(), uniforms.GetUniforms(shaderHandler.smallOrderedComputeShader.id()).BlockSmall, CAMERA_BUFFER_BINDING_ID);
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 
-		glUniformBlockBinding(shaderHandler.glComputeProgram, uniforms.GetUniforms(shaderHandler.glComputeProgram).BlockLarge, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.largeOrderedComputeShader.id(), uniforms.GetUniforms(shaderHandler.largeOrderedComputeShader.id()).BlockLarge, CAMERA_BUFFER_BINDING_ID);
 		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
 
-		dispatchModelSortingComputeShader(shaderHandler.glUnorderedComputeProgram, unorderedModels, tmpModelBufferUnordered);
-		dispatchModelSortingComputeShader(shaderHandler.glSmallComputeProgram, smallModels, tmpModelBufferSmall);
-		dispatchModelSortingComputeShader(shaderHandler.glComputeProgram, largeModels, tmpModelBufferLarge);
+		dispatchModelSortingComputeShader(shaderHandler.unorderedComputeShader.id(), unorderedModels, tmpModelBufferUnordered);
+		dispatchModelSortingComputeShader(shaderHandler.smallOrderedComputeShader.id(), smallModels, tmpModelBufferSmall);
+		dispatchModelSortingComputeShader(shaderHandler.largeOrderedComputeShader.id(), largeModels, tmpModelBufferLarge);
 
 		checkGLErrors();
 	}
@@ -1247,28 +1247,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		lastAntiAliasingMode = antiAliasingMode;
+		glClearColor(0, 0, 0, 1f);
+		colorFramebuffer.clearFramebuffer();
+		bloomFramebuffer.clearFramebuffer();
 
-		Environment env = environmentManager.GetCurrentEnvironment();
-		if(gameState.getState() == GameState.LOGIN_SCREEN.getState())
-		{
-			glClearColor(0, 0, 0, 1f);
-		}
-		else if(gameState.getState() == GameState.LOGGED_IN.getState())
-		{
-			glClearColor(env.SkyColor.getRed() / 255f, env.SkyColor.getGreen() / 255f, env.SkyColor.getBlue() / 255f, 1f);
-		}
-
-		// Draw 3d scene
 		if (gameState.getState() >= GameState.LOADING.getState())
 		{
-			long currentTime = System.currentTimeMillis();
-			DeltaTime = (currentTime - LastTime) / 1000.0f;
-			Time = currentTime - StartTime;
-			LastTime = currentTime;
-
-			environmentManager.Update(DeltaTime);
-			updateUniformBlocks();
-
+			//<editor-fold defaultstate="collapsed" desc="Set up misc frame data">
 			int renderWidthOff = viewportOffsetX;
 			int renderHeightOff = viewportOffsetY;
 			int renderCanvasHeight = canvasHeight;
@@ -1311,6 +1296,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				tileMarkerManager.InitializeSceneRoofMask(client.getScene());
 				environmentManager.LoadSceneLights(client.getScene());
 			}
+			// </editor-fold>
+
+			long currentTime = System.currentTimeMillis();
+			DeltaTime = (currentTime - LastTime) / 1000.0f;
+			Time = currentTime - StartTime;
+			LastTime = currentTime;
+
+			environmentManager.Update(DeltaTime);
+			updateUniformBlocks();
 
 			glBindVertexArray(mainDrawVertexArrayObject);
 			drawShadowPass();
@@ -1701,19 +1695,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, lightClearValue);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
 
-		glUseProgram(shaderHandler.glLightBinningComputeProgram);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glLightBinningComputeProgram);
-		glUniformBlockBinding(shaderHandler.glLightBinningComputeProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glUseProgram(shaderHandler.lightBinningComputeShader.id());
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.lightBinningComputeShader.id());
+		glUniformBlockBinding(shaderHandler.lightBinningComputeShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
 
 		glDispatchCompute(EXTENDED_SCENE_SIZE / 8, EXTENDED_SCENE_SIZE / 8, MAX_Z);
 		glUseProgram(0);
 	}
 
 	private void drawMainPass() {
-		if (client.getGameState().getState() != GameState.LOGGED_IN.getState()) {
-			return;
-		}
-
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
 		if (colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3]) {
 			int bloomWidth = Math.min(1920, currentViewport[2]);
@@ -1729,11 +1719,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
 		colorFramebuffer.bind();
 
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		glUseProgram(shaderHandler.glProgram);
+		glUseProgram(shaderHandler.mainPassShader.id());
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glProgram);
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.mainPassShader.id());
 
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
@@ -1755,12 +1743,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindTexture(GL_TEXTURE_3D, tileMarkerManager.roofMaskTexture.getId());
 		glUniform1i(uni.RoofMaskTextureMap, 6);
 
-		glUniformBlockBinding(shaderHandler.glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
@@ -1812,8 +1800,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBindVertexArray(vaoUiHandle);
 
 			// Prefilter
-			glUseProgram(shaderHandler.glBloomPrefilterProgram);
-			Uniforms.ShaderVariables uniP = uniforms.GetUniforms(shaderHandler.glBloomPrefilterProgram);
+			glUseProgram(shaderHandler.bloomPrefilterShader.id());
+			Uniforms.ShaderVariables uniP = uniforms.GetUniforms(shaderHandler.bloomPrefilterShader.id());
 			glActiveTexture(GL_TEXTURE1);
 
 			glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
@@ -1826,8 +1814,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bloomFramebuffer.generateMipmaps();
 			bloomFramebuffer.bind();
 			// Downsample
-			glUseProgram(shaderHandler.glBloomDownsampleProgram);
-			Uniforms.ShaderVariables uniB = uniforms.GetUniforms(shaderHandler.glBloomDownsampleProgram);
+			glUseProgram(shaderHandler.bloomDownsampleShader.id());
+			Uniforms.ShaderVariables uniB = uniforms.GetUniforms(shaderHandler.bloomDownsampleShader.id());
 
 			glActiveTexture(GL_TEXTURE1);
 			glUniform1i(uniB.SourceTexture, 1);
@@ -1853,8 +1841,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			// ---
 
 			// Upsample
-			glUseProgram(shaderHandler.glBloomUpsampleProgram);
-			Uniforms.ShaderVariables uniU = uniforms.GetUniforms(shaderHandler.glBloomUpsampleProgram);
+			glUseProgram(shaderHandler.bloomUpsampleShader.id());
+			Uniforms.ShaderVariables uniU = uniforms.GetUniforms(shaderHandler.bloomUpsampleShader.id());
 
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
@@ -1862,7 +1850,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
 			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
 
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId(), 0);
 			// ---
@@ -1894,15 +1881,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glDepthFunc(GL_LEQUAL);
 
-		glUseProgram(shaderHandler.glShadowProgram);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glShadowProgram);
+		glUseProgram(shaderHandler.shadowPassShader.id());
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.shadowPassShader.id());
 
-		glUniformBlockBinding(shaderHandler.glProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.glProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
 		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
@@ -1924,8 +1911,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// Use the texture bound in the first pass
 		final UIScalingMode uiScalingMode = config.uiScalingMode();
 
-		glUseProgram(shaderHandler.glUiProgram);
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.glUiProgram);
+		glUseProgram(shaderHandler.uiShader.id());
+		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.uiShader.id());
 
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, colorFramebuffer.getTexture().getId());

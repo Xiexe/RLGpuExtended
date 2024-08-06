@@ -39,6 +39,8 @@ import org.lwjgl.opengl.GL43C;
 @Slf4j
 public class Shader
 {
+	private int id;
+
 	private String shaderResourcePath;
 
 	@VisibleForTesting
@@ -61,7 +63,7 @@ public class Shader
 		return this;
 	}
 
-	public int compile(Template template) throws ShaderException
+	public void compile(Template template) throws ShaderException
 	{
 		int program = GL43C.glCreateProgram();
 		int[] shaders = new int[units.size()];
@@ -128,6 +130,19 @@ public class Shader
 			}
 		}
 
-		return program;
+		id = program;
+	}
+
+	public int id()
+	{
+		return this.id;
+	}
+
+	public void destroy()
+	{
+		if(id != 0) {
+			GL43C.glDeleteProgram(id);
+			id = 0;
+		}
 	}
 }

@@ -80,7 +80,7 @@
     "type": "point",
     "color": [1.00, 0.7, 0.00],
     "offset": [0, 0, 0.5],
-    "intensity": 3,
+    "intensity": 0.5,
     "radius": 6,
     "animation": "flicker",
     "gameObjects": [
