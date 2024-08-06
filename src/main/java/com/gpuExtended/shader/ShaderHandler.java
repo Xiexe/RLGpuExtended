@@ -81,18 +81,6 @@ public class ShaderHandler {
 
     private ArrayList<Shader> compiledShaders = new ArrayList<>();
 
-//    public int mainPassShader;
-//    public int shadowPassShader;
-//    public int depthPassShader;
-//    public int uiShader;
-//    public int largeOrderedComputeShader;
-//    public int smallOrderedComputeShader;
-//    public int unorderedComputeShader;
-//    public int lightBinningComputeShader;
-//    public int bloomPrefilterShader;
-//    public int bloomDownsampleShader;
-//    public int bloomUpsampleShader;
-
     @Inject
     private GpuExtendedPlugin plugin;
     @Inject

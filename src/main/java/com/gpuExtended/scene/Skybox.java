@@ -4,6 +4,8 @@ import com.google.inject.Inject;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.shader.ShaderHandler;
+import com.gpuExtended.shader.Uniforms;
+import lombok.extern.slf4j.Slf4j;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -11,6 +13,12 @@ import org.lwjgl.opengl.GL30;
 
 import java.nio.FloatBuffer;
 
+import static com.gpuExtended.util.constants.Variables.*;
+import static org.lwjgl.opengl.GL11C.glDisable;
+import static org.lwjgl.opengl.GL11C.glEnable;
+import static org.lwjgl.opengl.GL31C.glUniformBlockBinding;
+
+@Slf4j
 public class Skybox {
 
     @Inject
@@ -19,10 +27,7 @@ public class Skybox {
     @Inject
     private GpuExtendedConfig config;
 
-    @Inject
-    private ShaderHandler shaderHandler;
-
-    private int vao;
+    public int vao;
     public void Initialize() {
         float[] skyboxVertices = {
                 // Positions
@@ -86,22 +91,26 @@ public class Skybox {
         GL30.glBindVertexArray(0);
     }
 
-    public void renderSkybox(float[] projectionMatrix, float[] viewMatrix, float[] skyColor) {
-//        GL20.glUseProgram(shaderHandler.getSkyboxShader());
-//
-//        int projectionLoc = GL20.glGetUniformLocation(shaderProgram, "projection");
-//        GL20.glUniformMatrix4fv(projectionLoc, false, projectionMatrix);
-//
-//        int viewLoc = GL20.glGetUniformLocation(shaderProgram, "view");
-//        GL20.glUniformMatrix4fv(viewLoc, false, viewMatrix);
-//
-//        int skyColorLoc = GL20.glGetUniformLocation(shaderProgram, "skyColor");
-//        GL20.glUniform3f(skyColorLoc, skyColor[0], skyColor[1], skyColor[2]);
-//
-//        GL30.glBindVertexArray(vao);
-//        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 36);
-//        GL30.glBindVertexArray(0);
-//
-//        GL20.glUseProgram(0);
+    public void Render() {
+        int skyboxShader = plugin.shaderHandler.skyboxShader.id();
+        Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(skyboxShader);
+
+        if(uni == null)
+        {
+            log.info("Skybox shader uniforms not found: {}", skyboxShader);
+            return;
+        }
+
+        GL20.glUseProgram(skyboxShader);
+
+        glUniformBlockBinding(skyboxShader, uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(skyboxShader, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(skyboxShader, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+        glUniformBlockBinding(skyboxShader, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+        int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        GL30.glBindVertexArray(vao);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 36);
+        GL30.glBindVertexArray(lastVertexArray);
     }
 }

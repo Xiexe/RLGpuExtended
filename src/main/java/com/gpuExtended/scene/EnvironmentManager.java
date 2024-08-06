@@ -101,6 +101,7 @@ public class EnvironmentManager
     public HashMap<GameObject, Light> gameObjectLightHashMap = new HashMap<>();
 
     public void Initialize() {
+        plugin.skybox.Initialize();
         environments = new Environment[0];
         areas = new Area[0];
 
@@ -130,6 +131,11 @@ public class EnvironmentManager
         if(currentEnvironment.isTransitioning) {
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
         }
+    }
+
+    public void RenderSkybox()
+    {
+        plugin.skybox.Render();
     }
 
     public void LoadAreas()

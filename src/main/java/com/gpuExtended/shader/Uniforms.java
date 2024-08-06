@@ -1,11 +1,13 @@
 package com.gpuExtended.shader;
 
 import com.gpuExtended.GpuExtendedPlugin;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 
 import static org.lwjgl.opengl.GL43C.*;
 
+@Slf4j
 public class Uniforms
 { // A.K.A. Global Shader Variables
     public static class ShaderVariables
@@ -105,6 +107,17 @@ public class Uniforms
 
     public ShaderVariables GetUniforms(int shader)
     {
+        if(map == null)
+        {
+            return null;
+        }
+
+        if(!map.containsKey(shader))
+        {
+            log.info("Shader uniforms not found");
+            return null;
+        }
+
         return map.get(shader);
     }
 }

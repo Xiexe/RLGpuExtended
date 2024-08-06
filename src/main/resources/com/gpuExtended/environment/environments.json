@@ -66,14 +66,14 @@
     "LightColor":   [0.1, 0.1, 0.1, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
-    "FogDepth": 90,
+    "FogDepth": 70,
     "Type": 0
   },
   {
     "Name": "SWAMP",
-    "SkyColor":     [0.1, 0.15, 0.12, 1.00],
-    "AmbientColor": [0.4, 0.4, 0.4, 1.00],
-    "LightColor":   [0.1, 0.1, 0.1, 1.00],
+    "SkyColor":     [0.1, 0.15, 0.1, 1.00],
+    "AmbientColor": [0.4, 0.5, 0.4, 1.00],
+    "LightColor":   [0.2, 0.2, 0.2, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
     "FogDepth": 70,

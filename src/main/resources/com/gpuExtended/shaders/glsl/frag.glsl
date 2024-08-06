@@ -96,13 +96,14 @@ void main() {
 
     vec3 litFragment = s.albedo.rgb * ((mainLight.color.rgb) * ((shadowMapSampled * ndl)) + (ambientColor.rgb));
 
+    float normalizedFogDistance = (fogDepth / drawDistance);
     float maxDistance = drawDistance * TILE_SIZE;
-    float fogStart = maxDistance * (1.0 - (fogDepth / drawDistance));
-    float fogFalloff = maxDistance * (1.0 - (fogDepth / drawDistance) * 0.5); // Adjust the 0.9 to control the range of falloff
+    float fogStart = maxDistance * (1.0 - normalizedFogDistance);
+    float fogFalloff = maxDistance * (1.0 - normalizedFogDistance) * normalizedFogDistance * 2;
     float fogEnd = fogStart + fogFalloff;
     float distanceFog = smoothstep(fogStart, fogEnd, distanceToCamera);
 
-    float fog = distanceFog;
+    float fog = max(distanceFog, fFogAmount);
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
 
     ApplyAdditiveLighting(finalColor, flags, s.albedo.rgb, s.normal.xyz, fPosition);

@@ -4,12 +4,12 @@
 #include "shaders/glsl/structs.glsl"
 #include "shaders/glsl/uniforms.glsl"
 
-layout (location = 0) in vec3 aPos;
+layout (location = 0) in vec3 vPos;
 
 out vec3 TexCoords;
 
 void main() {
-    TexCoords = aPos;
-    vec4 pos = cameraProjectionMatrix * vec4(aPos, 1.0);
-    gl_Position = pos.xyww; // Make sure the w component is 1.0 to create an infinite cube
+    TexCoords = vPos;
+    vec4 pos = cameraProjectionMatrix * vec4(cameraPosition.xyz + vPos * 128 * 10, 1.0);
+    gl_Position = pos;
 }

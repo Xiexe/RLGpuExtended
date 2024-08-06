@@ -17,6 +17,7 @@ import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.scene.Environment;
 import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.scene.Light;
+import com.gpuExtended.scene.Skybox;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
 import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.Uniforms;
@@ -122,10 +123,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public Uniforms uniforms;
 
 	@Inject
-	private ShaderHandler shaderHandler;
+	public ShaderHandler shaderHandler;
 
 	@Inject
 	public EnvironmentManager environmentManager;
+
+	@Inject
+	public Skybox skybox;
 
 	@Inject
 	public PerformanceOverlay performanceOverlay;
@@ -1248,6 +1252,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		lastAntiAliasingMode = antiAliasingMode;
 		glClearColor(0, 0, 0, 1f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		colorFramebuffer.clearFramebuffer();
 		bloomFramebuffer.clearFramebuffer();
 
@@ -1302,8 +1308,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			DeltaTime = (currentTime - LastTime) / 1000.0f;
 			Time = currentTime - StartTime;
 			LastTime = currentTime;
-
 			environmentManager.Update(DeltaTime);
+
 			updateUniformBlocks();
 
 			glBindVertexArray(mainDrawVertexArrayObject);
@@ -1718,6 +1724,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
 		colorFramebuffer.bind();
+		environmentManager.RenderSkybox();
 
 		glUseProgram(shaderHandler.mainPassShader.id());
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
