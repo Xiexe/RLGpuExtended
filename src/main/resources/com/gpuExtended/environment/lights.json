@@ -850,15 +850,14 @@
     ]
   },
   {
-    "name": "LAVA_BUBBLE_SPOT",
+    "name": "TZHAAR_WALL_FAKE_LIGHTS",
     "type": "point",
-    "color": [1.00, 0.35, 0.00],
-    "offset": [0, 0, 1],
-    "intensity": 2,
-    "radius": 3,
-    "animation": "flicker",
-    "gameObjects": [
-      731
+    "color": [1.00, 0.00, 0.00],
+    "offset": [0, 0, 5],
+    "intensity": 1,
+    "radius": 8,
+    "gameObjects" : [
+      11818
     ]
   },
   {

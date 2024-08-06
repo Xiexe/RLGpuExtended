@@ -17,7 +17,7 @@ import static org.lwjgl.opengl.GL30C.glTexParameterIi;
 
 
 public class Texture2D {
-    public static int MIP_LEVELS = 6;
+    public static int MIP_LEVELS = 8;
 
     public static class TextureSettings {
         public int level;

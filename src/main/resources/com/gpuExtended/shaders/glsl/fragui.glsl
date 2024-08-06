@@ -154,12 +154,11 @@ void main() {
 //  #endif
 
   vec4 frag = sampleMainColor();
-  frag += sampleBloom();
-  PostProcessImage(frag.rgb, colorBlindMode, 0.0, 0);
-
-  frag = sampleBloom();
+  vec4 bloom = sampleBloom();
+  vec3 composite = frag.rgb + bloom.rgb;
+  PostProcessImage(composite, colorBlindMode, 0.0, 0);
 
   vec4 uiFrag = sampleUiTexture();
-  frag.rgb = mix(frag.rgb, uiFrag.rgb, uiFrag.a);
-  FragColor = frag;
+  composite.rgb = mix(composite.rgb, uiFrag.rgb, uiFrag.a);
+  FragColor = vec4(composite, 1);
 }
