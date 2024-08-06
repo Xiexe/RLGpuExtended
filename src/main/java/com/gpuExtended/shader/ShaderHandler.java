@@ -47,6 +47,10 @@ public class ShaderHandler {
             .add(GL_GEOMETRY_SHADER, "geom_depth.glsl")
             .add(GL_FRAGMENT_SHADER, "frag_depth.glsl");
 
+    public Shader skyboxShader = new Shader()
+            .add(GL_VERTEX_SHADER, "vert_skybox.glsl")
+            .add(GL_FRAGMENT_SHADER, "frag_skybox.glsl");
+
     public Shader uiShader = new Shader()
             .add(GL_VERTEX_SHADER, "vertui.glsl")
             .add(GL_FRAGMENT_SHADER, "fragui.glsl");
@@ -162,23 +166,23 @@ public class ShaderHandler {
     private void compileShaders() throws ShaderException
     {
         Template template = createTemplate(-1, -1);
-        mainPassShader.compile(template);
-        uiShader.compile(template);
-        shadowPassShader.compile(template);
-        depthPassShader.compile(template);
-        bloomDownsampleShader.compile(template);
-        bloomUpsampleShader.compile(template);
-        bloomPrefilterShader.compile(template);
+        mainPassShader.compile(template, compiledShaders);
+        uiShader.compile(template, compiledShaders);
+        shadowPassShader.compile(template, compiledShaders);
+        skyboxShader.compile(template, compiledShaders);
+        depthPassShader.compile(template, compiledShaders);
+        bloomDownsampleShader.compile(template, compiledShaders);
+        bloomUpsampleShader.compile(template, compiledShaders);
+        bloomPrefilterShader.compile(template, compiledShaders);
 
         GpuExtendedPlugin.ComputeMode computeMode = plugin.computeMode;
-
         switch (computeMode)
         {
             case OPENGL:
-                largeOrderedComputeShader.compile(createTemplate(1024, 6));
-                smallOrderedComputeShader.compile(createTemplate(512, 1));
-                unorderedComputeShader.compile(template);
-                lightBinningComputeShader.compile(template);
+                largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
+                smallOrderedComputeShader.compile(createTemplate(512, 1), compiledShaders);
+                unorderedComputeShader.compile(template, compiledShaders);
+                lightBinningComputeShader.compile(template, compiledShaders);
                 break;
             case OPENCL:
                 openCLManager.init(plugin.awtContext);
@@ -186,29 +190,10 @@ public class ShaderHandler {
         }
 
         plugin.uniforms.ClearUniforms();
-        plugin.uniforms.InitializeShaderUniformsForShader(mainPassShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(uiShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(bloomUpsampleShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(bloomDownsampleShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(bloomPrefilterShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(shadowPassShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(depthPassShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(largeOrderedComputeShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(smallOrderedComputeShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(unorderedComputeShader.id(), computeMode);
-        plugin.uniforms.InitializeShaderUniformsForShader(lightBinningComputeShader.id(), computeMode);
-
-        compiledShaders.add(mainPassShader);
-        compiledShaders.add(uiShader);
-        compiledShaders.add(bloomUpsampleShader);
-        compiledShaders.add(bloomDownsampleShader);
-        compiledShaders.add(bloomPrefilterShader);
-        compiledShaders.add(shadowPassShader);
-        compiledShaders.add(depthPassShader);
-        compiledShaders.add(largeOrderedComputeShader);
-        compiledShaders.add(smallOrderedComputeShader);
-        compiledShaders.add(unorderedComputeShader);
-        compiledShaders.add(lightBinningComputeShader);
+        for(Shader shader : compiledShaders)
+        {
+            plugin.uniforms.InitializeShaderUniformsForShader(shader.id(), computeMode);
+        }
     }
 
     private void destroyShaders() {

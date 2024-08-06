@@ -63,7 +63,7 @@ public class Shader
 		return this;
 	}
 
-	public void compile(Template template) throws ShaderException
+	public void compile(Template template, ArrayList<Shader> compiledShaders) throws ShaderException
 	{
 		int program = GL43C.glCreateProgram();
 		int[] shaders = new int[units.size()];
@@ -131,6 +131,7 @@ public class Shader
 		}
 
 		id = program;
+		compiledShaders.add(this);
 	}
 
 	public int id()
