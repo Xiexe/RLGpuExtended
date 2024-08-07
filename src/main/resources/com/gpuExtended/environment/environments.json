@@ -76,7 +76,7 @@
     "LightColor":   [0.2, 0.2, 0.2, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
-    "FogDepth": 70,
+    "FogDepth": 80,
     "Type": 0
   },
   {

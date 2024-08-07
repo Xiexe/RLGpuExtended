@@ -66,6 +66,6 @@ uniform sampler2D tileFillColorMap; // holds colors of tiles
 uniform sampler2D tileBorderColorMap; // holds textures of tiles
 uniform sampler2D tileSettingsMap; // holds settings of tiles
 uniform sampler3D roofMaskMap;
-uniform isampler3D tileHeightMap; // holds height of tiles
+uniform sampler2D godNoiseMap;
 
 uniform vec2 textureAnimations[128];

@@ -717,7 +717,7 @@
     "type": "point",
     "color": [1, 0.7, 0.5],
     "offset": [0, 0, 3],
-    "intensity": 2,
+    "intensity": 0.5,
     "radius": 10,
     "animation": "flicker",
     "gameObjects": [
@@ -741,7 +741,7 @@
     "type": "point",
     "color": [0.85, 0.85, 1.00],
     "offset": [0, 0, 8],
-    "intensity": 2,
+    "intensity": 0.25,
     "radius": 15,
     "animation": "none",
     "gameObjects": [
@@ -817,7 +817,7 @@
     "type": "point",
     "color": [0.90, 0.60, 0.30],
     "offset": [0, 0, 1],
-    "intensity": 3,
+    "intensity": 1,
     "radius": 4,
     "animation": "flicker",
     "gameObjects": [
@@ -858,6 +858,30 @@
     "radius": 8,
     "gameObjects" : [
       11818
+    ]
+  },
+  {
+    "name": "HUGE_FIRE",
+    "type": "point",
+    "color": [1.00, 0.57, 0.75],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "flicker",
+    "gameObjects" : [
+      25155
+    ]
+  },
+  {
+    "name": "LIZARDMAN_VOLCANO",
+    "type": "point",
+    "color": [1.00, 0.75, 0.25],
+    "offset": [0, 0, 0.75],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "flicker",
+    "gameObjects" : [
+      25156
     ]
   },
   {

@@ -536,7 +536,6 @@ public class EnvironmentManager
 
             if(lastEnvironment != newEnvironment)
             {
-                log.info("Switching To New Environment: " + newEnvironment.Name);
                 Environment cached = new Environment();
                 cached.Name = currentEnvironment.Name;
                 cached.SkyColor = currentEnvironment.SkyColor;

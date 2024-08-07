@@ -215,7 +215,7 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
             );
             if (isBorder)
             {
-                image = mix(image, borderColor.rgb, borderColor.a);
+                image = mix(image, borderColor.rgb * 5, borderColor.a);
             }
             else
             {

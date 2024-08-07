@@ -71,6 +71,7 @@ import java.nio.*;
 import java.util.HashMap;
 
 import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
+import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 import static net.runelite.api.Constants.MAX_Z;
@@ -305,6 +306,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Inject
 	private RegionOverlay regionOverlay;
 
+
+	ResourcePath godTextureResourcePath = Props.getPathOrDefault(
+			"god-noise-path", () -> path(GpuExtendedPlugin.class, "textures/godtexture.png"));
+	private Texture2D godNoiseTexture;
+
 	@Override
 	protected void startUp()
 	{
@@ -424,6 +430,20 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initColorFramebuffer();
 				initShadowMapTexture();
 				initDepthMapTexture();
+
+				Texture2D.TextureSettings settings = new Texture2D.TextureSettings() {{
+					level = 0;
+					internalFormat = GL_RGBA;
+					border = 0;
+					format = GL_RGBA;
+					type = GL_UNSIGNED_BYTE;
+					pixels = 0;
+					minFilter = GL_LINEAR;
+					magFilter = GL_LINEAR;
+					wrapS = GL_REPEAT;
+					wrapT = GL_REPEAT;
+				}};
+				godNoiseTexture = Texture2D.loadFromResourcePath(godTextureResourcePath, settings);
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -1751,8 +1771,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uni.RoofMaskTextureMap, 6);
 
 		glActiveTexture(GL_TEXTURE7);
-		glBindTexture(GL_TEXTURE_3D, tileHeightTex);
-		glUniform1i(uni.TileHeightMap, 7);
+		glBindTexture(GL_TEXTURE_2D, godNoiseTexture.getId());
+		glUniform1i(uni.GodNoiseTextureMap, 7);
 
 		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
 		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
