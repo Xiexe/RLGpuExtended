@@ -1,0 +1,533 @@
+[
+  {
+    "name": "template",
+    "regions": [],
+    "subAreas": [
+      {
+        "name": "",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0]
+      }
+    ]
+  },
+  {
+    "name": "PLAYER_HOUSE",
+    "bounds": [
+      {
+        "start": [1790, 5632, -1],
+        "end": [2048, 5769, -1]
+      }
+    ]
+  },
+  {
+    "name": "LUMBRIDGE",
+    "bounds": [
+      {
+        "name": "UNDERGROUND",
+        "start": [3207, 9614, -1],
+        "end": [3221, 9626, -1]
+      },
+      {
+        "name": "CASTLE",
+        "start": [3203, 3206, -1],
+        "end": [3218, 3231, -1]
+      }
+    ]
+  },
+  {
+    "name": "DRAYNOR_MANOR",
+    "bounds": [
+      {
+        "start": [3072, 3321, -1],
+        "end": [3135, 3389, -1],
+        "environment": "DRAYNOR_MANOR"
+      },
+      {
+        "name": "BASEMENT",
+        "start": [3076, 9769, -1],
+        "end": [3079, 9777, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "VARROCK",
+    "bounds": [
+      {
+        "start": [3136, 3397, -1],
+        "end": [3289, 3518, -1]
+      },
+      {
+        "start": [3179, 3374, -1],
+        "end": [3291, 3396, -1]
+      },
+      {
+        "start": [3152, 9856, -1],
+        "end": [3310, 9954, -1]
+      },
+      {
+        "name": "GRAND_EXCHANGE",
+        "start": [3147, 3472, -1],
+        "end": [3182, 3507, -1]
+      },
+      {
+        "name": "WEST_BANK",
+        "start": [3179, 3432, 0],
+        "end": [3191, 3448, 3]
+      },
+      {
+        "name": "BANK_VAULT",
+        "start": [3184, 9815, -1],
+        "end": [3199, 9837, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "MORYTANIA",
+    "environment": "SWAMP",
+    "bounds": [
+      {
+        "start": [3422, 3202, -1],
+        "end": [3776, 3583, -1]
+      },
+      {
+        "start": [3456, 3163, -1],
+        "end": [3725, 3207, -1]
+      },
+      {
+        "start": [3400, 3321, -1],
+        "end": [3424, 3461, -1]
+      },
+      {
+        "start": [3413, 3275, -1],
+        "end": [3430, 3324, -1]
+      },
+      {
+        "start": [3392, 3511, -1],
+        "end": [3468, 3583, -1]
+      },
+      {
+        "start": [3392, 3456, -1],
+        "end": [3441, 3513, -1]
+      },
+      {
+        "name": "MAUSOLEUM",
+        "start": [3402, 9880, -1],
+        "end": [3443, 9908, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "HAUNTED_MINE",
+        "start": [3380, 9605, -1],
+        "end": [3452, 9660, -1],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "HAUNTED_MINE",
+        "start": [2681, 4415, -1],
+        "end": [2819, 4606, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "FALADOR",
+    "bounds": [
+      {
+        "start": [2934, 3309, -1],
+        "end": [3066, 3396, -1]
+      },
+      {
+        "start": [3011, 3280, -1],
+        "end": [3068, 3308, -1]
+      }
+    ]
+  },
+  {
+    "name": "DESERT",
+    "environment": "DESERT",
+    "bounds": [
+      {
+        "start": [3271, 3196, -1],
+        "end": [3413, 3329, -1]
+      },
+      {
+        "start": [3267, 3196, -1],
+        "end": [3277, 3321, -1]
+      },
+      {
+        "start": [3268, 3322, -1],
+        "end": [3270, 3323, -1]
+      },
+      {
+        "start": [3269, 3324, -1],
+        "end": [3270, 3325, -1]
+      },
+      {
+        "start": [3412, 3196, -1],
+        "end": [3420, 3277, -1]
+      },
+      {
+        "start": [3261, 3167, -1],
+        "end": [3430, 3203, -1]
+      },
+      {
+        "start": [3254, 3153, -1],
+        "end": [3260, 3187, -1]
+      },
+      {
+        "start": [3261, 3153, -1],
+        "end": [3449, 3166, -1]
+      },
+      {
+        "start": [3199, 2668, -1],
+        "end": [3544, 3133, -1]
+      },
+      {
+        "start": [3136, 2668, -1],
+        "end": [3198, 3068, -1]
+      },
+      {
+        "start": [3109, 2819, -1],
+        "end": [3135, 2858, -1]
+      },
+      {
+        "start": [3254, 3134, -1],
+        "end": [3486, 3152, -1]
+      }
+    ]
+  },
+  {
+    "name": "WIZARDS_TOWER",
+    "bounds": [
+      {
+        "name": "BASEMENT",
+        "start": [3092, 9551, -1],
+        "end": [3124, 9580, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT",
+    "bounds": [
+      {
+        "start": [2364, 5600, -1],
+        "end": [2496, 5761, -1],
+        "environment": "GUARDIANS_OF_THE_RIFT",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "WEST ARDOUGNE",
+    "bounds": [
+      {
+        "name": "UNDERGROUND",
+        "start": [1855, 4608, -1],
+        "end": [2046, 4670, -1],
+        "hideOtherAreas": true,
+        "allowRoofFading": false
+      }
+    ]
+  },
+  {
+    "name": "WILDERNESS",
+    "bounds": [
+      {
+        "start": [2945, 3522, -1],
+        "end": [3394, 3971, -1],
+        "environment": "WILDERNESS"
+      },
+      {
+        "name": "CHAOS_ALTAR",
+        "start": [2944, 3813, -1],
+        "end": [2967, 3828, -1],
+        "environment": "WILDERNESS"
+      },
+      {
+        "name": "MAGE_BANK",
+        "start": [2493, 4682, -1],
+        "end": [2548, 4730, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "CAM_TORUM",
+    "bounds": [
+      {
+        "name": "CITY",
+        "start": [1376, 9506, 0],
+        "end": [1525, 9606, 4],
+        "groundPlane": 1,
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "PERIOULS_MOONS",
+    "bounds": [
+      {
+        "name": "ANTECHAMBER",
+        "start": [1416, 9609, 1],
+        "end": [1463, 9654, 2],
+        "groundPlane": 1,
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ECLIPSE_MOON",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "BLUE_MOON",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "BLOOD_MOON",
+        "start": [0, 0, 0],
+        "end": [0, 0, 0],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "STREAMBOUND_CAVERN",
+        "start": [1471, 9665, 0],
+        "end": [1534, 9726, 2],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "EARTHBOUND_CAVERN",
+        "start": [1342, 9666, 0],
+        "end": [1408, 9742, 2],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ANCIENT_PRISON",
+        "start": [1345, 9535, 0],
+        "end": [1391, 9596, 2],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ANCIENT_SHRINE",
+        "start": [1494, 9561, 0],
+        "end": [1531, 9598, 2],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "DEATHS_DOMAIN",
+    "bounds": [
+      {
+        "start": [3166, 5720, -1],
+        "end": [3183, 5733, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "BLAST_FURNACE",
+    "bounds": [
+      {
+        "start": [1930, 4951, -1],
+        "end": [1962, 4979, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "RANDOM_EVENT",
+    "bounds": [
+      {
+        "name": "BOBS_ISLAND",
+        "start": [2500, 4755, 0],
+        "end": [2550, 4794, 0],
+        "environment": "DEFAULT",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "PHEASANTS",
+        "start": [2579, 4756, 0],
+        "end": [2617, 4795, 0],
+        "environment": "DEFAULT",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "MOLLY",
+        "start": [1856, 5120, -1],
+        "end": [1878, 5142, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "MIME_SHOW",
+        "start": [1999, 4747, -1],
+        "end": [2019, 4771, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "TOMBS_OF_AMASCUT",
+    "environment": "DEFAULT_UNDERGROUND",
+    "bounds": [
+      {
+          "name": "ENTRANCE",
+          "start": [3328, 9088, -1],
+          "end": [3391, 9151, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "LOBBY",
+          "start": [3520, 5120, -1],
+          "end": [3583, 5183, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "PUZZLE_HET",
+          "start": [3649, 5249, -1],
+          "end": [3710, 5310, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "PUZZLE_CRONDIS",
+          "start": [3904, 5248, -1],
+          "end": [3967, 5311, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "PUZZLE_KEPHRI",
+          "start": [3520, 5248, -1],
+          "end": [3583, 5310, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "CRONDIS",
+          "start": [3904, 5376, -1],
+          "end": [3967, 5439, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "KEPHRI",
+          "start": [3520, 5376, -1],
+          "end": [3583, 5439, -1],
+          "hideOtherAreas": true
+      },
+      {
+          "name": "APMEKEN_PUZZLE",
+          "start": [3785, 5263, -1],
+          "end": [3830, 5298, -1],
+          "hideOtherAreas": true
+      },
+      {
+        "name": "APMEKEN",
+        "start": [3783, 5395, -1],
+        "end": [3831, 5421, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "ELIDINIS",
+        "start": [3776, 5120, -1],
+        "end": [3839, 5183, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "TUMEKEN",
+        "start": [3904, 5120, -1],
+        "end": [3967, 5183, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "TREASURE",
+        "start": [3648, 5120, -1],
+        "end": [3711, 5183, -1],
+        "environment": "DARK_UNDERGROUND",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "CHAMBERS_OF_XERIC",
+    "bounds": [
+      {
+        "start": [3263, 5120, -1],
+        "end": [3359, 5472, -1],
+        "environment": "CHAMBERS_OF_XERIC",
+        "hideOtherAreas": true
+      },
+      {
+        "start": [3260, 5697, -1],
+        "end": [3362, 5762, -1],
+        "environment": "CHAMBERS_OF_XERIC",
+        "hideOtherAreas": true
+      },
+      {
+        "start": [3214, 5698, -1],
+        "end": [3252, 5763, -1],
+        "environment": "CHAMBERS_OF_XERIC",
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "TAVERLY_DUNGEON",
+    "hideOtherAreas": true,
+    "environment": "TAVERLY_DUNGEON",
+    "bounds": [
+      {
+        "start": [2811, 9721, -1],
+        "end": [2943, 9855, -1]
+      },
+      {
+        "start": [2880, 9664, -1],
+        "end": [2943, 9721, -1]
+      },
+      {
+        "start": [2944, 9766, -1],
+        "end": [2971, 9802, -1]
+      }
+    ]
+  },
+  {
+    "name": "POISON_WASTE",
+    "environment": "SWAMP",
+    "bounds": [
+      {
+        "start": [2141, 3026, -1],
+        "end": [2322, 3117, -1]
+      },
+      {
+        "start": [2180, 3118, -1],
+        "end": [2219, 3123, -1]
+      },
+      {
+        "start": [2206, 3118, -1],
+        "end": [2302, 3130, -1]
+      }
+    ]
+  },
+  {
+    "name": "THORDURS_BLACKHOLE",
+    "environment": "DEFAULT_UNDERGROUND",
+    "bounds": [
+      {
+        "start": [1600, 4672, -1],
+        "end": [1663, 4735, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  }
+]

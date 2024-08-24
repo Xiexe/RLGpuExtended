@@ -26,15 +26,23 @@
 package com.gpuExtended.shader;
 
 import com.google.common.annotations.VisibleForTesting;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import com.gpuExtended.shader.template.Template;
+import lombok.extern.slf4j.Slf4j;
 import org.lwjgl.opengl.GL43C;
 
+@Slf4j
 public class Shader
 {
+	private int id;
+
+	private String shaderResourcePath;
+
 	@VisibleForTesting
 	final List<Unit> units = new ArrayList<>();
 
@@ -46,16 +54,16 @@ public class Shader
 		private final int type;
 
 		@Getter
-		private final String filename;
+		public final String filename;
 	}
 
 	public Shader add(int type, String name)
 	{
-		units.add(new Unit(type, "/shaders/glsl/" + name));
+		units.add(new Unit(type, "shaders/glsl/" + name));
 		return this;
 	}
 
-	public int compile(Template template) throws ShaderException
+	public void compile(Template template, ArrayList<Shader> compiledShaders) throws ShaderException
 	{
 		int program = GL43C.glCreateProgram();
 		int[] shaders = new int[units.size()];
@@ -72,19 +80,17 @@ public class Shader
 					throw new ShaderException("Unable to create shader of type " + unit.type);
 				}
 
+				log.debug("Compiling shader: {}", unit.filename);
 				String source = template.load(unit.filename);
+
 				GL43C.glShaderSource(shader, source);
 				GL43C.glCompileShader(shader);
-
-				System.out.println("-------------------- COMPILED SHADER ----------------------");
-				System.out.println("-------------------- " + unit.filename + " ----------------------");
-				System.out.println(source);
 
 				if (GL43C.glGetShaderi(shader, GL43C.GL_COMPILE_STATUS) != GL43C.GL_TRUE)
 				{
 					String err = GL43C.glGetShaderInfoLog(shader);
 					GL43C.glDeleteShader(shader);
-					throw new ShaderException(err);
+					throw ShaderException.CompileError(err, template, unit);
 				}
 				GL43C.glAttachShader(program, shader);
 				shaders[i++] = shader;
@@ -107,8 +113,9 @@ public class Shader
 			}
 
 			ok = true;
-		}
-		finally
+		} catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally
 		{
 			while (i > 0)
 			{
@@ -122,6 +129,21 @@ public class Shader
 				GL43C.glDeleteProgram(program);
 			}
 		}
-		return program;
+
+		id = program;
+		compiledShaders.add(this);
+	}
+
+	public int id()
+	{
+		return this.id;
+	}
+
+	public void destroy()
+	{
+		if(id != 0) {
+			GL43C.glDeleteProgram(id);
+			id = 0;
+		}
 	}
 }

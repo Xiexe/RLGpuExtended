@@ -1,15 +1,11 @@
 package com.gpuExtended.rendering;
 
-public class Vector3
+public class Vector3 extends Vector2
 {
-    public float x = 0;
-    public float y = 0;
-    public float z = 0;
+    public float z;
 
-    public Vector3(float x, float y, float z)
-    {
-        this.x = x;
-        this.y = y;
+    public Vector3(float x, float y, float z) {
+        super(x, y);
         this.z = z;
     }
     public static Vector3 Zero()
@@ -57,6 +53,10 @@ public class Vector3
 
     public float Dot(Vector3 other) {
         return this.x * other.x + this.y * other.y + this.z * other.z;
+    }
+
+    public float Length() {
+        return (float) Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
     }
 
     @Override

@@ -24,13 +24,13 @@
  */
 package com.gpuExtended.opengl;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import javax.inject.Singleton;
 
-import com.gpuExtended.GpuExtendedPlugin;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Constants;
 import net.runelite.api.Scene;
@@ -39,23 +39,16 @@ import net.runelite.client.util.OSType;
 import net.runelite.rlawt.AWTContext;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.APPLEGLSharing;
+
+import static com.gpuExtended.util.constants.Variables.MAX_TRIANGLE;
+import static com.gpuExtended.util.constants.Variables.SMALL_TRIANGLE_COUNT;
 import static org.lwjgl.opencl.APPLEGLSharing.CL_CGL_DEVICE_FOR_CURRENT_VIRTUAL_SCREEN_APPLE;
 import static org.lwjgl.opencl.APPLEGLSharing.clGetGLContextInfoAPPLE;
 import org.lwjgl.opencl.CL;
-import static org.lwjgl.opencl.CL10.CL_CONTEXT_PLATFORM;
-import static org.lwjgl.opencl.CL10.CL_DEVICE_EXTENSIONS;
-import static org.lwjgl.opencl.CL10.CL_DEVICE_NAME;
-import static org.lwjgl.opencl.CL10.CL_DEVICE_PROFILE;
-import static org.lwjgl.opencl.CL10.CL_DEVICE_VENDOR;
-import static org.lwjgl.opencl.CL10.CL_DEVICE_VERSION;
-import static org.lwjgl.opencl.CL10.CL_DRIVER_VERSION;
-import static org.lwjgl.opencl.CL10.CL_PROGRAM_BUILD_LOG;
-import static org.lwjgl.opencl.CL10.CL_PROGRAM_BUILD_OPTIONS;
-import static org.lwjgl.opencl.CL10.CL_PROGRAM_BUILD_STATUS;
-import static org.lwjgl.opencl.CL10.CL_SUCCESS;
-import static org.lwjgl.opencl.CL10.clGetPlatformInfo;
-import static org.lwjgl.opencl.CL10.clGetProgramBuildInfo;
 import org.lwjgl.opencl.CL10GL;
+
+import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.opencl.CL10.clReleaseProgram;
 import static org.lwjgl.opencl.CL11.CL_DEVICE_ADDRESS_BITS;
 import static org.lwjgl.opencl.CL11.CL_DEVICE_AVAILABLE;
 import static org.lwjgl.opencl.CL11.CL_DEVICE_COMPILER_AVAILABLE;
@@ -95,8 +88,8 @@ public class OpenCLManager
 	private static final String KERNEL_NAME_LARGE = "computeLarge";
 
 	private static final int MIN_WORK_GROUP_SIZE = 256;
-	private static final int SMALL_SIZE = GpuExtendedPlugin.SMALL_TRIANGLE_COUNT;
-	private static final int LARGE_SIZE = GpuExtendedPlugin.MAX_TRIANGLE;
+	private static final int SMALL_SIZE = SMALL_TRIANGLE_COUNT;
+	private static final int LARGE_SIZE = MAX_TRIANGLE;
 	//  struct shared_data {
 	//      int totalNum[12];
 	//      int totalDistance[12];
@@ -154,7 +147,12 @@ public class OpenCLManager
 
 			ensureMinWorkGroupSize();
 			initQueue();
-			compilePrograms(stack);
+
+			try {
+				compilePrograms(stack);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
@@ -191,6 +189,32 @@ public class OpenCLManager
 			CL.destroy();
 			initialized = false;
 		}
+	}
+
+	public void destroyPrograms() {
+		if (kernelLarge != 0)
+			clReleaseKernel(kernelLarge);
+		kernelLarge = 0;
+
+		if (kernelSmall != 0)
+			clReleaseProgram(kernelSmall);
+		kernelSmall = 0;
+
+		if (kernelUnordered != 0)
+			clReleaseProgram(kernelUnordered);
+		kernelUnordered = 0;
+
+		if (programLarge != 0)
+			clReleaseProgram(programLarge);
+		programLarge = 0;
+
+		if (programSmall != 0)
+			clReleaseProgram(programSmall);
+		programSmall = 0;
+
+		if (programUnordered != 0)
+			clReleaseProgram(programUnordered);
+		programUnordered = 0;
 	}
 
 	private void initContext(AWTContext awtContext, MemoryStack stack)
@@ -391,20 +415,21 @@ public class OpenCLManager
 		return kernel;
 	}
 
-	private void compilePrograms(MemoryStack stack)
-	{
+	private void compilePrograms(MemoryStack stack) throws IOException {
 		Template templateSmall = new Template()
-			.addInclude(OpenCLManager.class)
-			.add(key -> key.equals("FACE_COUNT") ? ("#define FACE_COUNT " + smallFaceCount) : null);
-		Template templateLarge = new Template()
-			.addInclude(OpenCLManager.class)
-			.add(key -> key.equals("FACE_COUNT") ? ("#define FACE_COUNT " + largeFaceCount) : null);
+			.addIncludePath(OpenCLManager.class)
+			.define("FACE_COUNT", smallFaceCount);
 
-		String unordered = new Template()
-			.addInclude(OpenCLManager.class)
-			.load("/shaders/compute/comp_unordered.cl");
+		Template templateLarge = new Template()
+			.addIncludePath(OpenCLManager.class)
+            .define("FACE_COUNT", largeFaceCount);
+
+		Template templateUnordered = new Template()
+			.addIncludePath(OpenCLManager.class);
+
 		String small = templateSmall.load("/shaders/compute/comp.cl");
 		String large = templateLarge.load("/shaders/compute/comp.cl");
+		String unordered = templateUnordered.load("/shaders/compute/comp_unordered.cl");
 
 		programUnordered = compileProgram(stack, unordered);
 		programSmall = compileProgram(stack, small);

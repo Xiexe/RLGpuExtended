@@ -95,12 +95,61 @@ public class Mat4
 	public static float[] projection(float w, float h, float n)
 	{
 		return new float[]
-			{
-				2 / w, 0, 0, 0,
-				0, 2 / h, 0, 0,
-				0, 0, -1, -1,
-				0, 0, -2 * n, 0
-			};
+		{
+			2 / w, 0, 0, 0,
+			0, 2 / h, 0, 0,
+			0, 0, -1, -1,
+			0, 0, -2 * n, 0
+		};
+	}
+
+	public static void mulVec(float[] out, float[] mat4, float[] vec4) {
+		float a =
+				mat4[0 * 4 + 0] * vec4[0] +
+						mat4[1 * 4 + 0] * vec4[1] +
+						mat4[2 * 4 + 0] * vec4[2] +
+						mat4[3 * 4 + 0] * vec4[3];
+		float b =
+				mat4[0 * 4 + 1] * vec4[0] +
+						mat4[1 * 4 + 1] * vec4[1] +
+						mat4[2 * 4 + 1] * vec4[2] +
+						mat4[3 * 4 + 1] * vec4[3];
+		float c =
+				mat4[0 * 4 + 2] * vec4[0] +
+						mat4[1 * 4 + 2] * vec4[1] +
+						mat4[2 * 4 + 2] * vec4[2] +
+						mat4[3 * 4 + 2] * vec4[3];
+		float d =
+				mat4[0 * 4 + 3] * vec4[0] +
+						mat4[1 * 4 + 3] * vec4[1] +
+						mat4[2 * 4 + 3] * vec4[2] +
+						mat4[3 * 4 + 3] * vec4[3];
+		out[0] = a;
+		out[1] = b;
+		out[2] = c;
+		out[3] = d;
+	}
+
+	public static void projectVec(float[] out, float[] mat4, float[] vec4) {
+		mulVec(out, mat4, vec4);
+		if (out[3] != 0) {
+			// The 4th component should retain information about whether the
+			// point lies behind the camera
+			float reciprocal = 1 / Math.abs(out[3]);
+			for (int i = 0; i < 4; i++)
+				out[i] *= reciprocal;
+		}
+	}
+
+	public static float[] ortho(float width, float height, float near, float far)
+	{
+		return new float[]
+		{
+				2 / width, 0, 0, 0,
+				0, 2 / height, 0, 0,
+				0, 0, -1f / (far), 0,
+				0, 0, 0, 1
+		};
 	}
 
 	public static void mul(final float[] a, final float[] b)
@@ -157,5 +206,143 @@ public class Mat4
 		a[3 + 1 * 4] = ai0 * b01 + ai1 * b11 + ai2 * b21 + ai3 * b31;
 		a[3 + 2 * 4] = ai0 * b02 + ai1 * b12 + ai2 * b22 + ai3 * b32;
 		a[3 + 3 * 4] = ai0 * b03 + ai1 * b13 + ai2 * b23 + ai3 * b33;
+	}
+
+	public static float[] transform(float[] matrix, float[] position)
+	{
+		float x = matrix[0] * position[0] + matrix[1] * position[1] + matrix[2] * position[2] + matrix[3];
+		float y = matrix[4] * position[0] + matrix[5] * position[1] + matrix[6] * position[2] + matrix[7];
+		float z = matrix[8] * position[0] + matrix[9] * position[1] + matrix[10] * position[2] + matrix[11];
+		return new float[]{x, y, z};
+	}
+
+	public static float[] inverse(float[] m)
+	{
+		float[] inv = new float[16];
+		float det;
+
+		inv[0] = m[5]  * m[10] * m[15] -
+				m[5]  * m[11] * m[14] -
+				m[9]  * m[6]  * m[15] +
+				m[9]  * m[7]  * m[14] +
+				m[13] * m[6]  * m[11] -
+				m[13] * m[7]  * m[10];
+
+		inv[4] = -m[4]  * m[10] * m[15] +
+				m[4]  * m[11] * m[14] +
+				m[8]  * m[6]  * m[15] -
+				m[8]  * m[7]  * m[14] -
+				m[12] * m[6]  * m[11] +
+				m[12] * m[7]  * m[10];
+
+		inv[8] = m[4]  * m[9] * m[15] -
+				m[4]  * m[11] * m[13] -
+				m[8]  * m[5] * m[15] +
+				m[8]  * m[7] * m[13] +
+				m[12] * m[5] * m[11] -
+				m[12] * m[7] * m[9];
+
+		inv[12] = -m[4]  * m[9] * m[14] +
+				m[4]  * m[10] * m[13] +
+				m[8]  * m[5] * m[14] -
+				m[8]  * m[6] * m[13] -
+				m[12] * m[5] * m[10] +
+				m[12] * m[6] * m[9];
+
+		inv[1] = -m[1]  * m[10] * m[15] +
+				m[1]  * m[11] * m[14] +
+				m[9]  * m[2] * m[15] -
+				m[9]  * m[3] * m[14] -
+				m[13] * m[2] * m[11] +
+				m[13] * m[3] * m[10];
+
+		inv[5] = m[0]  * m[10] * m[15] -
+				m[0]  * m[11] * m[14] -
+				m[8]  * m[2] * m[15] +
+				m[8]  * m[3] * m[14] +
+				m[12] * m[2] * m[11] -
+				m[12] * m[3] * m[10];
+
+		inv[9] = -m[0]  * m[9] * m[15] +
+				m[0]  * m[11] * m[13] +
+				m[8]  * m[1] * m[15] -
+				m[8]  * m[3] * m[13] -
+				m[12] * m[1] * m[11] +
+				m[12] * m[3] * m[9];
+
+		inv[13] = m[0]  * m[9] * m[14] -
+				m[0]  * m[10] * m[13] -
+				m[8]  * m[1] * m[14] +
+				m[8]  * m[2] * m[13] +
+				m[12] * m[1] * m[10] -
+				m[12] * m[2] * m[9];
+
+		inv[2] = m[1]  * m[6] * m[15] -
+				m[1]  * m[7] * m[14] -
+				m[5]  * m[2] * m[15] +
+				m[5]  * m[3] * m[14] +
+				m[13] * m[2] * m[7] -
+				m[13] * m[3] * m[6];
+
+		inv[6] = -m[0]  * m[6] * m[15] +
+				m[0]  * m[7] * m[14] +
+				m[4]  * m[2] * m[15] -
+				m[4]  * m[3] * m[14] -
+				m[12] * m[2] * m[7] +
+				m[12] * m[3] * m[6];
+
+		inv[10] = m[0]  * m[5] * m[15] -
+				m[0]  * m[7] * m[13] -
+				m[4]  * m[1] * m[15] +
+				m[4]  * m[3] * m[13] +
+				m[12] * m[1] * m[7] -
+				m[12] * m[3] * m[5];
+
+		inv[14] = -m[0]  * m[5] * m[14] +
+				m[0]  * m[6] * m[13] +
+				m[4]  * m[1] * m[14] -
+				m[4]  * m[2] * m[13] -
+				m[12] * m[1] * m[6] +
+				m[12] * m[2] * m[5];
+
+		inv[3] = -m[1] * m[6] * m[11] +
+				m[1] * m[7] * m[10] +
+				m[5] * m[2] * m[11] -
+				m[5] * m[3] * m[10] -
+				m[9] * m[2] * m[7] +
+				m[9] * m[3] * m[6];
+
+		inv[7] = m[0] * m[6] * m[11] -
+				m[0] * m[7] * m[10] -
+				m[4] * m[2] * m[11] +
+				m[4] * m[3] * m[10] +
+				m[8] * m[2] * m[7] -
+				m[8] * m[3] * m[6];
+
+		inv[11] = -m[0] * m[5] * m[11] +
+				m[0] * m[7] * m[9] +
+				m[4] * m[1] * m[11] -
+				m[4] * m[3] * m[9] -
+				m[8] * m[1] * m[7] +
+				m[8] * m[3] * m[5];
+
+		inv[15] = m[0] * m[5] * m[10] -
+				m[0] * m[6] * m[9] -
+				m[4] * m[1] * m[10] +
+				m[4] * m[2] * m[9] +
+				m[8] * m[1] * m[6] -
+				m[8] * m[2] * m[5];
+
+		det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+		if (det == 0)
+			return null;
+
+		det = 1.0f / det;
+
+		for (int i = 0; i < 16; i++)
+			inv[i] = inv[i] * det;
+
+		return inv;
 	}
 }

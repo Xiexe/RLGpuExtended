@@ -1,0 +1,983 @@
+[
+  {
+    "name": "TEMPLATE",
+    "type": "point",
+    "color": [0, 0, 0],
+    "offset": [0, 0, 0],
+    "intensity": 1,
+    "radius": 1,
+    "animation": "flicker",
+    "decorations": [],
+    "gameObjects": [],
+    "projectiles": [],
+    "walls": [],
+    "tiles": []
+  },
+  {
+    "name": "GENERIC_TORCHES",
+    "type": "point",
+    "color": [1.00, 0.7, 0.00],
+    "offset": [0, 0, 1.5],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "flicker",
+    "decorations": [
+      196,
+      197,
+      198,
+      205,
+      206,
+      2175,
+      2501,
+      3474,
+      4501,
+      4694,
+      7432,
+      10297,
+      10307,
+      11474,
+      12238,
+      20832
+    ],
+    "gameObjects": [
+      724,
+      6203,
+      10658,
+      11606,
+      11472,
+      17237
+    ]
+  },
+  {
+    "name": "GENERIC_CANDELABRA",
+    "type": "point",
+    "color": [1.00, 0.7, 0.00],
+    "offset": [0, 0, 1.5],
+    "intensity": 1,
+    "radius": 2,
+    "animation": "flicker",
+    "gameObjects": [
+      202,
+      203,
+      2458
+    ]
+  },
+  {
+    "name": "GENERIC_COOKING_RANGE",
+    "type": "point",
+    "color": [1.00, 0.25, 0.00],
+    "offset": [-0.5, -0.35, 0.6],
+    "intensity": 1,
+    "radius": 2,
+    "animation": "flicker",
+    "gameObjects": [
+      114,
+      26181
+    ]
+  },
+  {
+    "name": "GENERIC_FIRE",
+    "type": "point",
+    "color": [1.00, 0.7, 0.00],
+    "offset": [0, 0, 0.5],
+    "intensity": 0.5,
+    "radius": 6,
+    "animation": "flicker",
+    "gameObjects": [
+      3769,
+      10660,
+      26185,
+      43475,
+      44021,
+      49927
+    ]
+  },
+  {
+    "name": "GENERIC_FURNACE",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [-0.1, 0, 0.5],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      16469
+    ]
+  },
+  {
+    "name": "LUMBRIDGE_CASTLE_FIREPLACE",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [0, 0, 0.6],
+    "intensity": 1,
+    "radius": 3,
+    "animation": "flicker",
+    "gameObjects": [
+      24970
+    ]
+  },
+  {
+    "name": "DRAYNOR_MANOR_STREET_LAMPS",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [0, 0, 2.2],
+    "intensity": 1,
+    "radius": 8,
+    "animation": "flicker",
+    "gameObjects": [
+      11468
+    ]
+  },
+  {
+    "name": "ALTAR_CANDLE_LEFT",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [-0.8, 0.25, 1.8],
+    "intensity": 1,
+    "radius": 2,
+    "animation": "flicker",
+    "gameObjects": [
+      409
+    ]
+  },
+  {
+    "name": "ALTAR_CANDLE_RIGHT",
+    "type": "point",
+    "color": [1.00, 0.52, 0.00],
+    "offset": [0.8, 0.25, 1.8],
+    "intensity": 1,
+    "radius": 2,
+    "animation": "flicker",
+    "gameObjects": [
+      409
+    ]
+  },
+  {
+    "name": "ELVEN_TORCHES",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 1.2],
+    "intensity": 0.5,
+    "radius": 6,
+    "animation": "pulse",
+    "decorations": [
+      8774,
+      9992
+    ],
+    "gameObjects": [
+      201,
+      3918
+    ]
+  },
+  {
+    "name": "GLOWING_FUNGUS",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 1.2],
+    "intensity": 1,
+    "radius": 3,
+    "animation": "none",
+    "gameObjects": [
+      4932,
+      4933
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_PORTAL",
+    "type": "point",
+    "color": [0.45, 0.45, 1.00],
+    "offset": [0, 2, 2],
+    "intensity": 2,
+    "radius": 8,
+    "animation": "pulse",
+    "gameObjects": [
+      43692
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_PORTAL",
+    "type": "point",
+    "color": [0.45, 0.45, 1.00],
+    "offset": [0, -1, 1.25],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "pulse",
+    "gameObjects": [
+      43841
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 1.00, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43784
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.6, 0.4],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43788
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.3, 0.3, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43792
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.7, 0.5],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43789
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 1.00, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": -0.25,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43790
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.5, 0.5, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43795
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.1, 0.1],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43791
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1.00, 0.6, 0.2],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43787
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.25, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43794
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.9, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43786
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [0.2, 0.2, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43785
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43793
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_CORAL",
+    "type": "point",
+    "color": [0.8, 0.8, 1.00],
+    "offset": [0, 0, 5],
+    "intensity": 1,
+    "radius": 16,
+    "animation": "pulse",
+    "gameObjects": [
+      43800,
+      43801
+    ]
+  },
+  {
+    "name": "MAUSOLEUM_EXIT",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [-0.5, 0, 1.2],
+    "intensity": 1,
+    "radius": 3,
+    "animation": "pulse",
+    "gameObjects": [
+      3443
+    ]
+  },
+  {
+    "name": "MAUSOLEUM_STATUES",
+    "type": "point",
+    "color": [1.00, 0.7, 0.00],
+    "offset": [0, 0, 3],
+    "intensity": 1,
+    "radius": 6,
+    "animation": "flicker",
+    "gameObjects": [
+      3493,
+      3494,
+      3495,
+      3496,
+      3497,
+      3498,
+      3499
+    ]
+  },
+  {
+    "name": "DEATHS_OFFICE_TORCHES",
+    "type": "point",
+    "color": [0.75, 0.4, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "decorations": [
+      39582
+    ]
+  },
+  {
+    "name": "DEATHS_OFFICE_WALL_FIRE",
+    "type": "point",
+    "color": [0.75, 0.4, 1.00],
+    "offset": [0, 0, 1.5],
+    "intensity": 3,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      39551
+    ]
+  },
+  {
+    "name": "DEATHS_OFFICE_SCYTHE",
+    "type": "point",
+    "color": [0.75, 0.2, 0.2],
+    "offset": [-0.45, 0.25, 1],
+    "intensity": 2,
+    "radius": 1,
+    "animation": "pulse",
+    "gameObjects": [
+      39579
+    ]
+  },
+  {
+    "name": "CRYSTALS_WHITE",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 8,
+    "animation": "pulse",
+    "decorations": [],
+    "gameObjects": [
+      10014
+    ]
+  },
+  {
+    "name": "CRYSTALS_BLACK",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": -0.25,
+    "radius": 8,
+    "animation": "pulse",
+    "decorations": [],
+    "gameObjects": [
+      9750
+    ]
+  },
+  {
+    "name": "TOA_EXIT",
+    "type": "point",
+    "color": [1.00, 0.8, 0.8],
+    "offset": [0, 0, 3.5],
+    "intensity": 4,
+    "radius": 10,
+    "animation": "none",
+    "tiles": [
+      [3359, 9129, 0]
+    ]
+  },
+  {
+    "name": "TOA_ENTRY",
+    "type": "point",
+    "color": [1.00, 0.1, 0.10],
+    "offset": [0, -1, 3],
+    "intensity": 3,
+    "radius": 5,
+    "animation": "flicker",
+    "tiles": [
+      [3359, 9112, 0]
+    ]
+  },
+  {
+    "name": "TOA_BOSS_GATE",
+    "type": "point",
+    "color": [1.00, 0.1, 0.10],
+    "offset": [0, 1, 2],
+    "intensity": 3,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      46155,
+      46158,
+      46161,
+      46164
+    ]
+  },
+  {
+    "name": "TOA_TORCHES",
+    "type": "point",
+    "color": [1.00, 0.1, 0.00],
+    "offset": [0, 0, 1.5],
+    "intensity": 1,
+    "radius": 8,
+    "animation": "flicker",
+    "gameObjects": [
+      45334,
+      45135
+    ]
+  },
+  {
+    "name": "TOA_INVOCATION_BOARD",
+    "type": "point",
+    "color": [1.00, 0.1, 0.10],
+    "offset": [0, -1, 3],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "none",
+    "tiles": [
+      [3363, 9115, 0]
+    ]
+  },
+  {
+    "name": "TOA_OBELISK_TIP",
+    "type": "point",
+    "color": [1.00, 0.3, 0.3],
+    "offset": [0, 0, 6],
+    "intensity": 4,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      46068
+    ]
+  },
+  {
+    "name": "TOA_OBELISK_CENTER",
+    "type": "point",
+    "color": [1.00, 0.3, 0.3],
+    "offset": [0, 0, 6],
+    "intensity": 3,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      42838
+    ]
+  },
+  {
+    "name": "TOA_DESERT_ENTRANCE",
+    "type": "point",
+    "color": [1.00, 0.3, 0.3],
+    "offset": [0, 0, 7],
+    "intensity": 1,
+    "radius": 10,
+    "animation": "none",
+    "tiles": [
+      [3359, 2710, 0]
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      29794
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_BLUE",
+    "type": "point",
+    "color": [0.25, 0.25, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      29796
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_ABOVE",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 6],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      29800
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_ABOVE_SMALL",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 4],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      29803
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_WHITE",
+    "type": "point",
+    "color": [1.00, 1.00, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      29762
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_RED",
+    "type": "point",
+    "color": [1.00, 0.25, 0.15],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      30014
+    ]
+  },
+  {
+    "name": "COX_CRYSTALS_ABOVE_SMALL_RED",
+    "type": "point",
+    "color": [1.00, 0.25, 0.15],
+    "offset": [0, 0, 4],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      29805
+    ]
+  },
+  {
+    "name": "COX_ENERGY_WELL",
+    "type": "point",
+    "color": [1.00, 1.00, 0.00],
+    "offset": [0, 0, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "none",
+    "gameObjects": [
+      30067
+    ]
+  },
+  {
+    "name": "COX_OLM_PORTAL",
+    "type": "point",
+    "color": [0.95, 1.00, 0.25],
+    "offset": [0, 0, 2],
+    "intensity": 1,
+    "radius": 10,
+    "animation": "pulse",
+    "gameObjects": [
+      29879
+    ]
+  },
+  {
+    "name": "COX_ROPE_LIGHT",
+    "type": "point",
+    "color": [0.90, 1.00, 0.90],
+    "offset": [0, 0, 0.5],
+    "intensity": 4,
+    "radius": 3,
+    "animation": "none",
+    "gameObjects": [
+      29996
+    ]
+  },
+  {
+    "name": "CAM_TORUM_CENTER_BRAZIER",
+    "type": "point",
+    "color": [1, 0.7, 0.5],
+    "offset": [0, 0, 10],
+    "intensity": 2,
+    "radius": 15,
+    "animation": "flicker",
+    "tiles": [
+      [1439, 9567, 1]
+    ]
+  },
+  {
+    "name": "CAM_TORUM_STATUE_TORCHES",
+    "type": "point",
+    "color": [1, 0.6, 0.3],
+    "offset": [-1, 0, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "decorations": [
+      51040
+    ]
+  },
+  {
+    "name": "CAM_TORUM_TABLE_CANDLES",
+    "type": "point",
+    "color": [1, 0.6, 0.3],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 3,
+    "animation": "flicker",
+    "gameObjects": [
+      51534,
+      51532
+    ]
+  },
+  {
+    "name": "CAM_TORUM_FURNACE",
+    "type": "point",
+    "color": [1, 0.7, 0.5],
+    "offset": [0, 0, 3],
+    "intensity": 0.5,
+    "radius": 10,
+    "animation": "flicker",
+    "gameObjects": [
+      51496
+    ]
+  },
+  {
+    "name": "CRYSTALS_PURPLE",
+    "type": "point",
+    "color": [1, 0.5, 1],
+    "offset": [0, 0, 4],
+    "intensity": 1,
+    "radius": 10,
+    "animation": "none",
+    "gameObjects": [
+      28868
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_LOBBY",
+    "type": "point",
+    "color": [0.85, 0.85, 1.00],
+    "offset": [0, 0, 8],
+    "intensity": 0.25,
+    "radius": 15,
+    "animation": "none",
+    "gameObjects": [
+      51379
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_TORCHES_ECLIPSE",
+    "type": "point",
+    "color": [1.00, 1.00, 0.6],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      51345
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_TORCHES_BLUE",
+    "type": "point",
+    "color": [0.6, 0.6, 1.00],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      51344
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_TORCHES_BLOOD",
+    "type": "point",
+    "color": [1.00, 0.40, 0.40],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "none",
+    "gameObjects": [
+      51343
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_STREAMBOUND_CAVERN_AMBIANCE",
+    "type": "point",
+    "color": [0.90, 1.00, 0.90],
+    "offset": [0, 0, 5],
+    "intensity": 2,
+    "radius": 8,
+    "animation": "none",
+    "tiles": [
+      [1485, 9697, 0],
+      [1484, 9679, 0],
+      [1501, 9699, 0],
+      [1513, 9699, 0]
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_STREAMBOUND_CAVERN_MUSHROOMS",
+    "type": "point",
+    "color": [0.90, 1.00, 0.90],
+    "offset": [0, 0, 1],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "none",
+    "gameObjects": [
+      14619,
+      51365
+    ]
+  },
+  {
+    "name": "PERILOUS_MOONS_COOKING_STOVE",
+    "type": "point",
+    "color": [0.90, 0.60, 0.30],
+    "offset": [0, 0, 1],
+    "intensity": 1,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      51362
+    ]
+  },
+  {
+    "name": "FAIRY_RING",
+    "type": "point",
+    "color": [0.75, 0.90, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 0.5,
+    "radius": 4,
+    "animation": "pulse",
+    "decorations": [],
+    "gameObjects": [
+      29495
+    ]
+  },
+  {
+    "name": "BLAST_FURNACE_MELTING_POT",
+    "type": "point",
+    "color": [1.00, 0.65, 0.00],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "flicker",
+    "gameObjects": [
+      9098
+    ]
+  },
+  {
+    "name": "TZHAAR_WALL_FAKE_LIGHTS",
+    "type": "point",
+    "color": [1.00, 0.00, 0.00],
+    "offset": [0, 0, 5],
+    "intensity": 1,
+    "radius": 8,
+    "gameObjects" : [
+      11818
+    ]
+  },
+  {
+    "name": "HUGE_FIRE",
+    "type": "point",
+    "color": [1.00, 0.57, 0.75],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 10,
+    "animation": "flicker",
+    "gameObjects" : [
+      25155
+    ]
+  },
+  {
+    "name": "LIZARDMAN_VOLCANO",
+    "type": "point",
+    "color": [1.00, 0.75, 0.25],
+    "offset": [0, 0, 0.75],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "flicker",
+    "gameObjects" : [
+      25156
+    ]
+  },
+  {
+    "name": "PROJECTILE_RED",
+    "type": "point",
+    "color": [1.00, 0.00, 0.00],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      100,
+      127,
+      130,
+      156,
+      1922,
+      2246,
+      2224,
+      2225,
+      2226,
+      2227,
+      2176,
+      2181
+    ]
+  },
+  {
+    "name": "PROJECTILE_GREEN",
+    "type": "point",
+    "color": [0.00, 1.00, 0.00],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      97,
+      124,
+      139,
+      165,
+      2178,
+      2187
+    ]
+  },
+  {
+    "name": "PROJECTILE_BLUE",
+    "type": "point",
+    "color": [0.00, 0.00, 1.00],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      94,
+      121,
+      136,
+      162,
+      1252
+    ]
+  },
+  {
+    "name": "PROJECTILE_WHITE",
+    "type": "point",
+    "color": [1, 1, 1],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      91,
+      118,
+      133,
+      146,
+      159
+    ]
+  },
+  {
+    "name": "PROJECTILE_YELLOW",
+    "type": "point",
+    "color": [1, 1, 0.00],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      178
+    ]
+  },
+  {
+    "name": "PROJECTILE_CYAN",
+    "type": "point",
+    "color": [0.5, 1, 1],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      1907
+    ]
+  },
+  {
+    "name": "PROJECTILE_PURPLE",
+    "type": "point",
+    "color": [1, 0.00, 1],
+    "intensity": 0.5,
+    "radius": 5,
+    "projectiles": [
+      143,
+      168,
+      171
+    ]
+  }
+]

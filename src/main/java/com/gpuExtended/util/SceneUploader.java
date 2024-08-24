@@ -2,69 +2,93 @@
 package com.gpuExtended.util;
 
 import com.google.common.base.Stopwatch;
-import java.io.IOException;
+
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.google.common.collect.*;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.overlays.PerformanceOverlay;
+import com.gpuExtended.regions.Area;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.*;
+import com.gpuExtended.scene.EnvironmentManager;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Constants;
-import net.runelite.api.DecorativeObject;
-import net.runelite.api.GameObject;
-import net.runelite.api.GroundObject;
-import net.runelite.api.Model;
-import net.runelite.api.Perspective;
-import net.runelite.api.Point;
-import net.runelite.api.Renderable;
-import net.runelite.api.Scene;
-import net.runelite.api.SceneTileModel;
-import net.runelite.api.SceneTilePaint;
-import net.runelite.api.Tile;
-import net.runelite.api.WallObject;
-import com.gpuExtended.regions.Regions;
+import net.runelite.api.*;
+import net.runelite.api.coords.WorldPoint;
+
+import static com.gpuExtended.util.constants.Variables.*;
+import static net.runelite.api.Constants.*;
 
 @Singleton
 @Slf4j
 public class SceneUploader
 {
+	public class TerrainVertex
+	{
+		public int x;
+		public int y;
+		public int z;
+		public int color;
+		public boolean isWater;
+
+		public TerrainVertex(int x, int y, int z, int colorHSL, boolean isWater) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			this.color = colorHSL;
+			this.isWater = isWater;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) return true;
+			if (obj == null || getClass() != obj.getClass()) return false;
+			TerrainVertex that = (TerrainVertex) obj;
+			return Float.compare(that.x, x) == 0 &&
+					Float.compare(that.y, y) == 0 &&
+					Float.compare(that.z, z) == 0;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(x, y, z);
+		}
+	}
+
+	@Inject
+	private GpuExtendedPlugin plugin;
+
+	@Inject
+	private PerformanceOverlay performanceOverlay;
+
 	private final Client client;
 	private final GpuExtendedConfig gpuConfig;
-
-	private Regions regions;
+	private final EnvironmentManager enviornmentManager;
 
 	public int sceneId = (int) System.nanoTime();
 	private int offset;
 	private int uvoffset;
 	private int uniqueModels;
-	private Mesh staticMesh;
-	private Mesh terrainMesh;
+
+	public ArrayListMultimap<TerrainVertex, Integer> terrainSharedVertexMap;
+	public ArrayListMultimap<Vector3, Integer> staticSharedVertexMap;
+	public ArrayListMultimap<Vector3, Integer> dynamicSharedVertexMap;
 
 	@Inject
-	SceneUploader(
-		Client client,
-		GpuExtendedConfig config
-	)
+	SceneUploader(Client client, GpuExtendedConfig config, EnvironmentManager environmentManager)
 	{
 		this.client = client;
 		this.gpuConfig = config;
-
-		try (var in = SceneUploader.class.getResourceAsStream("/regions/regions.txt"))
-		{
-			regions = new Regions(in, "regions.txt");
-		}
-		catch (IOException ex)
-		{
-			throw new RuntimeException(ex);
-		}
+		this.enviornmentManager = environmentManager;
 	}
 
-	public void upload(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer)
+	public void UploadScene(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		Stopwatch stopwatchEntire = Stopwatch.createStarted();
 		Stopwatch stopwatch = Stopwatch.createStarted();
@@ -72,55 +96,31 @@ public class SceneUploader
 		offset = 0;
 		uvoffset = 0;
 		uniqueModels = 0;
-		terrainMesh = new Mesh();
-		staticMesh = new Mesh();
+
+		terrainSharedVertexMap = ArrayListMultimap.create();
+		staticSharedVertexMap = ArrayListMultimap.create();
+		dynamicSharedVertexMap = ArrayListMultimap.create();
+
 		vertexBuffer.clear();
 		normalBuffer.clear();
 		uvBuffer.clear();
-		PrepareScene(scene);
-		stopwatch.stop();
-		log.debug("Scene preparation time: {}", stopwatch);
 
 		stopwatch = Stopwatch.createStarted();
-		PopulateTerrainMesh(scene);
-		PopulateStaticMeshes(scene);
+		PopulateSceneGeometry(scene, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 		stopwatch.stop();
-		log.debug("Scene Mesh Population: {}", stopwatch);
+		log.debug("Scene Generate Meshes: {}", stopwatch);
 
 		stopwatch = Stopwatch.createStarted();
-		terrainMesh.ComputeSmoothNormals();
+		ComputeSmoothNormalsAndColor(terrainSharedVertexMap, normalBuffer, vertexBuffer);
+		ComputeWaterDepth(terrainSharedVertexMap, normalBuffer, vertexBuffer);
 		stopwatch.stop();
-		log.debug("Compute Terrain Normals: {}", stopwatch);
+		log.debug("Generate Terrain Normals: {}", stopwatch);
 
-		stopwatch = Stopwatch.createStarted();
-		terrainMesh.PushToBuffers(vertexBuffer, uvBuffer, normalBuffer);
-		staticMesh.PushToBuffers(vertexBuffer, uvBuffer, normalBuffer);
-		stopwatch.stop();
-		log.debug("Push Mesh Buffers: {}", stopwatch);
 		stopwatchEntire.stop();
 		log.debug("Scene Upload Total Time: {}", stopwatchEntire);
 	}
 
-	private void PopulateTerrainMesh(Scene scene)
-	{
-		int[][][] tileHeights = scene.getTileHeights();
-		for (int z = 0; z < Constants.MAX_Z; ++z)
-		{
-			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x)
-			{
-				for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y)
-				{
-					Tile tile = scene.getExtendedTiles()[z][x][y];
-					if (tile != null)
-					{
-						GenerateTerrainMesh(scene, tile);
-					}
-				}
-			}
-		}
-	}
-
-	private void PopulateStaticMeshes(Scene scene)
+	private void PopulateSceneGeometry(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		for (int z = 0; z < Constants.MAX_Z; ++z)
 		{
@@ -131,20 +131,23 @@ public class SceneUploader
 					Tile tile = scene.getExtendedTiles()[z][x][y];
 					if (tile != null)
 					{
-						GenerateStaticMeshes(tile);
+						GenerateSceneGeometry(scene, tile, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, false);
 					}
 				}
 			}
 		}
 	}
 
-	private void GenerateTerrainMesh(Scene scene, Tile tile)
+	private void GenerateSceneGeometry(Scene scene, Tile tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean isUnderBridge)
 	{
+		EnvironmentManager env = GpuExtendedPlugin.Instance.environmentManager;
+		WorldPoint worldLocation = tile.getWorldLocation();
 		Point tilePoint = tile.getSceneLocation();
+
 		Tile bridge = tile.getBridge();
 		if (bridge != null)
 		{   // draw the tile underneath the bridge.
-			GenerateTerrainMesh(scene, bridge);
+			GenerateSceneGeometry(scene, bridge, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, true);
 		}
 
 		SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
@@ -160,12 +163,24 @@ public class SceneUploader
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
 
-			int len = AddWorldTileMesh(scene, sceneTilePaint, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int realPlane = GetTileRealPlane(tilePoint.getX() + SCENE_OFFSET, tilePoint.getY() + SCENE_OFFSET, tile.getRenderLevel(), scene);
+			int isBridge = bridge != null ? 1 : 0;
+			int isUnderneathBridge = isUnderBridge ? 1 : 0;
+			if(vertexCount > 0)
+			{
+				sceneTilePaint.setBufferLen(isUnderneathBridge << 6 | isBridge << 5 | realPlane << 3 | (vertexCount / 3));
+			}
+			else
+			{
+				sceneTilePaint.setBufferLen(vertexCount);
+			}
 
-			//TODO:: Refactor this to be in the method.
-			sceneTilePaint.setBufferLen(len);
-			offset += len;
-			uvoffset += len;
+			offset += vertexCount;
+			if (sceneTilePaint.getTexture() != -1)
+			{
+				uvoffset += vertexCount;
+			}
 		}
 
 		SceneTileModel sceneTileModel = tile.getSceneTileModel();
@@ -181,30 +196,39 @@ public class SceneUploader
 				sceneTileModel.setUvBufferOffset(-1);
 			}
 
-			int len = AddWorldTileMeshDetailed(sceneTileModel, tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainDetailedTile(scene, sceneTileModel, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int realPlane = GetTileRealPlane(tilePoint.getX() + SCENE_OFFSET, tilePoint.getY() + SCENE_OFFSET, tile.getRenderLevel(), scene);
+			int isBridge = bridge != null ? 1 : 0;
+			int isUnderneathBridge = isUnderBridge ? 1 : 0;
 
-			//TODO:: Refactor this to be in the method.
-			sceneTileModel.setBufferLen(len);
-			offset += len;
-			uvoffset += len;
+			if(vertexCount > 0) {
+				sceneTileModel.setBufferLen(isUnderneathBridge << 6 | isBridge << 5 | realPlane << 3 | (vertexCount / 3));
+			}
+			else {
+				sceneTileModel.setBufferLen(vertexCount);
+			}
+
+			offset += vertexCount;
+			if (sceneTileModel.getTriangleTextureId() != null)
+			{
+				uvoffset += vertexCount;
+			}
 		}
-	}
 
-	private void GenerateStaticMeshes(Tile tile)
-	{
 		WallObject wallObject = tile.getWallObject();
 		if (wallObject != null)
 		{
+			int wallConfig = wallObject.getConfig();
 			Renderable renderable1 = wallObject.getRenderable1();
 			if (renderable1 instanceof Model)
 			{
-				AddStaticModel((Model) renderable1, tile);
+				PushStaticModel((Model) renderable1, tile, wallConfig, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 
 			Renderable renderable2 = wallObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				AddStaticModel((Model) renderable2, tile);
+				PushStaticModel((Model) renderable2, tile, wallConfig, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -214,7 +238,7 @@ public class SceneUploader
 			Renderable renderable = groundObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				AddStaticModel((Model) renderable, tile);
+				PushStaticModel((Model) renderable, tile, groundObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -224,15 +248,16 @@ public class SceneUploader
 			Renderable renderable = decorativeObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				AddStaticModel((Model) renderable, tile);
+				PushStaticModel((Model) renderable, tile, decorativeObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 
 			Renderable renderable2 = decorativeObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				AddStaticModel((Model) renderable2, tile);
+				PushStaticModel((Model) renderable2, tile, decorativeObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
+
 
 		GameObject[] gameObjects = tile.getGameObjects();
 		for (GameObject gameObject : gameObjects)
@@ -245,26 +270,62 @@ public class SceneUploader
 			Renderable renderable = gameObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				AddStaticModel((Model) gameObject.getRenderable(), tile);
+				PushStaticModel((Model) gameObject.getRenderable(), tile, gameObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 	}
 
+	private void PushStaticModel(Model model, Tile tile, int modelConfig, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
+	{
+		// deduplicate hillskewed models
+		if (model.getUnskewedModel() != null)
+		{
+			model = model.getUnskewedModel();
+		}
+
+		if (model.getSceneId() == sceneId)
+		{
+			return; // model has already been uploaded
+		}
+
+		model.setBufferOffset(offset);
+		if (model.getFaceTextures() != null)
+		{
+			model.setUvBufferOffset(uvoffset);
+		}
+		else
+		{
+			model.setUvBufferOffset(-1);
+		}
+		model.setSceneId(sceneId);
+		uniqueModels++;
+
+		Point tilePoint = tile.getSceneLocation();
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, tilePoint.getX(), tilePoint.getY(), modelConfig, false, true, staticSharedVertexMap);
+		offset += vertexCount;
+		if (model.getFaceTextures() != null)
+		{
+			uvoffset += vertexCount;
+		}
+	}
+
+	public int PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
+	{
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, 0, 0, modelConfig, isNPC, false, dynamicSharedVertexMap);
+		return vertexCount;
+	}
+
 	// Map Tiles
-	public int AddWorldTileMesh(
-		Scene scene,
-		SceneTilePaint tile,
-		int tileZ, int tileX, int tileY,
-		int offsetX, int offsetY
-	)
+	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
 		final int localX = offsetX;
 		final int localY = offsetY;
 
-		tileX += GpuExtendedPlugin.SCENE_OFFSET;
-		tileY += GpuExtendedPlugin.SCENE_OFFSET;
+		tileX += SCENE_OFFSET;
+		tileY += SCENE_OFFSET;
+
 		int swHeight = tileHeights[tileZ][tileX    ][tileY    ];
 		int seHeight = tileHeights[tileZ][tileX + 1][tileY    ];
 		int neHeight = tileHeights[tileZ][tileX + 1][tileY + 1];
@@ -304,48 +365,73 @@ public class SceneUploader
 		int vertexBz = nwHeight;
 		final int c4 = nwColor;
 
-		Vertex v0 = new Vertex(vertexAx, vertexAz, vertexAy);
-		Vertex v1 = new Vertex(vertexBx, vertexBz, vertexBy);
-		Vertex v2 = new Vertex(vertexCx, vertexCz, vertexCy);
-		Vertex v3 = new Vertex(vertexDx, vertexDz, vertexDy);
+		vertexBuffer.ensureCapacity(24);
+		normalBuffer.ensureCapacity(24);
+		uvBuffer.ensureCapacity(24);
+		flagsBuffer.ensureCapacity(24);
 
-		v0.SetColor(c3);
-		v1.SetColor(c4);
-		v2.SetColor(c2);
-		v3.SetColor(c1);
+		vertexBuffer.put(vertexAx, vertexAz, vertexAy, c3);
+		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
 
+		vertexBuffer.put(vertexDx, vertexDz, vertexDy, c1);
+		vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+		vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+
+		// Flags are populated in the draw call for tiles in GPUExtendedPlugin
+		flagsBuffer.put(0, 0, 0, 1);
+		flagsBuffer.put(0, 0, 0, 1);
+		flagsBuffer.put(0, 0, 0, 1);
+
+		flagsBuffer.put(0, 0, 0, 1);
+		flagsBuffer.put(0, 0, 0, 1);
+		flagsBuffer.put(0, 0, 0, 1);
+
+		boolean isWaterVertex = false;
 		if (tile.getTexture() != -1)
 		{
 			int tex = tile.getTexture() + 1;
-			v0.SetUv(tex, vertexDx, vertexDz, vertexDy);
-			v1.SetUv(tex, vertexCx, vertexCz, vertexCy);
-			v2.SetUv(tex, vertexBx, vertexBz, vertexBy);
-			v3.SetUv(tex, vertexDx, vertexDz, vertexDy);
-		}
+			isWaterVertex = (tex == 2 || tex == 26);
+			uvBuffer.put(tex, vertexDx, vertexDz, vertexDy);
+			uvBuffer.put(tex, vertexCx, vertexCz, vertexCy);
+			uvBuffer.put(tex, vertexBx, vertexBz, vertexBy);
 
-		Triangle triangle = new Triangle(v0, v1, v2);
-		Triangle triangle1 = new Triangle(v3, v2, v1);
-		triangle.CalculateNormal();
-		triangle1.CalculateNormal();
+			uvBuffer.put(tex, vertexDx, vertexDz, vertexDy);
+			uvBuffer.put(tex, vertexCx, vertexCz, vertexCy);
+			uvBuffer.put(tex, vertexBx, vertexBz, vertexBy);
+		}
 
 		int tx = tileX * Perspective.LOCAL_TILE_SIZE;
 		int ty = tileY * Perspective.LOCAL_TILE_SIZE;
-		terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexAx + tx, vertexAz, vertexAy + ty), v0);
-		terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexBx + tx, vertexBz, vertexBy + ty), v1);
-		terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexCx + tx, vertexCz, vertexCy + ty), v2);
-		terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexDx + tx, vertexDz, vertexDy + ty), v3);
 
-		terrainMesh.AddTriangle(triangle);
-		terrainMesh.AddTriangle(triangle1);
+		Vector3 normA = CalculateBaseNormal(vertexAx, vertexAz, vertexAy, vertexBx, vertexBz, vertexBy, vertexCx, vertexCz, vertexCy);
+		Vector3 normB = CalculateBaseNormal(vertexDx, vertexDz, vertexDy, vertexCx, vertexCz, vertexCy, vertexBx, vertexBz, vertexBy);
+
+		int startOfTileBufferIndex = normalBuffer.getBuffer().position();
+		normalBuffer.put(normA.x, normA.y, normA.z, isWaterVertex ? 0:1);
+		normalBuffer.put(normA.x, normA.y, normA.z, isWaterVertex ? 0:1);
+		normalBuffer.put(normA.x, normA.y, normA.z, isWaterVertex ? 0:1);
+
+		normalBuffer.put(normB.x, normB.y, normB.z, isWaterVertex ? 0:1);
+		normalBuffer.put(normB.x, normB.y, normB.z, isWaterVertex ? 0:1);
+		normalBuffer.put(normB.x, normB.y, normB.z, isWaterVertex ? 0:1);
+
+		terrainSharedVertexMap.put(new TerrainVertex(vertexAx + tx, vertexAz, vertexAy + ty, 0, isWaterVertex), startOfTileBufferIndex + 0*4);
+		terrainSharedVertexMap.put(new TerrainVertex(vertexBx + tx, vertexBz, vertexBy + ty, 0, isWaterVertex), startOfTileBufferIndex + 1*4);
+		terrainSharedVertexMap.put(new TerrainVertex(vertexCx + tx, vertexCz, vertexCy + ty, 0, isWaterVertex), startOfTileBufferIndex + 2*4);
+
+		terrainSharedVertexMap.put(new TerrainVertex(vertexDx + tx, vertexDz, vertexDy + ty, 0, isWaterVertex), startOfTileBufferIndex + 3*4);
+		terrainSharedVertexMap.put(new TerrainVertex(vertexCx + tx, vertexCz, vertexCy + ty, 0, isWaterVertex), startOfTileBufferIndex + 4*4);
+		terrainSharedVertexMap.put(new TerrainVertex(vertexBx + tx, vertexBz, vertexBy + ty, 0, isWaterVertex), startOfTileBufferIndex + 5*4);
+
+		// 0    3    6    11   15   19   | 23   27   31   35   39   43
+		// xyzw xyzw xyzw xyzw xyzw xyzw | xyzw xyzw xyzw xyzw xyzw xyzw
+
 		return 6;
 	}
 
 	// Map tiles with extra geometry
-	public int AddWorldTileMeshDetailed(
-		SceneTileModel sceneTileModel,
-		int tileX, int tileY,
-		int offsetX, int offsetZ
-	)
+	public int PushTerrainDetailedTile(Scene scene, SceneTileModel sceneTileModel, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetZ)
 	{
 		final int[] faceX = sceneTileModel.getFaceX();
 		final int[] faceY = sceneTileModel.getFaceY();
@@ -362,11 +448,15 @@ public class SceneUploader
 		final int[] triangleTextures = sceneTileModel.getTriangleTextureId();
 
 		final int faceCount = faceX.length;
+		vertexBuffer.ensureCapacity(faceCount * 12);
+		normalBuffer.ensureCapacity(faceCount * 12);
+		uvBuffer.ensureCapacity(faceCount * 12);
+		flagsBuffer.ensureCapacity(faceCount * 12);
 
 		int baseX = tileX << Perspective.LOCAL_COORD_BITS;
 		int baseY = tileY << Perspective.LOCAL_COORD_BITS;
 
-		int len = 0;
+		int vertexCount = 0;
 		for (int i = 0; i < faceCount; ++i)
 		{
 			final int triangleA = faceX[i];
@@ -395,99 +485,99 @@ public class SceneUploader
 			int vertexYC = vertexY[triangleC];
 			int vertexZC = vertexZ[triangleC] - baseY;
 
-			Vertex v0 = new Vertex(vertexXA + offsetX, vertexYA, vertexZA + offsetZ);
-			Vertex v1 = new Vertex(vertexXB + offsetX, vertexYB, vertexZB + offsetZ);
-			Vertex v2 = new Vertex(vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
-			v0.SetColor(colorA);
-			v1.SetColor(colorB);
-			v2.SetColor(colorC);
+			vertexBuffer.put(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, colorA);
+			vertexBuffer.put(vertexXB + offsetX, vertexYB, vertexZB + offsetZ, colorB);
+			vertexBuffer.put(vertexXC + offsetX, vertexYC, vertexZC + offsetZ, colorC);
 
+			// Flags are populated in the draw call for tiles in GPUExtendedPlugin
+			flagsBuffer.put(0, 0, 0, 1);
+			flagsBuffer.put(0, 0, 0, 1);
+			flagsBuffer.put(0, 0, 0, 1);
+
+			boolean isWaterVertex = false;
 			if (triangleTextures != null)
 			{
 				if (triangleTextures[i] != -1)
 				{
 					int tex = triangleTextures[i] + 1;
-					v0.SetUv(tex, offsetX, vertexYA, offsetZ);
-					v1.SetUv(tex, offsetX + 128, vertexYB, offsetZ);
-					v2.SetUv(tex, offsetX, vertexYC, offsetZ + 128);
+					isWaterVertex = (tex == 2 || tex == 26);
+					uvBuffer.put(tex, offsetX, vertexYA, offsetZ);
+					uvBuffer.put(tex, offsetX + 128, vertexYB, offsetZ);
+					uvBuffer.put(tex, offsetX, vertexYC, offsetZ + 128);
+				}
+				else
+				{
+					uvBuffer.put(0, 0, 0, 0f);
+					uvBuffer.put(0, 0, 0, 0f);
+					uvBuffer.put(0, 0, 0, 0f);
 				}
 			}
 
-			Triangle t = new Triangle(v0, v1, v2);
-			t.CalculateNormal();
+			int startOfTileBufferIndex = normalBuffer.getBuffer().position();
+			Vector3 norm = CalculateBaseNormal(vertexXA + offsetX, vertexYA, vertexZA + offsetZ, vertexXB + offsetX, vertexYB, vertexZB + offsetZ, vertexXC + offsetX, vertexYC, vertexZC + offsetZ);
+			normalBuffer.put(norm.x, norm.y, norm.z, isWaterVertex ? 0:1);
+			normalBuffer.put(norm.x, norm.y, norm.z, isWaterVertex ? 0:1);
+			normalBuffer.put(norm.x, norm.y, norm.z, isWaterVertex ? 0:1);
 
-			int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-			int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-			terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexXA + tx, vertexYA, vertexZA + tz), v0);
-			terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexXB + tx, vertexYB, vertexZB + tz), v1);
-			terrainMesh.sharedVertexPositionMap.put(new Vector3(vertexXC + tx, vertexYC, vertexZC + tz), v2);
-			terrainMesh.AddTriangle(t);
-			len += 3;
+			int tx = (tileX + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
+			int tz = (tileY + SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
+			terrainSharedVertexMap.put(new TerrainVertex(vertexXA + tx, vertexYA, vertexZA + tz, 0, isWaterVertex), startOfTileBufferIndex + 0*4);
+			terrainSharedVertexMap.put(new TerrainVertex(vertexXB + tx, vertexYB, vertexZB + tz, 0, isWaterVertex), startOfTileBufferIndex + 1*4);
+			terrainSharedVertexMap.put(new TerrainVertex(vertexXC + tx, vertexYC, vertexZC + tz, 0, isWaterVertex), startOfTileBufferIndex + 2*4);
+
+			vertexCount += 3;
 		}
 
-		return len;
+		return vertexCount;
 	}
 
-	private void AddStaticModel(Model model, Tile tile)
+	public static int GetTileRealPlane(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
 	{
-		// deduplicate hillskewed models
-		if (model.getUnskewedModel() != null)
-		{
-			model = model.getUnskewedModel();
-		}
-
-		if (model.getSceneId() == sceneId)
-		{
-			return; // model has already been uploaded
-		}
-
-		model.setBufferOffset(offset);
-		if (model.getFaceTextures() != null)
-		{
-			model.setUvBufferOffset(uvoffset);
-		}
-		else
-		{
-			model.setUvBufferOffset(-1);
-		}
-		model.setSceneId(sceneId);
-		uniqueModels++;
-
-		Point tilePoint = tile.getSceneLocation();
-		int len = AddStaticMesh(model, tilePoint.getX(), tilePoint.getY());
-
-		offset += len;
-		uvoffset += len;
+		int realPlane = tileZ;
+		return Math.max(0, realPlane);
 	}
 
-	public int AddStaticMesh(Model model, int tileX, int tileY)
+	public static boolean CheckIsOnBridge(int sceneTileX, int sceneTileY, int tileZ, Scene scene)
 	{
-		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
-		ConstructMesh(model, staticMesh, tileX, tileY, true);
-		return triCount * 3;
+		boolean isOnBridge = false;
+		byte[][][] tileSettings = scene.getExtendedTileSettings();
+		if (1 <= sceneTileX && sceneTileX < EXTENDED_SCENE_SIZE - 1 && 1 <= sceneTileY && sceneTileY < EXTENDED_SCENE_SIZE - 1) {
+			for (int i = 0; i < MAX_Z; i++) {
+				int belowPlane = Math.max(0, tileZ - i);
+
+				int tileSetting = tileSettings[belowPlane][sceneTileX][sceneTileY];
+				isOnBridge = (tileSetting & TILE_FLAG_BRIDGE) != 0;
+
+				if (isOnBridge) {
+					break;
+				}
+			}
+		}
+
+		return isOnBridge;
 	}
 
-	public int PushDynamicMesh(
-		Model model,
-		GpuIntBuffer vertexBuffer,
-		GpuFloatBuffer uvBuffer,
-		GpuFloatBuffer normalBuffer
-	)
+	private int PushGeometryToBuffers(Model model,
+									  GpuIntBuffer vertexBuffer,
+									  GpuFloatBuffer uvBuffer,
+									  GpuFloatBuffer normalBuffer,
+									  GpuIntBuffer flagsBuffer,
+									  int tileX,
+									  int tileY,
+									  int modelConfig,
+									  boolean isNPC,
+									  boolean isStatic,
+									  ArrayListMultimap<Vector3, Integer> sharedVertexMap)
 	{
-		Mesh mesh = new Mesh();
-		ConstructMesh(model, mesh, 0, 0,false);
-		mesh.PushToBuffers(vertexBuffer, uvBuffer, normalBuffer);
+		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
+		vertexBuffer.ensureCapacity(triCount * 12);
+		normalBuffer.ensureCapacity(triCount * 12);
+		uvBuffer.ensureCapacity(triCount * 12);
+		flagsBuffer.ensureCapacity(triCount * 12);
 
-		return mesh.triangles.size() * 3;
-	}
-
-	private void ConstructMesh(Model model, Mesh mesh, int tileX, int tileY, boolean recomputeNormals)
-	{
-		final int triCount = Math.min(model.getFaceCount(), GpuExtendedPlugin.MAX_TRIANGLE);
-
-		final int[] vertexX = model.getVerticesX();
-		final int[] vertexY = model.getVerticesY();
-		final int[] vertexZ = model.getVerticesZ();
+		final float[] vertexX = model.getVerticesX();
+		final float[] vertexY = model.getVerticesY();
+		final float[] vertexZ = model.getVerticesZ();
 
 		final int[] normalX = model.getVertexNormalsX();
 		final int[] normalY = model.getVertexNormalsY();
@@ -515,12 +605,9 @@ public class SceneUploader
 		final byte overrideSat = model.getOverrideSaturation();
 		final byte overrideLum = model.getOverrideLuminance();
 
+		int vertexCount = 0;
 		for (int tri = 0; tri < triCount; tri++)
 		{
-			Vertex v0;
-			Vertex v1;
-			Vertex v2;
-
 			int color1 = color1s[tri];
 			int color2 = color2s[tri];
 			int color3 = color3s[tri];
@@ -531,10 +618,54 @@ public class SceneUploader
 			}
 			else if (color3 == -2) // Model should be skipped. Pad buffer.
 			{
-				Vertex empty = Vertex.GetEmptyVertex();
-				Triangle t = new Triangle(empty, empty, empty);
-				mesh.AddTriangle(t);
+				vertexBuffer.put(0, 0, 0, 0);
+				vertexBuffer.put(0, 0, 0, 0);
+				vertexBuffer.put(0, 0, 0, 0);
+
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+
+				flagsBuffer.put(0, 0, 0, 0);
+				flagsBuffer.put(0, 0, 0, 0);
+				flagsBuffer.put(0, 0, 0, 0);
+
+				if (faceTextures != null)
+				{
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+				}
+
+				vertexCount += 3;
 				continue;
+			}
+
+			if(isNPC) {
+				if(IsBakedGroundShading(model, tri))
+				{
+					color1 = color2 = color3 = 0x12345678;
+					vertexBuffer.put(0, 0, 0, 0);
+					vertexBuffer.put(0, 0, 0, 0);
+					vertexBuffer.put(0, 0, 0, 0);
+
+					normalBuffer.put(0, 0, 0, 0);
+					normalBuffer.put(0, 0, 0, 0);
+					normalBuffer.put(0, 0, 0, 0);
+
+					flagsBuffer.put(0, 0, 0, 0);
+					flagsBuffer.put(0, 0, 0, 0);
+					flagsBuffer.put(0, 0, 0, 0);
+
+					if (faceTextures != null)
+					{
+						uvBuffer.put(0, 0, 0, 0);
+						uvBuffer.put(0, 0, 0, 0);
+						uvBuffer.put(0, 0, 0, 0);
+					}
+					vertexCount += 3;
+					continue;
+				}
 			}
 
 			// HSL override is not applied to textured faces
@@ -548,25 +679,19 @@ public class SceneUploader
 				}
 			}
 
-			int packAlphaPriority = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
-
 			int i0 = indices1[tri];
 			int i1 = indices2[tri];
 			int i2 = indices3[tri];
-			v0 = new Vertex(vertexX[i0], vertexY[i0], vertexZ[i0]);
-			v1 = new Vertex(vertexX[i1], vertexY[i1], vertexZ[i1]);
-			v2 = new Vertex(vertexX[i2], vertexY[i2], vertexZ[i2]);
 
-			v0.SetColor(packAlphaPriority | color1);
-			v1.SetColor(packAlphaPriority | color2);
-			v2.SetColor(packAlphaPriority | color3);
+			int packedAlphaPriorityFlags = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
 
-			if (normalX != null) // The model does have normals
-			{
-				v0.SetNormal(new Vector3(normalX[i0], normalY[i0], normalZ[i0]));
-				v1.SetNormal(new Vector3(normalX[i1], normalY[i1], normalZ[i1]));
-				v2.SetNormal(new Vector3(normalX[i2], normalY[i2], normalZ[i2]));
-			}
+			vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
+			vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
+			vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
+
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
+			flagsBuffer.put(0, 0, 0, 0);
 
 			if (faceTextures != null)
 			{
@@ -589,41 +714,204 @@ public class SceneUploader
 					}
 
 					int texture = faceTextures[tri] + 1;
-					v0.SetUv(texture, vertexX[texA], vertexY[texA], vertexZ[texA]);
-					v1.SetUv(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
-					v2.SetUv(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
+					uvBuffer.put(texture, vertexX[texA], vertexY[texA], vertexZ[texA]);
+					uvBuffer.put(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
+					uvBuffer.put(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
+				}
+				else
+				{
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
+					uvBuffer.put(0, 0, 0, 0);
 				}
 			}
 
-			Triangle t = new Triangle(v0, v1, v2);
-			if(recomputeNormals)
-			{
-				t.CalculateNormal();
-				int tx = (tileX + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-				int tz = (tileY + GpuExtendedPlugin.SCENE_OFFSET) * Perspective.LOCAL_TILE_SIZE;
-				mesh.sharedVertexPositionMap.put(new Vector3(vertexX[i0] + tx, vertexY[i0], vertexZ[i0] + tz), v0);
-				mesh.sharedVertexPositionMap.put(new Vector3(vertexX[i1] + tx, vertexY[i1], vertexZ[i1] + tz), v1);
-				mesh.sharedVertexPositionMap.put(new Vector3(vertexX[i2] + tx, vertexY[i2], vertexZ[i2] + tz), v2);
+			if(normalX != null) {
+				normalBuffer.put(normalX[i0], normalY[i0], normalZ[i0], 0);
+				normalBuffer.put(normalX[i1], normalY[i1], normalZ[i1], 0);
+				normalBuffer.put(normalX[i2], normalY[i2], normalZ[i2], 0);
 			}
-			mesh.AddTriangle(t);
+			else
+			{
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+				normalBuffer.put(0, 0, 0, 0);
+			}
+
+			vertexCount += 3;
 		}
 
-		mesh.useRecomputedNormals = recomputeNormals;
+		return vertexCount;
 	}
 
-	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
+	private boolean IsBakedGroundShading(Model model, int face) {
+		final byte[] faceTransparencies = model.getFaceTransparencies();
+		if (faceTransparencies == null || (faceTransparencies[face] & 0xFF) <= 100)
+			return false;
+
+		final short[] faceTextures = model.getFaceTextures();
+		if (faceTextures != null && faceTextures[face] != -1)
+			return false;
+
+		final float[] yVertices = model.getVerticesY();
+		float heightA = yVertices[model.getFaceIndices1()[face]];
+		if (heightA < -8)
+			return false;
+
+		float heightB = yVertices[model.getFaceIndices2()[face]];
+		float heightC = yVertices[model.getFaceIndices3()[face]];
+		return heightA == heightB && heightA == heightC;
+	}
+
+	public Vector3 CalculateBaseNormal(float p0x, float p0y, float p0z, float p1x, float p1y, float p1z, float p2x, float p2y, float p2z)
 	{
-		int alpha = 0;
-		if (faceTransparencies != null && (faceTextures == null || faceTextures[face] == -1))
-		{
-			alpha = (faceTransparencies[face] & 0xFF) << 24;
+		Vector3 edge1 = new Vector3(p1x - p0x, p1y - p0y, p1z - p0z);
+		Vector3 edge2 = new Vector3(p2x - p0x, p2y - p0y, p2z - p0z);
+		Vector3 norm = Vector3.Cross(edge1, edge2).Normalize();
+
+		return norm;
+	}
+
+	public void ComputeSmoothNormalsAndColor(ArrayListMultimap<TerrainVertex, Integer> sharedVertexPositionMap, GpuFloatBuffer normalBuffer, GpuIntBuffer vertexBuffer)
+	{
+		FloatBuffer normalFloatBuffer = normalBuffer.getBuffer();
+		for (Collection<Integer> sharedVerts : sharedVertexPositionMap.asMap().values()) {
+			float avgNormalX = 0;
+			float avgNormalY = 0;
+			float avgNormalZ = 0;
+
+			// Loop the verts that share that position
+			for (Integer indexToVertexAtLocation : sharedVerts) {
+				int normalIndex = indexToVertexAtLocation;
+				float normalX = normalFloatBuffer.get(normalIndex + 0);
+				float normalY = normalFloatBuffer.get(normalIndex + 1);
+				float normalZ = normalFloatBuffer.get(normalIndex + 2);
+
+				avgNormalX += normalX;
+				avgNormalY += normalY;
+				avgNormalZ += normalZ;
+			}
+
+			int numVerts = sharedVerts.size();
+			avgNormalX /= numVerts;
+			avgNormalY /= numVerts;
+			avgNormalZ /= numVerts;
+
+			// Loop the verts that share that position
+			for (Integer vertexStartBufferIndex : sharedVerts) {
+				int normalIndex = vertexStartBufferIndex;
+				normalFloatBuffer.put(normalIndex + 0, avgNormalX);
+				normalFloatBuffer.put(normalIndex + 1, avgNormalY);
+				normalFloatBuffer.put(normalIndex + 2, avgNormalZ);
+			}
 		}
-		int priority = 0;
-		if (facePriorities != null)
-		{
-			priority = (facePriorities[face] & 0xff) << 16;
+	}
+
+
+	public void ComputeWaterDepth(ArrayListMultimap<TerrainVertex, Integer> sharedVertexPositionMap, GpuFloatBuffer normalBuffer, GpuIntBuffer vertexBuffer)
+	{
+//		FloatBuffer normalFloatBuffer = normalBuffer.getBuffer();
+//		IntBuffer vertexIntBuffer = vertexBuffer.getBuffer();
+//
+//		List<TerrainVertex> nonWaterVertices = new ArrayList<>();
+//		for (TerrainVertex vertex : sharedVertexPositionMap.keySet()) {
+//			if (!vertex.isWater) {
+//				nonWaterVertices.add(vertex);
+//			}
+//		}
+//		TerrainKDTree kdTree = new TerrainKDTree(nonWaterVertices);
+//
+//		for (TerrainVertex vertex : sharedVertexPositionMap.keySet()) {
+//			if (vertex.isWater) {
+//				TerrainVertex nearestNonWaterVertex = kdTree.findNearest(vertex);
+//				float distance = calculateDistance(vertex, nearestNonWaterVertex);
+//
+//				for (Integer vertexIndex : sharedVertexPositionMap.get(vertex)) {
+//					// Example: store the distance in the w component of the vertex buffer
+//					normalFloatBuffer.put(vertexIndex + 3, distance);
+//				}
+//			}
+//		}
+	}
+
+	private float calculateDistance(TerrainVertex v1, TerrainVertex v2) {
+		return (v1.x - v2.x) * (v1.x - v2.x) +
+				(v1.y - v2.y) * (v1.y - v2.y) +
+				(v1.z - v2.z) * (v1.z - v2.z);
+	}
+
+	private static final float EPS = 1e-10f;
+	private static float clamp(float value, float min, float max) {
+		return Math.min(Math.max(value, min), max);
+	}
+
+	private static int clamp(int value, int min, int max) {
+		return Math.min(Math.max(value, min), max);
+	}
+
+	private static float mod(float x, float modulus) {
+		return (float) (x - Math.floor(x / modulus) * modulus);
+	}
+
+	public static float[] hslToSrgb(float[] hsl) {
+		float C = hsl[1] * (1 - Math.abs(2 * hsl[2] - 1));
+		float H_prime = hsl[0] * 6;
+		float m = hsl[2] - C / 2;
+
+		float r = clamp(Math.abs(H_prime - 3) - 1, 0, 1) * C + m;
+		float g = clamp(2 - Math.abs(H_prime - 2), 0, 1) * C + m;
+		float b = clamp(2 - Math.abs(H_prime - 4), 0, 1) * C + m;
+		return new float[] { r, g, b };
+	}
+
+	public static float[] unpackHsl(int hsl) {
+		// 6-bit hue | 3-bit saturation | 7-bit lightness
+		float H = (hsl >>> 10 & 0x3F) / (0x3F + 1f) + .0078125f;
+		float S = (hsl >>> 7 & 0x7) / (0x7 + 1f) + .0625f;
+		float L = (hsl & 0x7F) / (0x7F + 1f);
+		return new float[] { H, S, L };
+	}
+
+	public static float[] packedHslToSrgb(int packedHsl) {
+		return hslToSrgb(unpackHsl(packedHsl));
+	}
+
+	public static float[] srgbToHsl(float[] srgb) {
+		float V = Math.max(Math.max(srgb[0], srgb[1]), srgb[2]);
+		float X_min = Math.min(Math.min(srgb[0], srgb[1]), srgb[2]);
+		float C = V - X_min;
+
+		float H = 0;
+		if (C > 0) {
+			if (V == srgb[0]) {
+				H = mod((srgb[1] - srgb[2]) / C, 6);
+			} else if (V == srgb[1]) {
+				H = (srgb[2] - srgb[0]) / C + 2;
+			} else {
+				H = (srgb[0] - srgb[1]) / C + 4;
+			}
+			assert H >= 0 && H <= 6;
 		}
-		return alpha | priority;
+
+		float L = (V + X_min) / 2;
+		float divisor = 1 - Math.abs(2 * L - 1);
+		float S_L = Math.abs(divisor) < EPS ? 0 : C / divisor;
+		return new float[] { H / 6, S_L, L };
+	}
+
+	public static int packRawHsl(int... hsl) {
+		return hsl[0] << 10 | hsl[1] << 7 | hsl[2];
+	}
+
+	public static int packHsl(float... hsl) {
+		int H = clamp(Math.round((hsl[0] - .0078125f) * (0x3F + 1)), 0, 0x3F);
+		int S = clamp(Math.round((hsl[1] - .0625f) * (0x7 + 1)), 0, 0x7);
+		int L = clamp(Math.round(hsl[2] * (0x7F + 1)), 0, 0x7F);
+		return packRawHsl(H, S, L);
+	}
+
+	public static int srgbToPackedHsl(float[] srgb) {
+		return packHsl(srgbToHsl(srgb));
 	}
 
 	private static int interpolateHSL(int hsl, byte hue2, byte sat2, byte lum2, byte lerp)
@@ -650,33 +938,95 @@ public class SceneUploader
 		return (hue << 10 | sat << 7 | lum) & 65535;
 	}
 
-	// remove tiles from the scene that are outside the current region
-	private void PrepareScene(Scene scene)
+	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
 	{
-		if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps())
+		int alpha = 0;
+		if (faceTransparencies != null && (faceTextures == null || faceTextures[face] == -1))
 		{
-			return;
+			alpha = (faceTransparencies[face] & 0xFF) << 24;
 		}
-
-		int baseX = scene.getBaseX() / 8;
-		int baseY = scene.getBaseY() / 8;
-		int centerX = baseX + 6;
-		int centerY = baseY + 6;
-		int centerId = regions.getRegionId(centerX, centerY);
-
-		int r = Constants.EXTENDED_SCENE_SIZE / 16;
-		for (int offx = -r; offx <= r; ++offx)
+		int priority = 0;
+		if (facePriorities != null)
 		{
-			for (int offy = -r; offy <= r; ++offy)
+			priority = (facePriorities[face] & 0xff) << 16;
+		}
+		return alpha | priority;
+	}
+
+	public void PrepareScene(Scene scene)
+	{
+		Area currentArea = enviornmentManager.currentArea;
+
+		if(currentArea != null)
+		{
+			if(currentArea.isHideOtherAreas())
 			{
-				int cx = centerX + offx;
-				int cy = centerY + offy;
-				int id = regions.getRegionId(cx, cy);
-				if (id != centerId)
+				if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
+
+				Bounds[] areaBounds = currentArea.getBounds();
+				if(areaBounds == null) return;
+
+				log.info("Hiding unrelated maps");
+				ArrayList<Tile> invalidTiles = new ArrayList<>();
+
+				Tile[][][] tiles = scene.getExtendedTiles();
+				for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+					for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+						for (int z = 0; z < Constants.MAX_Z; ++z) {
+							Tile tile = tiles[z][x][y];
+							if (tile == null) continue;
+
+							WorldPoint tileLocation = tile.getWorldLocation();
+							boolean tileValid = false;
+							for(Bounds currentSubBounds : areaBounds)
+							{
+								if (currentSubBounds.contains(tileLocation, 2)) {
+									tileValid = true;
+									break;
+								}
+							}
+
+							if(!tileValid) {
+								invalidTiles.add(tile);
+							}
+						}
+					}
+				}
+
+				for(Tile tile : invalidTiles)
 				{
-					removeChunk(scene, cx, cy);
+					scene.removeTile(tile);
 				}
 			}
+		}
+
+		Bounds currentBounds = enviornmentManager.currentBounds;
+		if(currentBounds != null)
+		{
+			//scene.setRoofRemovalMode(gpuConfig.roofFading() && currentBounds.isAllowRoofFading() ? 16 : 0);
+
+			if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
+			if(!currentBounds.isHideOtherAreas()) return;
+
+			Tile[][][] tiles = scene.getExtendedTiles();
+			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+				for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+
+					for (int z = 0; z < Constants.MAX_Z; ++z) {
+						Tile tile = tiles[z][x][y];
+						if (tile == null) continue;
+
+						WorldPoint tileLocation = tile.getWorldLocation();
+						boolean insideCurrentSubarea = currentBounds.contains(tileLocation, 2);
+						if (!insideCurrentSubarea) {
+							scene.removeTile(tile);
+						}
+					}
+				}
+			}
+		}
+		else {
+			//scene.setRoofRemovalMode(gpuConfig.roofFading() ? 16 : 0);
 		}
 	}
 
@@ -686,8 +1036,8 @@ public class SceneUploader
 		int wy = cy * 8;
 		int sx = wx - scene.getBaseX();
 		int sy = wy - scene.getBaseY();
-		int cmsx = sx + GpuExtendedPlugin.SCENE_OFFSET;
-		int cmsy = sy + GpuExtendedPlugin.SCENE_OFFSET;
+		int cmsx = sx + SCENE_OFFSET;
+		int cmsy = sy + SCENE_OFFSET;
 		Tile[][][] tiles = scene.getExtendedTiles();
 		for (int x = 0; x < 8; ++x)
 		{
@@ -707,6 +1057,20 @@ public class SceneUploader
 					}
 				}
 			}
+		}
+	}
+
+	public static int getBakedOrientation(int config) {
+		switch (config >> 6 & 3) {
+			case 0: // Rotated 180 degrees
+				return 1024;
+			case 1: // Rotated 90 degrees counter-clockwise
+				return 1536;
+			case 2: // Not rotated
+			default:
+				return 0;
+			case 3: // Rotated 90 degrees clockwise
+				return 512;
 		}
 	}
 }

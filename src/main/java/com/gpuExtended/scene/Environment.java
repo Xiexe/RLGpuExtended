@@ -1,71 +1,100 @@
 package com.gpuExtended.scene;
 
-import com.gpuExtended.rendering.*;
-import org.apache.commons.lang3.NotImplementedException;
+import java.awt.Color;
 
-import java.util.ArrayList;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
-public class Environment
-{
-    public ArrayList<Light> directionalLights;
-    public ArrayList<Light> pointLights;
-    public ArrayList<Light> spotLights;
-    public Color ambientColor;
-    public Color fogColor;
-    public int drawDistance = -1;
+@Setter(value = AccessLevel.PRIVATE)
+@NoArgsConstructor
+@Slf4j
+public class Environment {
+    public String Name;
+    public Color SkyColor;
+    public Color AmbientColor;
+    public Color LightColor;
+    public float LightPitch;
+    public float LightYaw;
+    public float FogDepth;
+    public int Type;
 
-    public void AddDirectionalLight(Vector4 direction, Color color, float intensity)
-    {
-        if(directionalLights == null)
-            directionalLights = new ArrayList<Light>();
+    public boolean isTransitioning = false;
+    public float transitionProgress = 0.0f;
+    private Environment lastEnvironment;
 
-        Light light = new Light();
-        light.type = Light.LightType.Directional;
-        light.direction = direction;
-        light.color = color;
-        light.intensity = intensity;
-
-        directionalLights.add(light);
+    @Override
+    public String toString() {
+        if (this != null) {
+            return "\n Environment {" +
+                    "\n    Name='" + Name + '\'' +
+                    ", \n    SkyColor=" + SkyColor +
+                    ", \n    AmbientColor=" + AmbientColor +
+                    ", \n    LightColor=" + LightColor +
+                    ", \n    LightPitch=" + LightPitch +
+                    ", \n    LightYaw=" + LightYaw +
+                    ", \n    FogDepth=" + FogDepth +
+                    ", \n    Type=" + Type +
+                    "\n}";
+        }
+        return "null";
     }
 
-    public void AddPointLight(Vector4 position, Color color, float intensity)
+    public void SwitchToEnvironment(Environment target, float deltaTime)
     {
-        if(pointLights == null)
-            pointLights = new ArrayList<Light>();
+        if (target == null)
+        {
+            return;
+        }
 
-        Light light = new Light();
-        light.type = Light.LightType.Point;
-        light.position = position;
-        light.color = color;
-        light.intensity = intensity;
+        this.transitionProgress += deltaTime;
+        float easedProgress = easeOutQuad(this.transitionProgress);
 
-        pointLights.add(light);
+        this.Name           = target.Name;
+        this.Type           = target.Type;
+        this.SkyColor       = lerpColor(lastEnvironment.SkyColor, target.SkyColor, easedProgress);
+        this.AmbientColor   = lerpColor(lastEnvironment.AmbientColor, target.AmbientColor, easedProgress);
+        this.LightColor     = lerpColor(lastEnvironment.LightColor, target.LightColor, easedProgress);
+        this.LightPitch     = lerpFloat(lastEnvironment.LightPitch, target.LightPitch, easedProgress);
+        this.LightYaw       = lerpFloat(lastEnvironment.LightYaw, target.LightYaw, easedProgress);
+        this.FogDepth       = lerpFloat(lastEnvironment.FogDepth, target.FogDepth, easedProgress);
+
+        if (this.transitionProgress >= 1.0f)
+        {
+            this.transitionProgress = 0.0f;
+            this.isTransitioning = false;
+        }
     }
 
-    public void AddSpotLight(Vector4 position, Vector4 direction, Color color, float intensity)
+    public void PrepareEnvironmentTransition(Environment lastEnvironmentSettings)
     {
-        if(spotLights == null)
-            spotLights = new ArrayList<Light>();
-
-        Light light = new Light();
-        light.type = Light.LightType.Spot;
-        light.position = position;
-        light.direction = direction;
-        light.color = color;
-        light.intensity = intensity;
-
-        spotLights.add(light);
+        lastEnvironment = lastEnvironmentSettings;
+        this.isTransitioning = true;
+        this.transitionProgress = 0.0f;
     }
 
-    public void RemoveLight()
-    {
-        throw new NotImplementedException("You have not implemented this yet dummy.");
+    public static Color lerpColor(Color color1, Color color2, float t) {
+        // Clamp t to the range [0, 1]
+        t = Math.max(0, Math.min(1, t));
+
+        // Interpolate each color component
+        int r = (int) (color1.getRed() + t * (color2.getRed() - color1.getRed()));
+        int g = (int) (color1.getGreen() + t * (color2.getGreen() - color1.getGreen()));
+        int b = (int) (color1.getBlue() + t * (color2.getBlue() - color1.getBlue()));
+        int a = (int) (color1.getAlpha() + t * (color2.getAlpha() - color1.getAlpha()));
+
+        return new Color(r, g, b, a);
     }
 
-    public void ClearAllLights()
-    {
-        directionalLights.clear();
-        pointLights.clear();
-        spotLights.clear();
+    public static float lerpFloat(float start, float end, float t) {
+        // Clamp t to the range [0, 1]
+        t = Math.max(0, Math.min(1, t));
+
+        return (start + t * (end - start));
+    }
+
+    public float easeOutQuad(float t) {
+        return 1 - (float) Math.pow(1 - t, 4);
     }
 }
