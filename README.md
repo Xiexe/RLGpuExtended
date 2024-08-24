@@ -1,2 +1,1 @@
-# Example
-An example greeter plugin
+An experimental extended GPU plugin for Runelite with more modern rendering features and techniques.
