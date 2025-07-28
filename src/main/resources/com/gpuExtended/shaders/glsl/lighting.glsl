@@ -1,5 +1,5 @@
 const float bias = 0.00065;
-const float lightSize = 0.0025;
+const float lightSize = 0.0008;
 const int shadowSamples = 32;
 
 float LightAttenuation(float dist, float radius) {
@@ -95,9 +95,12 @@ void AnimateLight(inout Light light, inout float bandWidth)
     switch(light.animation)
     {
         case LIGHT_ANIM_FLICKER:
-        float flicker = sin((time / 75) - hash) * 0.05 + 0.95;
-        float flicker2 = sin((time / 45) - hash * 2) * 0.05 + 0.95;
+        float flicker = sin((time / 75) - hash) * 0.05 + 1;
+        float flicker2 = sin((time / 45) - hash * 2) * 0.05 + 1;
+        float flickerRad = sin((time / 75) - hash) * 0.02 + 1;
+        float flickerRad2 = sin((time / 45) - hash * 2) * 0.02 + 1;
         light.intensity *= flicker * flicker2;
+        light.radius *= (flickerRad * flickerRad2);
         break;
 
         case LIGHT_ANIM_PULSE:
@@ -156,11 +159,6 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
 
             if((smoothBanding > 0))
             {
-//                for(int i = 0; i < floor(light.radius / bandWidth); i++)
-//                {
-//                    image += imaBandEdge(i*bandWidth, distToLight);
-//                }
-
                 distToLight /= bandWidth;
                 distToLight = floor(distToLight) * bandWidth;
             }

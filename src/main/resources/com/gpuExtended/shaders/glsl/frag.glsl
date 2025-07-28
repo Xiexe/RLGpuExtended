@@ -2,6 +2,7 @@
 
 in vec4 fColor;
 in vec4 fNormal;
+in vec4 fFlatNormal;
 noperspective centroid in float fHsl;
 flat in int fTextureId;
 in vec2 fUv;
@@ -60,7 +61,7 @@ void main() {
 
     PopulateVertexFlags(flags, fFlags);
     PopulateSurfaceColor(s);
-    PopulateSurfaceNormal(s, fNormal);
+    PopulateSurfaceNormal(s, flags, fNormal, fFlatNormal);
 
     vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
 
@@ -78,9 +79,9 @@ void main() {
 
     ApplyFog(finalColor, fPosition, distanceToCamera);
     ApplyAdditiveLighting(finalColor, flags, s.albedo.rgb, s.normal.xyz, fPosition);
-    //FadeRoofs(flags, fPosition, dither, distanceToPlayer);
+//    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
 
-    if(!flags.isDynamicModel)
+    if(!flags.isDynamicModel && flags.isTerrain)
     {
         DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
         DrawTileMarker(finalColor, flags, fPosition, vec4(targetTile.xy, flags.plane, targetTile.w), targetTileFillColor, targetTileOutlineColor, targetTile.z, distanceToPlayer);
@@ -88,5 +89,7 @@ void main() {
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
+    //FragColor = vec4(s.normal.rgb, s.albedo.a);
+    //FragColor = vec4(s.albedo.rgb * mainLight.color.rgb, s.albedo.a);
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

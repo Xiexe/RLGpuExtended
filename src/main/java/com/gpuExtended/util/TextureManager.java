@@ -14,6 +14,7 @@ import org.lwjgl.opengl.GL43C;
 @Slf4j
 public class TextureManager
 {
+	private static final int TEXTURE_COUNT = 256;
 	private static final int TEXTURE_SIZE = 128;
 
 	public int initTextureArray(TextureProvider textureProvider)
@@ -200,8 +201,18 @@ public class TextureManager
 	public float[] computeTextureAnimations(TextureProvider textureProvider)
 	{
 		Texture[] textures = textureProvider.getTextures();
-		float[] anims = new float[TEXTURE_SIZE * 2];
-		for (int i = 0; i < textures.length; ++i)
+
+		log.info("[TEXTURE MANAGER] Textures Length {}, Texture Count {}", textures.length, TEXTURE_COUNT);
+
+		if (textures.length > TEXTURE_COUNT)
+		{
+			log.warn("texture limit exceeded: {} > {}", textures.length, TEXTURE_COUNT);
+		}
+
+		int texturesToUse = Math.min(TEXTURE_COUNT, textures.length);
+
+		float[] anims = new float[texturesToUse * 2];
+		for (int i = 0; i < texturesToUse; i++)
 		{
 			Texture texture = textures[i];
 			if (texture == null)

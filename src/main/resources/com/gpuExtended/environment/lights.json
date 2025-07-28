@@ -187,167 +187,179 @@
     "type": "point",
     "color": [0.45, 0.45, 1.00],
     "offset": [0, 2, 2],
-    "intensity": 2,
-    "radius": 8,
-    "animation": "pulse",
+    "intensity": 0.1,
+    "radius": 15,
+    "animation": "flicker",
     "gameObjects": [
       43692
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_PORTAL",
+    "name": "GUARDIANS_OF_THE_RIFT_FLOATING_SYMBOLS",
     "type": "point",
-    "color": [0.45, 0.45, 1.00],
-    "offset": [0, -1, 1.25],
-    "intensity": 1,
-    "radius": 4,
-    "animation": "pulse",
+    "color": [1.00, 1.00, 0.2],
+    "offset": [0, 0, 1.25],
+    "intensity": 0.2,
+    "radius": 8,
+    "animation": "flicker",
     "gameObjects": [
-      43841
+      43700
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_AIR",
     "type": "point",
     "color": [1.00, 1.00, 1.00],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43784
+      43784,
+      43701
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_MIND",
     "type": "point",
     "color": [1.00, 0.6, 0.4],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43788
+      43788,
+      43705
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_BODY",
     "type": "point",
     "color": [0.3, 0.3, 1.00],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43792
+      43792,
+      43709
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_CHAOS",
     "type": "point",
     "color": [1.00, 0.7, 0.5],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43789
+      43789,
+      43706
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_DEATH",
     "type": "point",
     "color": [1.00, 1.00, 1.00],
     "offset": [0, 0, 2],
-    "intensity": -0.25,
-    "radius": 5,
+    "intensity": -0.15,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43790
+      43790,
+      43707
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_LAW",
     "type": "point",
     "color": [0.5, 0.5, 1.00],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43795
+      43795,
+      43712
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_BLOOD",
     "type": "point",
     "color": [1.00, 0.1, 0.1],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43791
+      43791,
+      43708
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_FIRE",
     "type": "point",
     "color": [1.00, 0.6, 0.2],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43787
+      43787,
+      43704
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_NATURE",
     "type": "point",
     "color": [0.25, 1.00, 0.25],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43794
+      43794,
+      43711
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_EARTH",
     "type": "point",
     "color": [0.9, 1.00, 0.25],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43786
+      43786,
+      43703
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_WATER",
     "type": "point",
     "color": [0.2, 0.2, 1.00],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43785
+      43785,
+      43702
     ]
   },
   {
-    "name": "GUARDIANS_OF_THE_RIFT_STATUE",
+    "name": "GUARDIANS_OF_THE_RIFT_STATUE_COSMIC",
     "type": "point",
     "color": [1, 1, 0],
     "offset": [0, 0, 2],
-    "intensity": 1,
-    "radius": 5,
+    "intensity": 0.35,
+    "radius": 4,
     "animation": "flicker",
     "gameObjects": [
-      43793
+      43793,
+      43710
     ]
   },
   {
@@ -355,7 +367,7 @@
     "type": "point",
     "color": [0.8, 0.8, 1.00],
     "offset": [0, 0, 5],
-    "intensity": 1,
+    "intensity": 0.2,
     "radius": 16,
     "animation": "pulse",
     "gameObjects": [

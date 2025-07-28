@@ -1,7 +1,7 @@
 #version 430
 
-#include "shaders/glsl/structs.glsl"
 #include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/structs.glsl"
 #include "shaders/glsl/uniforms.glsl"
 
 layout(std430, binding = 0) buffer _lightbinning {

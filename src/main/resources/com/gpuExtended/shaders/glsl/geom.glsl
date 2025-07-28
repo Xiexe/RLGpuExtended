@@ -23,9 +23,11 @@ in vec3 gTexPos[3];
 in int gFarClip[3];
 in float gFogAmount[3];
 in ivec4 gFlags[3];
+in VertexFlags gVertexFlags[3];
 
 out vec4 fColor;
 out vec4 fNormal;
+out vec4 fFlatNormal;
 noperspective centroid out float fHsl;
 flat out int fTextureId;
 out vec2 fUv;
@@ -34,6 +36,7 @@ out float fFogAmount;
 out float fSurfaceDepth;
 out flat int isEmissive;
 out flat ivec4 fFlags;
+out VertexFlags fVertexFlags;
 
 bool CheckIsTree(int texId)
 {
@@ -75,13 +78,9 @@ void main() {
   for (int i = 0; i < 3; ++i) {
     vec4 color = gColor[i];
     vec4 normal = gNormal[i];
+    vec4 flatNormal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
     vec3 pos = gPosition[i];
     vec3 vertex = gVertex[i];
-
-    if((gNormal[i].x == 0 && gNormal[i].y == 0 && gNormal[i].z == 0))
-    {
-        normal = vec4(triangleNormal.x, triangleNormal.y, triangleNormal.z, gNormal[i].w);
-    }
 
     isEmissive = 0;
     fPosition = pos;
@@ -90,9 +89,11 @@ void main() {
     fHsl = gHsl[i];
     fTextureId = gTextureId[i];
     fNormal = normal;
+    fFlatNormal = flatNormal;
     fUv = uv[i];
     fFlags = gFlags[i];
     fSurfaceDepth = normal.w;
+    fVertexFlags = gVertexFlags[i];
     gl_Position = cameraProjectionMatrix * vec4(vertex, 1);
     EmitVertex();
   }

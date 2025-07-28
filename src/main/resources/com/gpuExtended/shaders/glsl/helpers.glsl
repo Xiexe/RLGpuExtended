@@ -28,6 +28,11 @@ bool CheckIsSwampWater(int texId)
     return texId == WATER_SWAMP;
 }
 
+bool CheckIsTree(int texId)
+{
+    return texId == TREE_TOP || texId == TREE_BOTTOM || texId == TREE_WILLOW;
+}
+
 bool CheckIsUnlitTexture(int texId)
 {
     return CheckIsInfernalCapeFireCape(texId) || texId == LAVA;
@@ -79,15 +84,15 @@ void PopulateSurfaceColor(inout Surface s)
             textureColor = textureColorBrightness * vec4(mul, 1.f);
         }
 
-        if(CheckIsWater(fTextureId))
-        {
-            textureColor = vec4(0.4, 0.55, 0.6, 1);
-        }
-
-        if(CheckIsSwampWater(fTextureId))
-        {
-            textureColor = vec4(0.1, 0.3, 0.25, 1);
-        }
+//        if(CheckIsWater(fTextureId))
+//        {
+//            textureColor = vec4(0.4, 0.55, 0.6, 1);
+//        }
+//
+//        if(CheckIsSwampWater(fTextureId))
+//        {
+//            textureColor = vec4(0.1, 0.3, 0.25, 1);
+//        }
 
         color = textureColor;
     } else {
@@ -99,21 +104,14 @@ void PopulateSurfaceColor(inout Surface s)
     s.albedo = color;
 }
 
-void PopulateSurfaceNormal(inout Surface s, vec4 normal)
+void PopulateSurfaceNormal(inout Surface s, VertexFlags f, vec4 normal, vec4 flatNormal)
 {
     normal.y = -normal.y; // runescape uses -y as up by default. Lets make that more sane.
-    s.normal.rgb = normalize(normal.rgb);
-}
+    flatNormal.y = -flatNormal.y; // runescape uses -y as up by default. Lets make that more sane.
 
-void PopulateVertexFlags(inout VertexFlags flags, ivec4 fFlags)
-{
-    flags.tileX             = ((fFlags.x >> BIT_XPOS) & 255);
-    flags.tileY             = ((fFlags.x >> BIT_YPOS) & 255);
-    flags.plane             = ((fFlags.x >> BIT_PLANE) & 3);
-    flags.isBridge          = ((fFlags.x >> BIT_ISBRIDGE) & 1) > 0;
-    flags.isTerrain         = ((fFlags.x >> BIT_ISTERRAIN) & 1) > 0;
-    flags.isDynamicModel    = ((fFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
-    flags.isOnBridge        = ((fFlags.x >> BIT_ISONBRIDGE) & 1) > 0;
+    bool hasValidNormals = (normal.x != 0.0 || normal.y != 0.0 || normal.z != 0.0);
+    s.normal = mix(flatNormal, normal, hasValidNormals && (f.isDynamicModel || f.isTerrain || CheckIsTree(fTextureId)));
+    s.normal.rgb = normalize(s.normal.rgb);
 }
 
 vec4 intToColor(int color) {
@@ -215,7 +213,7 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
             );
             if (isBorder)
             {
-                image = mix(image, borderColor.rgb * 5, borderColor.a);
+                image = mix(image, borderColor.rgb * 2, borderColor.a);
             }
             else
             {

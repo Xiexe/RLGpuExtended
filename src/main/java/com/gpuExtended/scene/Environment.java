@@ -19,6 +19,7 @@ public class Environment {
     public float LightYaw;
     public float FogDepth;
     public int Type;
+    public boolean UseDynamicTimeOfDay = false;
 
     public boolean isTransitioning = false;
     public float transitionProgress = 0.0f;
@@ -51,14 +52,15 @@ public class Environment {
         this.transitionProgress += deltaTime;
         float easedProgress = easeOutQuad(this.transitionProgress);
 
-        this.Name           = target.Name;
-        this.Type           = target.Type;
-        this.SkyColor       = lerpColor(lastEnvironment.SkyColor, target.SkyColor, easedProgress);
-        this.AmbientColor   = lerpColor(lastEnvironment.AmbientColor, target.AmbientColor, easedProgress);
-        this.LightColor     = lerpColor(lastEnvironment.LightColor, target.LightColor, easedProgress);
-        this.LightPitch     = lerpFloat(lastEnvironment.LightPitch, target.LightPitch, easedProgress);
-        this.LightYaw       = lerpFloat(lastEnvironment.LightYaw, target.LightYaw, easedProgress);
-        this.FogDepth       = lerpFloat(lastEnvironment.FogDepth, target.FogDepth, easedProgress);
+        this.Name                = target.Name;
+        this.Type                = target.Type;
+        this.SkyColor            = lerpColor(lastEnvironment.SkyColor, target.SkyColor, easedProgress);
+        this.AmbientColor        = lerpColor(lastEnvironment.AmbientColor, target.AmbientColor, easedProgress);
+        this.LightColor          = lerpColor(lastEnvironment.LightColor, target.LightColor, easedProgress);
+        this.LightPitch          = lerpFloat(lastEnvironment.LightPitch, target.LightPitch, easedProgress);
+        this.LightYaw            = lerpFloat(lastEnvironment.LightYaw, target.LightYaw, easedProgress);
+        this.FogDepth            = lerpFloat(lastEnvironment.FogDepth, target.FogDepth, easedProgress);
+        this.UseDynamicTimeOfDay = target.UseDynamicTimeOfDay;
 
         if (this.transitionProgress >= 1.0f)
         {

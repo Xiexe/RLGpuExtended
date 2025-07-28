@@ -21,12 +21,16 @@ out int gTextureId;
 out vec3 gTexPos;
 out float gFogAmount;
 out ivec4 gFlags;
+out VertexFlags gVertexFlags;
 
 void main() {
     int hsl = vHsl & 0xffff;
     float a = float(vHsl >> 24 & 0xff) / 255.f;
 
     vec3 rgb = hslToRgb(hsl);
+
+    VertexFlags flags;
+    PopulateVertexFlags(flags, vFlags);
 
     gVertex = vPos;
     gNormal = vNorm;
@@ -37,4 +41,5 @@ void main() {
     gTextureId = int(vUv.x);  // the texture id + 1;
     gTexPos = vUv.yzw;
     gFlags = vFlags;
+    gVertexFlags = flags;
 }

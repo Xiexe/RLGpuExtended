@@ -4,6 +4,7 @@ import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
+import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
 import com.gpuExtended.util.config.ShadowResolution;
@@ -18,8 +19,12 @@ import net.runelite.client.callback.ClientThread;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 
+import static com.gpuExtended.scene.Environment.lerpColor;
+import static com.gpuExtended.util.Mathmatics.lerp;
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.Utils.GenerateTileHash;
 
@@ -86,6 +91,9 @@ public class EnvironmentManager
     private boolean loadingLights = false;
 
     public Light mainLight = new Light();
+    public Color skyColor = new Color(0, 0, 0);
+    public Color ambientColor = new Color(0, 0, 0);
+
     public Light[] lightsDefinitions;
     public ArrayList<Light> sceneLights = new ArrayList<>();
     public HashMap<Light, Boolean> sceneLightVisibility = new HashMap<>();
@@ -99,6 +107,14 @@ public class EnvironmentManager
     public HashMap<Projectile, Light> projectileLightHashMap = new HashMap<>();
 
     public HashMap<GameObject, Light> gameObjectLightHashMap = new HashMap<>();
+
+
+    private float timeOfDay = 0.0f; // 0.0 = midnight, 12.0 = noon, 24.0 = next midnight
+    private float timeOfDayCycleLength = 300f;
+    public List<ColorKey> sunColorKeys = new ArrayList<>();
+    public List<ColorKey> ambientColorKeys = new ArrayList<>();
+    public List<ColorKey> skyColorKeys = new ArrayList<>();
+
 
     public void Initialize() {
         plugin.skybox.Initialize();
@@ -117,12 +133,17 @@ public class EnvironmentManager
         AREAS_PATH.watch("\\.(json)$", path -> {
             LoadAreas();
         });
+
     }
 
     public void Update(float deltaTime)
     {
         if(client.getGameState() != GameState.LOGGED_IN)
             return;
+
+        timeOfDay += (24f / 300f) * deltaTime;
+        if (timeOfDay >= 24f)
+            timeOfDay -= 24f;
 
         CleanupOldProjectiles();
         CheckRegion();
@@ -131,6 +152,11 @@ public class EnvironmentManager
         if(currentEnvironment.isTransitioning) {
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
         }
+//        log.info("Time of Day: " + timeOfDay + " normalized: " + (timeOfDay / 24f));
+    }
+
+    public void OnTick() {
+
     }
 
     public void RenderSkybox()
@@ -191,6 +217,54 @@ public class EnvironmentManager
             }
             log.info("Loaded " + environments.length + " environments");
 
+            Environment sunriseEnvironment = GetDefaultSunriseEnvironment();
+            Environment middayEnvironment = GetDefaultMiddayEnvironment();
+            Environment sunsetEnvironment = GetDefaultSunsetEnvironment();
+            Environment nightEnvironment = GetDefaultNightEnvironment();
+
+            assert sunriseEnvironment != null;
+            assert middayEnvironment != null;
+            assert sunsetEnvironment != null;
+            assert nightEnvironment != null;
+
+            float dayStart        = 0.0f;
+            float sunriseStart    = 0.10f;
+            float sunriseEnd      = 0.20f;
+            float middayStart     = 0.25f;
+            float middayEnd       = 0.70f;
+            float sunsetStart     = 0.75f;
+            float sunsetEnd       = 0.90f;
+            float dayEnd          = 1.00f;
+
+            sunColorKeys.clear();
+            sunColorKeys.add(new ColorKey(dayStart, nightEnvironment.LightColor));             // Full night start
+            sunColorKeys.add(new ColorKey(sunriseStart, nightEnvironment.LightColor));     // Pre-dawn
+            sunColorKeys.add(new ColorKey(sunriseEnd, sunriseEnvironment.LightColor));     // Transition to day
+            sunColorKeys.add(new ColorKey(middayStart, middayEnvironment.LightColor));     // Full daylight
+            sunColorKeys.add(new ColorKey(middayEnd, middayEnvironment.LightColor));       // Still daylight
+            sunColorKeys.add(new ColorKey(sunsetStart, sunsetEnvironment.LightColor));     // Begin sunset
+            sunColorKeys.add(new ColorKey(sunsetEnd, nightEnvironment.LightColor));        // Back to night
+            sunColorKeys.add(new ColorKey(dayEnd, nightEnvironment.LightColor));            // Loop closure
+
+            skyColorKeys.clear();
+            skyColorKeys.add(new ColorKey(dayStart, nightEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(sunriseStart, nightEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(sunriseEnd, sunriseEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(middayStart, middayEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(middayEnd, middayEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(sunsetStart, sunsetEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(sunsetEnd, nightEnvironment.SkyColor));
+            skyColorKeys.add(new ColorKey(dayEnd, nightEnvironment.SkyColor));
+
+            ambientColorKeys.clear();
+            ambientColorKeys.add(new ColorKey(dayStart, nightEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(sunriseStart, nightEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(sunriseEnd, sunriseEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(middayStart, middayEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(middayEnd, middayEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(sunsetStart, sunsetEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(sunsetEnd, nightEnvironment.AmbientColor));
+            ambientColorKeys.add(new ColorKey(dayEnd, nightEnvironment.AmbientColor));
         } catch (Exception e) {
             log.error("Failed to load environment: " + ENVIRONMENT_PATH, e);
         }
@@ -454,6 +528,7 @@ public class EnvironmentManager
             currentEnvironment.LightYaw = defaultEnvironment.LightYaw;
             currentEnvironment.FogDepth = defaultEnvironment.FogDepth;
             currentEnvironment.Type = defaultEnvironment.Type;
+            currentEnvironment.UseDynamicTimeOfDay = defaultEnvironment.UseDynamicTimeOfDay;
 
             newEnvironment.SkyColor = defaultEnvironment.SkyColor;
             newEnvironment.AmbientColor = defaultEnvironment.AmbientColor;
@@ -462,6 +537,7 @@ public class EnvironmentManager
             newEnvironment.LightYaw = defaultEnvironment.LightYaw;
             newEnvironment.FogDepth = defaultEnvironment.FogDepth;
             newEnvironment.Type = defaultEnvironment.Type;
+            newEnvironment.UseDynamicTimeOfDay = defaultEnvironment.UseDynamicTimeOfDay;
         }
 
         if(client.getGameState() == GameState.LOGGED_IN || plugin.loadingScene)
@@ -545,6 +621,7 @@ public class EnvironmentManager
                 cached.LightYaw = currentEnvironment.LightYaw;
                 cached.FogDepth = currentEnvironment.FogDepth;
                 cached.Type = currentEnvironment.Type;
+                cached.UseDynamicTimeOfDay = currentEnvironment.UseDynamicTimeOfDay;
 
                 currentEnvironment.PrepareEnvironmentTransition(cached);
                 currentEnvironment.transitionProgress = 0;
@@ -598,6 +675,7 @@ public class EnvironmentManager
         currentEnvironment.LightYaw = newEnvironment.LightYaw;
         currentEnvironment.FogDepth = newEnvironment.FogDepth;
         currentEnvironment.Type = newEnvironment.Type;
+        currentEnvironment.UseDynamicTimeOfDay = newEnvironment.UseDynamicTimeOfDay;
 
         log.info("Setting environment: " + currentEnvironment.Name);
     }
@@ -616,17 +694,93 @@ public class EnvironmentManager
         int camX = (int) client.getCameraFpX();
         int camY = (int) client.getCameraFpY();
 
-        float lightPitch = (float) Math.toRadians(overrideLightDirection ? customLightPitch : currentEnvironment.LightPitch);
-        float lightYaw = (float) Math.toRadians(overrideLightDirection ? customLightYaw : currentEnvironment.LightYaw);
+        float lightPitch = 0.0f;
+        float lightYaw = 0.0f;
+        Color lightColor = currentEnvironment.LightColor;
+        Color ambient = currentEnvironment.AmbientColor;
+        Color sky = currentEnvironment.SkyColor;
+
+        if (overrideLightDirection) {
+            lightPitch = (float) Math.toRadians(customLightPitch);
+            lightYaw = (float) Math.toRadians(customLightYaw);
+        }
+        else {
+            if (currentEnvironment.UseDynamicTimeOfDay) {
+                float normalizedTime = timeOfDay / 24f;
+                float radiansPerDegree = (float)Math.PI / 180f;
+
+                // Pitch: 0 → 90 → 0 (sunrise → noon → sunset)
+                float maxPitchRadians = 0.75f * (float)(Math.PI / 2f); // limit pitch so it doesn't go to exactly 90
+                float pitch = (float)Math.sin(normalizedTime * Math.PI) * maxPitchRadians;
+
+                // Yaw: 90° (east) → 180° (south) → 270° (west)
+                float yaw = (270f - normalizedTime * 180f) * radiansPerDegree;
+
+                lightPitch = pitch;
+                lightYaw   = yaw;
+                lightColor = GetSunColor(normalizedTime);
+                ambient = GetAmbientColor(normalizedTime);
+                sky = GetSkyColor(normalizedTime);
+            }
+            else {
+                lightPitch = (float) Math.toRadians(currentEnvironment.LightPitch);
+                lightYaw = (float) Math.toRadians(currentEnvironment.LightYaw);
+            }
+        }
 
         mainLight.type = Light.LightType.Directional;
-        mainLight.color = currentEnvironment.LightColor;
+        mainLight.color = lightColor;
         mainLight.intensity = 1;
         mainLight.radius = 0;
         mainLight.plane = 0;
         mainLight.position = new Vector4(lightPitch, lightYaw, 0, 0);
         mainLight.isDynamic = false;
         mainLight.UpdateProjectionViewMatrix(camX, camY);
+
+        ambientColor = ambient;
+        skyColor = sky;
+    }
+
+    private Color GetSunColor(float normalizedTime) {
+        ColorKey prev = sunColorKeys.get(0);
+        for (int i = 1; i < sunColorKeys.size(); i++) {
+            ColorKey next = sunColorKeys.get(i);
+            if (normalizedTime <= next.time) {
+                float t = (normalizedTime - prev.time) / (next.time - prev.time);
+                return lerpColor(prev.color, next.color, t);
+            }
+            prev = next;
+        }
+        // fallback in case normalizedTime == 1.0 exactly
+        return sunColorKeys.get(sunColorKeys.size() - 1).color;
+    }
+
+    private Color GetAmbientColor(float normalizedTime) {
+        ColorKey prev = ambientColorKeys.get(0);
+        for (int i = 1; i < ambientColorKeys.size(); i++) {
+            ColorKey next = ambientColorKeys.get(i);
+            if (normalizedTime <= next.time) {
+                float t = (normalizedTime - prev.time) / (next.time - prev.time);
+                return lerpColor(prev.color, next.color, t);
+            }
+            prev = next;
+        }
+        // fallback in case normalizedTime == 1.0 exactly
+        return ambientColorKeys.get(ambientColorKeys.size() - 1).color;
+    }
+
+    private Color GetSkyColor(float normalizedTime) {
+        ColorKey prev = skyColorKeys.get(0);
+        for (int i = 1; i < skyColorKeys.size(); i++) {
+            ColorKey next = skyColorKeys.get(i);
+            if (normalizedTime <= next.time) {
+                float t = (normalizedTime - prev.time) / (next.time - prev.time);
+                return lerpColor(prev.color, next.color, t);
+            }
+            prev = next;
+        }
+        // fallback in case normalizedTime == 1.0 exactly
+        return skyColorKeys.get(skyColorKeys.size() - 1).color;
     }
 
     private Environment GetDefaultEnvironment()
@@ -644,6 +798,42 @@ public class EnvironmentManager
             return environmentMap.get("DEFAULT");
         } catch (Exception e) {
             log.error("Failed to get default environment", e);
+            return null;
+        }
+    }
+
+    private Environment GetDefaultSunriseEnvironment() {
+        try {
+            return environmentMap.get("DEFAULT_SUNRISE");
+        } catch (Exception e) {
+            log.error("Failed to get default sunrise environment", e);
+            return null;
+        }
+    }
+
+    private Environment GetDefaultMiddayEnvironment() {
+        try {
+            return environmentMap.get("DEFAULT_MIDDAY");
+        } catch (Exception e) {
+            log.error("Failed to get default day environment", e);
+            return null;
+        }
+    }
+
+    private Environment GetDefaultSunsetEnvironment() {
+        try {
+            return environmentMap.get("DEFAULT_SUNSET");
+        } catch (Exception e) {
+            log.error("Failed to get default sunset environment", e);
+            return null;
+        }
+    }
+
+    private Environment GetDefaultNightEnvironment() {
+        try {
+            return environmentMap.get("DEFAULT_NIGHT");
+        } catch (Exception e) {
+            log.error("Failed to get default night environment", e);
             return null;
         }
     }

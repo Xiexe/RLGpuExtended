@@ -32,10 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameObjectDespawned;
-import net.runelite.api.events.GameObjectSpawned;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.ProjectileMoved;
+import net.runelite.api.events.*;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -1193,10 +1190,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		final int height = bufferProvider.getHeight();
 
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, interfacePbo);
-		glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY)
-			.asIntBuffer()
-			.put(pixels, 0, width * height);
-		glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+		ByteBuffer interfaceBuf = glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+		if (interfaceBuf != null)
+		{
+			interfaceBuf
+					.asIntBuffer()
+					.put(pixels, 0, width * height);
+			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+		}
 		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, 0);
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
@@ -1224,6 +1225,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		final int viewportHeight = client.getViewportHeight();
 		final int viewportWidth = client.getViewportWidth();
+		if (canvasWidth == 0 || canvasHeight == 0)
+			return;
 
 		prepareInterfaceTexture(canvasWidth, canvasHeight);
 
@@ -1279,6 +1282,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		if (gameState.getState() >= GameState.LOADING.getState())
 		{
+			if (viewportWidth == 0 || viewportHeight == 0)
+				return;
+
 			//<editor-fold defaultstate="collapsed" desc="Set up misc frame data">
 			int renderWidthOff = viewportOffsetX;
 			int renderHeightOff = viewportOffsetY;
@@ -1492,15 +1498,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.clear();
 
 			// Ambient Color
-			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.AmbientColor.getBlue() / 255f);
+			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
 
 			// Sky Color
-			bBufferEnvironmentBlock.putFloat(env.SkyColor.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.SkyColor.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.SkyColor.getBlue() / 255f);
+			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
 
 			// Fog
@@ -1526,9 +1532,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putFloat(0); // pad
 
 			// Color
-			bBufferEnvironmentBlock.putFloat(env.LightColor.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.LightColor.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(env.LightColor.getBlue() / 255f);
+			bBufferEnvironmentBlock.putFloat(mainLight.color.getRed() / 255f);
+			bBufferEnvironmentBlock.putFloat(mainLight.color.getGreen() / 255f);
+			bBufferEnvironmentBlock.putFloat(mainLight.color.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0); // pad
 
 			bBufferEnvironmentBlock.putFloat(0); // light intensity
@@ -2068,6 +2074,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			// Avoid drawing the last frame's buffer during LOADING after LOGIN_SCREEN
 			targetBufferOffset = 0;
 		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		// Code here runs every tick (~600ms)
+		System.out.println("Tick: Player is at " + client.getLocalPlayer().getWorldLocation());
 	}
 
 	public boolean loadingScene = false;

@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 public class Utils {
+
     public static Color colorLerp(Color color1, Color color2, float t) {
         // Ensure t is within the range [0, 1]
         t = Math.max(0, Math.min(1, t));
