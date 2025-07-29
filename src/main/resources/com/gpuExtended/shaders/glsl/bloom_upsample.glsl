@@ -19,8 +19,9 @@ vec3 sampleBloomMip(int mip)
     vec3 bloomMip = vec3(0);
     // The filter kernel is applied with a radius, specified in texture
     // coordinates, so that the radius will vary across mip resolutions.
-    float x = 0.0025;
-    float y = 0.0025;
+    float r = 0.001;
+    float x = r;
+    float y = r;
 
     // Take 9 samples around current texel:
     // a - b - c
@@ -52,7 +53,7 @@ vec3 sampleBloomMip(int mip)
 
 void main()
 {
-    int numMips = textureQueryLevels(srcTexture);
+    int numMips = 6;//textureQueryLevels(srcTexture);
 
     upsample = vec3(0);
     for(int i = numMips - 1; i > 0; i--)

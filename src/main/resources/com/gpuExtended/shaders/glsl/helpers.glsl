@@ -66,38 +66,26 @@ void PopulateSurfaceColor(inout Surface s)
 
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
-        // This error is fake news.
-        vec4 textureColor = texture(textures, vec3(fUv, float(textureIdx)));
-        vec4 textureColorBrightness = pow(textureColor, vec4(brightness, brightness, brightness, 1.0f));
-
-        // textured triangles hsl is a 7 bit lightness 2-126
-        float textureLightMode = 1;
-        float light = fHsl / 127.f;
-        vec3 mul = (1.f - textureLightMode) * vec3(light) + textureLightMode * fColor.rgb;;
-
+        vec4 textureColor = texture(textures, vec3(fUv, float(textureIdx))).rgba;
+        textureColor.rgb *= 0.7297;
         if(CheckIsUnlitTexture(fTextureId))
         {
-            textureColor.rgb *= textureColor.rgb * 2;
-        }
-        else
-        {
-            textureColor = textureColorBrightness * vec4(mul, 1.f);
+            textureColor.rgb *= 1.75;
         }
 
-//        if(CheckIsWater(fTextureId))
-//        {
-//            textureColor = vec4(0.4, 0.55, 0.6, 1);
-//        }
-//
-//        if(CheckIsSwampWater(fTextureId))
-//        {
-//            textureColor = vec4(0.1, 0.3, 0.25, 1);
-//        }
+//        textureColor.rgb = pow(textureColor.rgb, vec3(1f / 2f));
+        textureColor.rgb = gammaToLinear(textureColor.rgb);
+//        textureColor.rgb *= fColor.rgb;
 
         color = textureColor;
     } else {
         // pick interpolated hsl or rgb depending on smooth banding setting
-        vec3 rgb = hslToRgb(int(fHsl)) * smoothBanding + fColor.rgb * (1.f - smoothBanding);
+        vec3 modelColor = hslToRgb(int(fHsl));
+        modelColor.rgb = pow(modelColor.rgb, vec3( 1f / brightness));
+//        modelColor.rgb = pow(modelColor.rgb, vec3(1f / 2f));
+        modelColor = gammaToLinear(modelColor);
+
+        vec3 rgb = modelColor * smoothBanding + fColor.rgb * (1.f - smoothBanding);
         color = vec4(rgb, fColor.a);
     }
 

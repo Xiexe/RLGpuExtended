@@ -12,9 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameObjectDespawned;
-import net.runelite.api.events.GameObjectSpawned;
-import net.runelite.api.events.ProjectileMoved;
+import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
 
 import javax.inject.Inject;
@@ -91,6 +89,8 @@ public class EnvironmentManager
     private boolean loadingLights = false;
 
     public Light mainLight = new Light();
+    public float mainLightPitch = 0.0f;
+    public float mainLightYaw = 0.0f;
     public Color skyColor = new Color(0, 0, 0);
     public Color ambientColor = new Color(0, 0, 0);
 
@@ -102,15 +102,18 @@ public class EnvironmentManager
     public HashMap<Integer, ArrayList<Light>> gameObjectLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> wallLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> projectileLights = new HashMap<>();
+    public HashMap<Integer, ArrayList<Light>> npcLights = new HashMap<>();
 
     public HashSet<Projectile> sceneProjectiles = new HashSet<>();
     public HashMap<Projectile, Light> projectileLightHashMap = new HashMap<>();
 
     public HashMap<GameObject, Light> gameObjectLightHashMap = new HashMap<>();
+    public HashMap<NPC, Light> npcLightHashMap = new HashMap<>();
 
+//    private Light testLight = new Light();
 
     private float timeOfDay = 0.0f; // 0.0 = midnight, 12.0 = noon, 24.0 = next midnight
-    private float timeOfDayCycleLength = 300f;
+    private float timeOfDayCycleLength = 1800;
     public List<ColorKey> sunColorKeys = new ArrayList<>();
     public List<ColorKey> ambientColorKeys = new ArrayList<>();
     public List<ColorKey> skyColorKeys = new ArrayList<>();
@@ -120,6 +123,7 @@ public class EnvironmentManager
         plugin.skybox.Initialize();
         environments = new Environment[0];
         areas = new Area[0];
+        timeOfDay = 8; // Start at 8AM
 
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
             LoadEnvironments();
@@ -133,7 +137,6 @@ public class EnvironmentManager
         AREAS_PATH.watch("\\.(json)$", path -> {
             LoadAreas();
         });
-
     }
 
     public void Update(float deltaTime)
@@ -141,22 +144,50 @@ public class EnvironmentManager
         if(client.getGameState() != GameState.LOGGED_IN)
             return;
 
-        timeOfDay += (24f / 300f) * deltaTime;
+        timeOfDay += (24f / 1800) * deltaTime;
         if (timeOfDay >= 24f)
             timeOfDay -= 24f;
 
-        CleanupOldProjectiles();
-        CheckRegion();
-        UpdateMainLightSettings();
+//        timeOfDay = 0;
 
         if(currentEnvironment.isTransitioning) {
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
         }
-//        log.info("Time of Day: " + timeOfDay + " normalized: " + (timeOfDay / 24f));
+
+        UpdateMainLightSettings();
+        UpdateNpcLights();
+    }
+
+    private void UpdateNpcLights() {
+        for (int i = 0; i < npcLightHashMap.size(); i++) {
+            NPC npc = (NPC) npcLightHashMap.keySet().toArray()[i];
+            Light light = npcLightHashMap.get(npc);
+            if (npc == null || light == null) {
+                continue;
+            }
+
+            if (npc.getWorldLocation() == null || npc.getWorldLocation().getPlane() != client.getPlane()) {
+                continue;
+            }
+
+            LocalPoint localPoint = npc.getLocalLocation();
+            if (localPoint == null) {
+                continue;
+            }
+
+            float tileHeight = Perspective.getTileHeight(client, localPoint, npc.getWorldLocation().getPlane());
+            light.position = new Vector4(
+                    (float) localPoint.getX() + light.offset.x,
+                    (float) localPoint.getY() + light.offset.y,
+                    (float) tileHeight - (npc.getModelHeight() / 2f) + light.offset.z,
+                    0
+            );
+        }
     }
 
     public void OnTick() {
-
+        CleanupOldProjectiles();
+        CheckRegion();
     }
 
     public void RenderSkybox()
@@ -286,6 +317,7 @@ public class EnvironmentManager
             gameObjectLights.clear();
             projectileLights.clear();
             wallLights.clear();
+            npcLights.clear();
 
             int uniqueLightAssignements = 0;
             for(int i = 0; i < lightsDefinitions.length; i++) {
@@ -354,6 +386,18 @@ public class EnvironmentManager
                         uniqueLightAssignements++;
                     }
                 }
+
+                int[] npcs = light.npcs;
+                if(npcs != null) {
+                    for(int j = 0; j < npcs.length; j++) {
+                        npcLights.computeIfAbsent(npcs[j], k -> new ArrayList<>());
+
+                        if(!npcLights.get(npcs[j]).contains(light)) {
+                            npcLights.get(npcs[j]).add(light);
+                        }
+                        uniqueLightAssignements++;
+                    }
+                }
             }
 
             log.info("Loaded {} lights across {} objects", lightsDefinitions.length, uniqueLightAssignements);
@@ -368,11 +412,16 @@ public class EnvironmentManager
         sceneLights.clear();
         sceneLightVisibility.clear();
         sceneProjectiles.clear();
+
         projectileLightHashMap.clear();
         gameObjectLightHashMap.clear();
+        npcLightHashMap.clear();
 
         GameState gameState = client.getGameState();
         if(gameState == GameState.LOGGED_IN || plugin.loadingScene) {
+//            sceneLights.add(testLight);
+
+            // Load lights for static objects that are a part of the tile
             for (int z = 0; z < Constants.MAX_Z; ++z) {
                 for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
                     for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
@@ -462,55 +511,15 @@ public class EnvironmentManager
                 }
             }
 
+            // Load lights for npcs that are already loaded (won't fire spawn event by itself, do it manually)
+            for (NPC npc : client.getNpcs()) {
+                if (npc == null) continue;
+                AddNpcLight(npc);
+            }
+
             log.info("Loaded {} lights across scene total.", sceneLights.size());
             loadingLights = false;
         }
-    }
-
-    public void DetermineRenderedLights()
-    {
-        if(loadingLights)
-            return;
-
-        Player player = client.getLocalPlayer();
-        if (player == null)
-        {
-            return;
-        }
-
-        if(sceneLights == null)
-            return;
-
-        if(sceneLights.size() < 2)
-        {
-            return;
-        }
-
-        int localX = player.getLocalLocation().getX();
-        int localY = player.getLocalLocation().getY();
-
-        sceneLights.sort((a, b) -> {
-            float distanceA = (localX - a.position.x) * (localX - a.position.x) +
-                    (localY - a.position.y) * (localY - a.position.y);
-
-            float distanceB = (localX - b.position.x) * (localX - b.position.x) +
-                    (localY - b.position.y) * (localY - b.position.y);
-
-            a.distanceSquared = distanceA;
-            b.distanceSquared = distanceB;
-
-            return Float.compare(distanceA, distanceB);
-        });
-    }
-
-    public Light GetLightAtIndex(int index)
-    {
-        if(index < 0 || index >= sceneLights.size())
-        {
-            return null;
-        }
-
-        return sceneLights.get(index);
     }
 
     public void CheckRegion()
@@ -614,11 +623,11 @@ public class EnvironmentManager
             {
                 Environment cached = new Environment();
                 cached.Name = currentEnvironment.Name;
-                cached.SkyColor = currentEnvironment.SkyColor;
-                cached.AmbientColor = currentEnvironment.AmbientColor;
-                cached.LightColor = currentEnvironment.LightColor;
-                cached.LightPitch = currentEnvironment.LightPitch;
-                cached.LightYaw = currentEnvironment.LightYaw;
+                cached.SkyColor = skyColor;
+                cached.AmbientColor = ambientColor;
+                cached.LightColor = mainLight.color;
+                cached.LightPitch = mainLightPitch;
+                cached.LightYaw = mainLightYaw;
                 cached.FogDepth = currentEnvironment.FogDepth;
                 cached.Type = currentEnvironment.Type;
                 cached.UseDynamicTimeOfDay = currentEnvironment.UseDynamicTimeOfDay;
@@ -654,15 +663,6 @@ public class EnvironmentManager
                 }
             }
         }
-    }
-
-    public Bounds CheckTileRegion(WorldPoint tileWorldPosition)
-    {
-        if(boundsMap.containsKey(tileWorldPosition)) {
-            return boundsMap.get(tileWorldPosition);
-        }
-
-        return null;
     }
 
     public void SetEnvironmentNoLerp()
@@ -739,6 +739,169 @@ public class EnvironmentManager
 
         ambientColor = ambient;
         skyColor = sky;
+        mainLightPitch = lightPitch;
+        mainLightYaw = lightYaw;
+    }
+
+    public void CleanupOldProjectiles()
+    {
+        if(sceneProjectiles.size() == 0)
+            return;
+
+        List<Projectile> projectiles = new ArrayList<>(sceneProjectiles);
+        projectiles.sort(Comparator.comparing(Projectile::getEndCycle));
+
+        List<Projectile> projectilesToRemove = new ArrayList<>();
+
+        for (Projectile projectile : projectiles) {
+            if (projectile.getEndCycle() <= client.getGameCycle()) {
+                projectilesToRemove.add(projectile);
+            }
+        }
+
+        // Remove projectiles and associated lights
+        for (Projectile projectileToRemove : projectilesToRemove) {
+            sceneProjectiles.remove(projectileToRemove);
+            sceneLights.remove(projectileLightHashMap.get(projectileToRemove));
+            projectileLightHashMap.remove(projectileToRemove);
+            log.info("Projectile Removed: " + projectileToRemove.getId());
+        }
+    }
+
+    // TODO:: Add lights for SpotAnims
+    public void OnProjectileMoved(ProjectileMoved event) {
+        Projectile projectile = event.getProjectile();
+
+        boolean projectileExists = sceneProjectiles.contains(projectile);
+        if(projectileExists) {
+            if(projectileLightHashMap.containsKey(projectile)) {
+                Light light = projectileLightHashMap.get(projectile);
+                Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
+                light.position = position;
+            }
+            else
+            {
+                if(projectileLights.containsKey(projectile.getId())) {
+                    ArrayList<Light> lightsForProjectile = projectileLights.get(projectile.getId());
+                    if(lightsForProjectile == null) return;
+
+                    Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
+                    for(int i = 0; i < lightsForProjectile.size(); i++) {
+                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position, client.getPlane(), 0, plugin.awtContext);
+                        light.isDynamic = true;
+                        sceneLights.add(light);
+                        projectileLightHashMap.put(projectile, light);
+                    }
+                }
+            }
+        }
+        else {
+            int remainingCycles = projectile.getRemainingCycles();
+            if (remainingCycles <= 0) {
+                return;
+            }
+
+            sceneProjectiles.add(projectile);
+            log.info("Projectile added: " + projectile.getId());
+        }
+    }
+
+    public void OnGameObjectSpawned(GameObjectSpawned event)
+    {
+        GameObject gameObject = event.getGameObject();
+        Renderable renderable = gameObject.getRenderable();
+
+        if (renderable instanceof DynamicObject) {
+            if(gameObjectLights.containsKey(gameObject.getId()))
+            {
+                if(gameObjectLightHashMap.containsKey(gameObject))
+                {
+                    return; // Already tracking this gameobject.
+                }
+
+                ArrayList<Light> lightsForGameObject = gameObjectLights.get(gameObject.getId());
+                if(lightsForGameObject == null) return;
+
+                int orientation = gameObject.getConfig() >> 6 & 3;
+                LocalPoint location = gameObject.getLocalLocation();
+                Vector4 position = new Vector4(location.getX(), location.getY(), gameObject.getZ(), 0);
+                for(int i = 0; i < lightsForGameObject.size(); i++) {
+                    Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position, gameObject.getPlane(), orientation, plugin.awtContext);
+                    sceneLights.add(light);
+                    gameObjectLightHashMap.put(gameObject, light);
+                }
+            }
+        }
+    }
+
+    public void OnGameObjectDespawned(GameObjectDespawned event)
+    {
+        GameObject gameObject = event.getGameObject();
+
+        if(gameObjectLightHashMap.containsKey(gameObject))
+        {
+            sceneLights.remove(gameObjectLightHashMap.get(gameObject));
+            gameObjectLightHashMap.remove(gameObject);
+            log.info("GameObject despawned: " + event.getGameObject().getId());
+        }
+    }
+
+    public void OnNpcSpawned(NpcSpawned event) {
+        NPC npc = event.getNpc();
+        AddNpcLight(npc);
+    }
+
+    public void AddNpcLight(NPC npc) {
+        if (npcLightHashMap.containsKey(npc)) {
+            log.info("NPC already tracked: " + npc.getId());
+            return; // Already tracking this npc
+        } else {
+
+            ArrayList<Light> lightsForNpc = npcLights.get(npc.getId());
+            if (lightsForNpc == null)
+                return;
+
+            int orientation = npc.getOrientation();
+            LocalPoint location = npc.getLocalLocation();
+            float tileHeight = Perspective.getTileHeight(client, location, npc.getWorldLocation().getPlane());
+            Vector4 position = new Vector4(location.getX(), location.getY(), tileHeight, 0);
+            for(int i = 0; i < lightsForNpc.size(); i++) {
+                Light light = Light.CreateLightFromTemplate(lightsForNpc.get(i), position, npc.getWorldLocation().getPlane(), orientation, plugin.awtContext);
+                sceneLights.add(light);
+                npcLightHashMap.put(npc, light);
+            }
+
+            log.info("NPC light spawned: {}, {}", npc.getName(), npc.getId());
+        }
+    }
+
+    public void OnNpcDespawned(NpcDespawned event) {
+        NPC npc = event.getNpc();
+        if (npcLightHashMap.containsKey(npc)) {
+            log.info("NPC light de-spawned: {}, {}", npc.getName(), npc.getId());
+            Light testNpcLight = npcLightHashMap.get(npc);
+            sceneLights.remove(testNpcLight);
+            npcLightHashMap.remove(npc);
+        }
+    }
+
+    public Light GetLightAtIndex(int index)
+    {
+        if(index < 0 || index >= sceneLights.size())
+        {
+            return null;
+        }
+
+        return sceneLights.get(index);
+    }
+
+    public Bounds CheckTileRegion(WorldPoint tileWorldPosition)
+    {
+        if(boundsMap.containsKey(tileWorldPosition)) {
+            return boundsMap.get(tileWorldPosition);
+        }
+
+        return null;
     }
 
     private Color GetSunColor(float normalizedTime) {
@@ -855,107 +1018,6 @@ public class EnvironmentManager
         }
 
         return currentEnvironment;
-    }
-
-    public void CleanupOldProjectiles()
-    {
-        if(sceneProjectiles.size() == 0)
-            return;
-
-        List<Projectile> projectiles = new ArrayList<>(sceneProjectiles);
-        projectiles.sort(Comparator.comparing(Projectile::getEndCycle));
-
-        List<Projectile> projectilesToRemove = new ArrayList<>();
-
-        for (Projectile projectile : projectiles) {
-            if (projectile.getEndCycle() <= client.getGameCycle()) {
-                projectilesToRemove.add(projectile);
-            }
-        }
-
-        // Remove projectiles and associated lights
-        for (Projectile projectileToRemove : projectilesToRemove) {
-            sceneProjectiles.remove(projectileToRemove);
-            sceneLights.remove(projectileLightHashMap.get(projectileToRemove));
-            projectileLightHashMap.remove(projectileToRemove);
-            log.info("Projectile Removed: " + projectileToRemove.getId());
-        }
-    }
-
-    // TODO:: Add lights for SpotAnims
-    public void OnProjectileMoved(ProjectileMoved event) {
-        Projectile projectile = event.getProjectile();
-
-        boolean projectileExists = sceneProjectiles.contains(projectile);
-        if(projectileExists) {
-            if(projectileLightHashMap.containsKey(projectile)) {
-                Light light = projectileLightHashMap.get(projectile);
-                Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
-                light.position = position;
-            }
-            else
-            {
-                if(projectileLights.containsKey(projectile.getId())) {
-                    ArrayList<Light> lightsForProjectile = projectileLights.get(projectile.getId());
-                    if(lightsForProjectile == null) return;
-
-                    Vector4 position = new Vector4((float)projectile.getX(), (float)projectile.getY(), (float)projectile.getZ(), 0);
-                    for(int i = 0; i < lightsForProjectile.size(); i++) {
-                        Light light = Light.CreateLightFromTemplate(lightsForProjectile.get(i), position, client.getPlane(), 0, plugin.awtContext);
-                        light.isDynamic = true;
-                        sceneLights.add(light);
-                        projectileLightHashMap.put(projectile, light);
-                    }
-                }
-            }
-        }
-        else {
-            int remainingCycles = projectile.getRemainingCycles();
-            if (remainingCycles <= 0) {
-                return;
-            }
-
-            sceneProjectiles.add(projectile);
-            log.info("Projectile added: " + projectile.getId());
-        }
-    }
-
-    //TODO:: make sure gameobject is not static.
-    public void OnGameObjectSpawned(GameObjectSpawned event)
-    {
-        GameObject gameObject = event.getGameObject();
-
-        if(gameObjectLights.containsKey(gameObject.getId()))
-        {
-            if(gameObjectLightHashMap.containsKey(gameObject))
-            {
-                return;
-            }
-
-            ArrayList<Light> lightsForGameObject = gameObjectLights.get(gameObject.getId());
-            if(lightsForGameObject == null) return;
-
-            int orientation = gameObject.getConfig() >> 6 & 3;
-            LocalPoint location = gameObject.getLocalLocation();
-            Vector4 position = new Vector4(location.getX(), location.getY(), gameObject.getZ(), 0);
-            for(int i = 0; i < lightsForGameObject.size(); i++) {
-                Light light = Light.CreateLightFromTemplate(lightsForGameObject.get(i), position, gameObject.getPlane(), orientation, plugin.awtContext);
-                sceneLights.add(light);
-                gameObjectLightHashMap.put(gameObject, light);
-            }
-        }
-    }
-
-    public void OnGameObjectDespawned(GameObjectDespawned event)
-    {
-        GameObject gameObject = event.getGameObject();
-
-        if(gameObjectLightHashMap.containsKey(gameObject))
-        {
-            sceneLights.remove(gameObjectLightHashMap.get(gameObject));
-            gameObjectLightHashMap.remove(gameObject);
-            log.info("GameObject despawned: " + event.getGameObject().getId());
-        }
     }
 }
 

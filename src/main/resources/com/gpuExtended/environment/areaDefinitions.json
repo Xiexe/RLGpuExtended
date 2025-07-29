@@ -147,60 +147,6 @@
     ]
   },
   {
-    "name": "DESERT",
-    "environment": "DESERT",
-    "bounds": [
-      {
-        "start": [3271, 3196, -1],
-        "end": [3413, 3329, -1]
-      },
-      {
-        "start": [3267, 3196, -1],
-        "end": [3277, 3321, -1]
-      },
-      {
-        "start": [3268, 3322, -1],
-        "end": [3270, 3323, -1]
-      },
-      {
-        "start": [3269, 3324, -1],
-        "end": [3270, 3325, -1]
-      },
-      {
-        "start": [3412, 3196, -1],
-        "end": [3420, 3277, -1]
-      },
-      {
-        "start": [3261, 3167, -1],
-        "end": [3430, 3203, -1]
-      },
-      {
-        "start": [3254, 3153, -1],
-        "end": [3260, 3187, -1]
-      },
-      {
-        "start": [3261, 3153, -1],
-        "end": [3449, 3166, -1]
-      },
-      {
-        "start": [3199, 2668, -1],
-        "end": [3544, 3133, -1]
-      },
-      {
-        "start": [3136, 2668, -1],
-        "end": [3198, 3068, -1]
-      },
-      {
-        "start": [3109, 2819, -1],
-        "end": [3135, 2858, -1]
-      },
-      {
-        "start": [3254, 3134, -1],
-        "end": [3486, 3152, -1]
-      }
-    ]
-  },
-  {
     "name": "WIZARDS_TOWER",
     "bounds": [
       {
@@ -217,6 +163,12 @@
       {
         "start": [2364, 5600, -1],
         "end": [2496, 5761, -1],
+        "environment": "GUARDIANS_OF_THE_RIFT",
+        "hideOtherAreas": true
+      },
+      {
+        "start": [3551, 9433, -1],
+        "end": [3675, 9536, -1],
         "environment": "GUARDIANS_OF_THE_RIFT",
         "hideOtherAreas": true
       }
@@ -264,6 +216,25 @@
         "start": [1376, 9506, 0],
         "end": [1525, 9606, 4],
         "groundPlane": 1,
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
+    "name": "TZHAAR",
+    "bounds": [
+      {
+        "name": "TZHAAR_CITY",
+        "start": [2367, 5054, -1],
+        "end": [2557, 5185, -1],
+        "environment": "DEFAULT_UNDERGROUND",
+        "hideOtherAreas": true
+      },
+      {
+        "name": "FIGHT_CAVE",
+        "start": [2367, 5054, -1],
+        "end": [2430, 5120, -1],
+        "environment": "DEFAULT_UNDERGROUND",
         "hideOtherAreas": true
       }
     ]

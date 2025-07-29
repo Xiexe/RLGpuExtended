@@ -108,6 +108,7 @@ public class Light
     public int[] gameObjects = new int[0];
     public int[] walls = new int[0];
     public int[] projectiles = new int[0];
+    public int[] npcs = new int[0];
 
     @Nullable
     public FrameBuffer shadowMapFramebuffer = null;
@@ -127,7 +128,7 @@ public class Light
     @Nullable
     public float hash = -1;
 
-    public Light (String name, LightType type, LightAnimation animation, Color color, Vector3 offset, float intensity, float radius, int[][] tiles, int[] decorations, int[] gameObjects, int[] walls, int[] projectiles)
+    public Light (String name, LightType type, LightAnimation animation, Color color, Vector3 offset, float intensity, float radius, int[][] tiles, int[] decorations, int[] gameObjects, int[] walls, int[] projectiles, int[] npcs)
     {
         this.name = name;
         this.type = type;
@@ -141,6 +142,25 @@ public class Light
         this.gameObjects = gameObjects;
         this.walls = walls;
         this.projectiles = projectiles;
+        this.npcs = npcs;
+    }
+
+    public static Light GetDebugLight() {
+        return new Light(
+                "Debug Light",
+                LightType.Point,
+                LightAnimation.None,
+                new Color(1, 1, 1),
+                new Vector3(0, 0, 0),
+                .5f,
+                2.0f,
+                new int[][]{{0, 0}},
+                new int[]{},
+                new int[]{},
+                new int[]{},
+                new int[]{},
+                new int[]{}
+        );
     }
 
     private static Vector4 GetLightPositionWithOffset(Vector3 position, Vector3 offset, int orientation)

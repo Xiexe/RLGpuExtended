@@ -12,7 +12,7 @@ void main() {
     vec3 bottomColor = vec3(0.0, 0.0, 0.0);
     vec3 topColor = skyColor.rgb;
 
-    float interpolator = smoothstep(0.5, 1.0, TexCoords.y);
+    float interpolator = smoothstep(0.99, 1.0, TexCoords.y + 0.7f);
     vec3 col = mix(topColor, bottomColor, interpolator);
     FragColor = vec4(col, 1.0);
 }

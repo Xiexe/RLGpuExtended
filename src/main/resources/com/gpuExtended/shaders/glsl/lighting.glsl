@@ -3,7 +3,7 @@ const float lightSize = 0.0008;
 const int shadowSamples = 32;
 
 float LightAttenuation(float dist, float radius) {
-    return clamp(1.0 - ((dist * dist) / (radius * radius)), 0.0, 1.0);
+    return pow(clamp(1.0 - (dist * dist) / (radius * radius), 0.0, 1.0), 5);
 }
 
 float PCSSEstimatePenumbraSize(vec4 projCoords, float currentDepth, float searchRadius) {
@@ -95,12 +95,10 @@ void AnimateLight(inout Light light, inout float bandWidth)
     switch(light.animation)
     {
         case LIGHT_ANIM_FLICKER:
-        float flicker = sin((time / 75) - hash) * 0.05 + 1;
-        float flicker2 = sin((time / 45) - hash * 2) * 0.05 + 1;
-        float flickerRad = sin((time / 75) - hash) * 0.02 + 1;
-        float flickerRad2 = sin((time / 45) - hash * 2) * 0.02 + 1;
+        float flicker = sin((time / 75) - hash) * 0.01 + 1;
+        float flicker2 = sin((time / 45) - hash * 2) * 0.01 + 1;
         light.intensity *= flicker * flicker2;
-        light.radius *= (flickerRad * flickerRad2);
+        light.radius *= (flicker * flicker2);
         break;
 
         case LIGHT_ANIM_PULSE:
@@ -133,9 +131,9 @@ vec3 imaBandEdge(float bandDistance, float distToLight)
 void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec3 normal, vec3 fragPos)
 {
     int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
-//    vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
-//    //    image = mix(image, vec3(1), lightDebug);
-//    image = lightDebug;
+    vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
+    //image = mix(image, vec3(1), numLights);
+//    image = lightDebug * numLights;
 
 //    image = vec3(0);
     if(numLights == 0) return;
@@ -153,7 +151,6 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
             toLight = normalize(toLight);
             toLight.z = -toLight.z;
 
-
             float bandWidth = 0.04f * light.radius;
             AnimateLight(light, bandWidth);
 
@@ -163,10 +160,10 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
                 distToLight = floor(distToLight) * bandWidth;
             }
 
-
             float atten = LightAttenuation(distToLight, light.radius);
             float ndl = max(dot(normal.xzy, toLight), 0);
             image += albedo.rgb * light.color.rgb * light.intensity * ndl * atten;
+//            image = vec3(ndl, ndl, ndl);
         }
     }
 }

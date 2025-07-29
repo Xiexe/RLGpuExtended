@@ -65,7 +65,10 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.nio.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.stream.Stream;
 
 import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
 import static com.gpuExtended.util.ResourcePath.path;
@@ -360,7 +363,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				// lwjgl defaults to lwjgl- + user.name, but this breaks if the username would cause an invalid path
 				// to be created.
-				Configuration.SHARED_LIBRARY_EXTRACT_DIRECTORY.set("lwjgl-rl");
+				Configuration.SHARED_LIBRARY_EXTRACT_DIRECTORY.set("lwjgl-rl-");
 
 				glCapabilities = GL.createCapabilities();
 
@@ -664,6 +667,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
 		environmentManager.OnGameObjectDespawned(event);
+	}
+
+	@Subscribe
+	public void onNpcSpawned(NpcSpawned event)
+	{
+		environmentManager.OnNpcSpawned(event);
+	}
+
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		environmentManager.OnNpcDespawned(event);
 	}
 
 	private void setupSyncMode()
@@ -1178,7 +1193,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, interfacePbo);
 			glBufferData(GL_PIXEL_UNPACK_BUFFER, canvasWidth * canvasHeight * 4L, GL_STREAM_DRAW);
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
 			glBindTexture(GL_TEXTURE_2D, interfaceTexture);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, canvasWidth, canvasHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -1280,11 +1294,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		colorFramebuffer.clearFramebuffer();
 		bloomFramebuffer.clearFramebuffer();
 
-		if (gameState.getState() >= GameState.LOADING.getState())
+		if (gameState.getState() >= GameState.LOADING.getState()
+				&& viewportHeight > 0
+				&& viewportWidth > 0
+		)
 		{
-			if (viewportWidth == 0 || viewportHeight == 0)
-				return;
-
 			//<editor-fold defaultstate="collapsed" desc="Set up misc frame data">
 			int renderWidthOff = viewportOffsetX;
 			int renderHeightOff = viewportOffsetY;
@@ -1352,32 +1366,32 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		// TODO:: fix aa
-		if (aaEnabled)
-		{
-			int width = lastStretchedCanvasWidth;
-			int height = lastStretchedCanvasHeight;
-
-			if (OSType.getOSType() != OSType.MacOS)
-			{
-				final GraphicsConfiguration graphicsConfiguration = clientUI.getGraphicsConfiguration();
-				final AffineTransform transform = graphicsConfiguration.getDefaultTransform();
-
-				width = getScaledValue(transform.getScaleX(), width);
-				height = getScaledValue(transform.getScaleY(), height);
-			}
-
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, colorFramebuffer.getId());
-			glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, colorFramebuffer.getId());
-			glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-			glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
-				GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-			// Reset
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, awtContext.getFramebuffer(false));
-		}
+//		if (aaEnabled)
+//		{
+//			int width = lastStretchedCanvasWidth;
+//			int height = lastStretchedCanvasHeight;
+//
+//			if (OSType.getOSType() != OSType.MacOS)
+//			{
+//				final GraphicsConfiguration graphicsConfiguration = clientUI.getGraphicsConfiguration();
+//				final AffineTransform transform = graphicsConfiguration.getDefaultTransform();
+//
+//				width = getScaledValue(transform.getScaleX(), width);
+//				height = getScaledValue(transform.getScaleY(), height);
+//			}
+//
+//			glBindFramebuffer(GL_READ_FRAMEBUFFER, colorFramebuffer.getId());
+//			glReadBuffer(GL_COLOR_ATTACHMENT0);
+//
+//			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, colorFramebuffer.getId());
+//			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+//
+//			glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
+//				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+//
+//			// Reset
+//			glBindFramebuffer(GL_READ_FRAMEBUFFER, awtContext.getFramebuffer(false));
+//		}
 
 		// Clear buffers
 		vertexBuffer.clear();
@@ -1738,14 +1752,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void drawMainPass() {
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
 		if (colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3]) {
-			int bloomWidth = Math.min(1920, currentViewport[2]);
-			int bloomHeight = Math.min(1080, currentViewport[3]);
-
 			colorFramebuffer.resize(currentViewport[2], currentViewport[3]);
-			bloomFramebuffer.resize(bloomWidth, bloomHeight);
+			bloomFramebuffer.resize(currentViewport[2], currentViewport[3]);
 
 			log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
-			log.info("Resizing Bloom Framebuffers: {}x{}", bloomWidth, bloomHeight);
+			log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 		}
 
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
@@ -1859,7 +1870,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glUniform2f(uniB.SourceResolution, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
 			glUniform1i(uniB.MipmapLevel, 0);
 
-			for (int i = 0; i < MIP_LEVELS; i++) {
+			for (int i = 0; i < 6; i++) {
 				int mipWidth = bloomFramebuffer.getTexture().getWidth() >> i;
 				int mipHeight = bloomFramebuffer.getTexture().getHeight() >> i;
 
@@ -2079,8 +2090,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		// Code here runs every tick (~600ms)
-		System.out.println("Tick: Player is at " + client.getLocalPlayer().getWorldLocation());
+		environmentManager.OnTick();
 	}
 
 	public boolean loadingScene = false;

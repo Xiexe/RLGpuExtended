@@ -17,6 +17,7 @@ out vec3 gPosition;
 out vec4 gNormal;
 out vec4 gColor;
 out float gHsl;
+out vec3 gLinearRgb;
 out int gTextureId;
 out vec3 gTexPos;
 out float gFogAmount;
@@ -28,6 +29,7 @@ void main() {
     float a = float(vHsl >> 24 & 0xff) / 255.f;
 
     vec3 rgb = hslToRgb(hsl);
+    rgb = gammaToLinear(rgb);
 
     VertexFlags flags;
     PopulateVertexFlags(flags, vFlags);
@@ -38,6 +40,7 @@ void main() {
     gFogAmount = CalculateFogAmount(vPos);
     gColor = vec4(rgb, 1.f - a);
     gHsl = float(hsl);
+    gLinearRgb = rgb;
     gTextureId = int(vUv.x);  // the texture id + 1;
     gTexPos = vUv.yzw;
     gFlags = vFlags;

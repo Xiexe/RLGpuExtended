@@ -18,6 +18,7 @@ in vec3 gPosition[3];
 in vec4 gNormal[3];
 in vec4 gColor[3];
 in float gHsl[3];
+in vec3 gLinearRgb[3];
 in int gTextureId[3];
 in vec3 gTexPos[3];
 in int gFarClip[3];
@@ -29,6 +30,7 @@ out vec4 fColor;
 out vec4 fNormal;
 out vec4 fFlatNormal;
 noperspective centroid out float fHsl;
+out vec3 fLinearRgb;
 flat out int fTextureId;
 out vec2 fUv;
 out vec3 fPosition;
@@ -46,6 +48,14 @@ bool CheckIsTree(int texId)
 bool CheckIsWater(int texId)
 {
   return texId == WATER;
+}
+
+vec3 gammaToLinear(vec3 color) {
+  return pow(color, vec3(2.2));
+}
+
+vec3 linearToGamma(vec3 color) {
+  return pow(color, vec3(1.0 / 2.2));
 }
 
 void main() {
@@ -87,6 +97,7 @@ void main() {
     fColor = color;
     fFogAmount = gFogAmount[i];
     fHsl = gHsl[i];
+    fLinearRgb = gLinearRgb[i];
     fTextureId = gTextureId[i];
     fNormal = normal;
     fFlatNormal = flatNormal;

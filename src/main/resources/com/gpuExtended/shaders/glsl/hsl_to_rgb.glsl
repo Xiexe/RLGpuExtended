@@ -64,3 +64,11 @@ vec3 hslToRgb(int hsl) {
 
   return rgb;
 }
+
+vec3 gammaToLinear(vec3 color) {
+    return pow(color, vec3(2.2));
+}
+
+vec3 linearToGamma(vec3 color) {
+    return pow(color, vec3(1.0 / 2.2));
+}

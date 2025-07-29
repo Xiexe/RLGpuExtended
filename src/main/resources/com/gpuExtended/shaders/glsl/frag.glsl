@@ -4,6 +4,7 @@ in vec4 fColor;
 in vec4 fNormal;
 in vec4 fFlatNormal;
 noperspective centroid in float fHsl;
+in vec3 fLinearRgb;
 flat in int fTextureId;
 in vec2 fUv;
 in vec3 fPosition;
@@ -67,20 +68,21 @@ void main() {
 
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
-    float ndl = dot(s.normal.xyz, mainLight.pos.xyz) * 0.5 + 0.5;
+    float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
     float shadowMapSampled = GetShadowMap(fPosition, ndl);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
-    vec3 litFragment = s.albedo.rgb * ((mainLight.color.rgb) * ((shadowMapSampled * ndl)) + (ambientColor.rgb));
+    vec3 diffuse = s.albedo.rgb * ndl;
+    vec3 lighting = diffuse * mainLight.color.rgb * shadowMapSampled;
+    vec3 litFragment = lighting.rgb + ambientColor.rgb * s.albedo.rgb;
+    ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
-
     ApplyFog(finalColor, fPosition, distanceToCamera);
-    ApplyAdditiveLighting(finalColor, flags, s.albedo.rgb, s.normal.xyz, fPosition);
-//    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
 
+//    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     if(!flags.isDynamicModel && flags.isTerrain)
     {
         DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
@@ -91,5 +93,7 @@ void main() {
 
     //FragColor = vec4(s.normal.rgb, s.albedo.a);
     //FragColor = vec4(s.albedo.rgb * mainLight.color.rgb, s.albedo.a);
+
+    //FragColor = vec4(linearToGamma(s.albedo.rgb), s.albedo.a);
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 }

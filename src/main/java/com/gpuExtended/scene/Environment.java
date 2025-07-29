@@ -44,8 +44,10 @@ public class Environment {
 
     public void SwitchToEnvironment(Environment target, float deltaTime)
     {
-        if (target == null)
+        if (target == null || lastEnvironment == null)
         {
+            this.isTransitioning = false;
+            this.transitionProgress = 0.0f;
             return;
         }
 

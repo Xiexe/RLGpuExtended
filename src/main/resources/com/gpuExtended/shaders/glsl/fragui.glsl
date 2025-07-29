@@ -40,6 +40,14 @@ in XBRTable xbrTable;
 
 out vec4 FragColor;
 
+vec3 gammaToLinear(vec3 color) {
+  return pow(color, vec3(2.2));
+}
+
+vec3 linearToGamma(vec3 color) {
+  return pow(color, vec3(1.0 / 2.2));
+}
+
 vec4 alphaBlend(vec4 src, vec4 dst) {
   return vec4(src.rgb + dst.rgb * (1.0f - src.a), src.a + dst.a * (1.0f - src.a));
 }
@@ -110,16 +118,19 @@ int combine16(int upper, int lower) {
   return (upper << 16) | lower;
 }
 
-void PostProcessImage(inout vec3 image, int colorBlindMode, float fogFalloff, int isEmissive)
+void PostProcessImage(inout vec3 image, vec3 bloom, int colorBlindMode, float fogFalloff, int isEmissive)
 {
-  image = agx(image);
-  image = adjustBrightness(image, 1.2);
-  image = adjustContrast(image, 1.4);
-  image = adjustSaturation(image, 1.1);
+  image = adjustBrightness(image, 5.0);
+  image = adjustContrast(image, 1.0);
+  image = adjustSaturation(image, 1.0);
+  image = reinhard2(image);
+  image += bloom;
 
   if (colorBlindMode > 0) {
     image = colorblind(colorBlindMode, image);
   }
+
+  image = linearToGamma(image);
 }
 
 // TODO:: fix shadowmap overlay rendering.
@@ -144,9 +155,7 @@ void main() {
   vec4 bloom = sampleBloom();
   vec4 ui = sampleUiTexture();
 
-  vec3 composite = mainColor.rgb + bloom.rgb;
-  PostProcessImage(composite, colorBlindMode, 0.0, 0);
-
-  composite.rgb = mix(composite.rgb, ui.rgb, ui.a);
-  FragColor = vec4(composite, 1);
+  PostProcessImage(mainColor.rgb, bloom.rgb, colorBlindMode, 0.0, 0);
+  mainColor.rgb = mix(mainColor.rgb, ui.rgb, ui.a);
+  FragColor = vec4(mainColor.rgb, 1);
 }
