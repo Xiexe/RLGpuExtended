@@ -1092,11 +1092,49 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		scene.setDrawDistance(getDrawDistance());
 //		scene.setRoofRemovalMode(config.roofFading() ? 16 : 0);
 
+
 		// Only reset the target buffer offset right before drawing the scene. That way if there are frames
 		// after this that don't involve a scene draw, like during LOADING/HOPPING/CONNECTION_LOST, we can
 		// still redraw the previous frame's scene to emulate the client behavior of not painting over the
 		// viewport buffer.
 		targetBufferOffset = 0;
+
+		// Loop through all models on the roof and push them to the static model buffer.
+		if (sceneUploader.roofs != null) {
+			if (sceneUploader.roofs.length > 0) {
+				for (int tileX = 0; tileX < Constants.EXTENDED_SCENE_SIZE; ++tileX) {
+					for (int tileY = 0; tileY < Constants.EXTENDED_SCENE_SIZE; ++tileY) {
+						for (int tileZ = 0; tileZ < Constants.MAX_Z; ++tileZ) {
+
+							Tile tile = client.getScene().getExtendedTiles()[tileZ][tileX][tileY];
+							if (tile == null) {
+								continue;
+							}
+
+							boolean isRoof = sceneUploader.roofs[tileZ][tileX][tileY] != 0;
+							if (isRoof) {
+								for (GameObject gameObject : tile.getGameObjects()) {
+									if (gameObject != null) {
+										Renderable r = gameObject.getRenderable();
+
+										draw(sceneProjection, client.getScene(), r, gameObject.getOrientation(), gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getHash());
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			else {
+				log.info("Scene Uploader Roofs is Empty.");
+			}
+		}
+		else {
+			client.getScene().buildRoofs();
+			sceneUploader.roofs = client.getScene().getRoofs();
+			log.info("Scene Uploader Roofs is Null.");
+		}
+
 		checkGLErrors();
 	}
 
@@ -1769,43 +1807,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 			log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
-		}
-
-		// Loop through all models on the roof and push them to the static model buffer.
-		if (sceneUploader.roofs != null) {
-			if (sceneUploader.roofs.length > 0) {
-				for (int tileX = 0; tileX < Constants.EXTENDED_SCENE_SIZE; ++tileX) {
-					for (int tileY = 0; tileY < Constants.EXTENDED_SCENE_SIZE; ++tileY) {
-						for (int tileZ = 0; tileZ < Constants.MAX_Z; ++tileZ) {
-
-							Tile tile = client.getScene().getExtendedTiles()[tileZ][tileX][tileY];
-							if (tile == null) {
-								continue;
-							}
-
-							boolean isRoof = sceneUploader.roofs[tileZ][tileX][tileY] != 0;
-							if (isRoof) {
-								for (GameObject gameObject : tile.getGameObjects()) {
-									if (gameObject != null) {
-										Renderable r = gameObject.getRenderable();
-
-										draw(sceneProjection, client.getScene(), r, gameObject.getOrientation(), gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getHash());
-										log.info("Drawing roof object");
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			else {
-				log.info("Scene Uploader Roofs is Empty.");
-			}
-		}
-		else {
-			client.getScene().buildRoofs();
-			sceneUploader.roofs = client.getScene().getRoofs();
-			log.info("Scene Uploader Roofs is Null.");
 		}
 
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
