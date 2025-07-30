@@ -26,7 +26,7 @@ out vec4 FragColor;
 
 void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
 {
-    float fogHeight = 4;
+    float fogHeight = 3;
     float distanceFogHeightFalloff = smoothstep(10.0, 0.0, (1-fragPos.y) / (TILE_SIZE * fogHeight));
 //    float heightFogFalloff = smoothstep(30.0, 0.0, ((1-(fragPos.y - (2.5 * TILE_SIZE))) / (TILE_SIZE * fogHeight * 0.05)));
 
@@ -51,8 +51,8 @@ void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
     }
 
     float dyanmicInterpolator = clamp((1 - pow(fog, 2)), 0, 1);
-
-//    image = mix(image, vec3(1,1,1), heightFogFalloff * noise);
+//
+//    image = mix(image, vec3(0.1), heightFogFalloff * noise);
     image = mix(image, skyColor.rgb, fog * mix(1, noise, dyanmicInterpolator));
 }
 
@@ -80,9 +80,9 @@ void main() {
     ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
-    ApplyFog(finalColor, fPosition, distanceToCamera);
+//    ApplyFog(finalColor, fPosition, distanceToCamera);
 
-//    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
+    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     if(!flags.isDynamicModel && flags.isTerrain)
     {
         DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
@@ -96,4 +96,23 @@ void main() {
 
     //FragColor = vec4(linearToGamma(s.albedo.rgb), s.albedo.a);
     FragColor = vec4(finalColor.rgb, s.albedo.a);
+
+//    ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
+//    distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
+//
+//    float roofTextureP0 = texelFetch(roofMaskMap, ivec3(cellUv, 0), 0).a;
+//    float roofTextureP1 = texelFetch(roofMaskMap, ivec3(cellUv, 1), 0).a;
+//    float roofTextureP2 = texelFetch(roofMaskMap, ivec3(cellUv, 2), 0).a;
+//
+//    if (flags.plane > 0 && flags.isTerrain) {
+//        FragColor = vec4(roofTextureP1, 0, 0, 1);
+//    }
+//
+//    if (flags.plane == 2 && flags.isTerrain) {
+//        FragColor = vec4(0, roofTextureP1, 0, 1);
+//    }
+//
+//    if (flags.plane == 3 && flags.isTerrain) {
+//        FragColor = vec4(0, 0, roofTextureP1, 1);
+//    }
 }

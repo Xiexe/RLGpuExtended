@@ -830,6 +830,7 @@ public class EnvironmentManager
                     sceneLights.add(light);
                     gameObjectLightHashMap.put(gameObject, light);
                 }
+                log.info("GameObject Light Spawned: " + event.getGameObject().getId());
             }
         }
     }
@@ -842,7 +843,7 @@ public class EnvironmentManager
         {
             sceneLights.remove(gameObjectLightHashMap.get(gameObject));
             gameObjectLightHashMap.remove(gameObject);
-            log.info("GameObject despawned: " + event.getGameObject().getId());
+            log.info("GameObject Light D-spawned: " + event.getGameObject().getId());
         }
     }
 

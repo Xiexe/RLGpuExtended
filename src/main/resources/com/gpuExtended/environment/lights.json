@@ -42,6 +42,7 @@
     ],
     "gameObjects": [
       724,
+      5881,
       6203,
       10658,
       11606,
@@ -297,6 +298,43 @@
     "animation": "flicker",
     "gameObjects": [
       43692
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_PORTAL",
+    "type": "point",
+    "color": [1.00, 0.0, 1.00],
+    "offset": [0, -3, 2],
+    "intensity": 0.2,
+    "radius": 15,
+    "animation": "flicker",
+    "gameObjects": [
+      43688
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_MINING_PORTAL",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, 0, 1],
+    "intensity": 3,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      43729,
+      38044
+    ]
+  },
+  {
+    "name": "GUARDIANS_OF_THE_RIFT_REWARD_GUY",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, 0, 6.9],
+    "intensity": 3,
+    "radius": 8,
+    "animation": "pulse",
+    "tiles": [
+      [3611, 9480, 0]
     ]
   },
   {
@@ -1004,9 +1042,9 @@
   {
     "name": "HUGE_FIRE",
     "type": "point",
-    "color": [1.00, 0.57, 0.75],
+    "color": [1.00, 0.57, 0.2],
     "offset": [0, 0, 2],
-    "intensity": 2,
+    "intensity": 1,
     "radius": 10,
     "animation": "flicker",
     "gameObjects" : [
@@ -1036,6 +1074,42 @@
     "animation": "pulse",
     "gameObjects" : [
       16648
+    ]
+  },
+  {
+    "name": "VARLAMORE_HOUSE_LIGHT",
+    "type": "point",
+    "color": [1, 0.5, 0.0],
+    "offset": [0, 0, 5],
+    "intensity": 1,
+    "radius": 6,
+    "animation": "flicker",
+    "tiles" : [
+      [1634, 3122, 0],
+      [1638, 3121, 0],
+      [1632, 3118, 0],
+      [1633, 3101, 0],
+      [1637, 3100, 0],
+      [1638, 3094, 0],
+      [1668, 3093, 0],
+      [1671, 3091, 0],
+      [1675, 3090, 0],
+      [1671, 3082, 0],
+      [1675, 3082, 0],
+      [1658, 3099, 0],
+      [1659, 3102, 0],
+      [1650, 3094, 0],
+      [1647, 3093, 0],
+      [1644, 3095, 0],
+      [1646, 3115, 0],
+      [1649, 3115, 0],
+      [1646, 3117, 0],
+      [1649, 3117, 0],
+      [1646, 3119, 0],
+      [1649, 3119, 0],
+      [1651, 3117, 0],
+      [1644, 3117, 0],
+      [1634, 3112, 0]
     ]
   },
   {

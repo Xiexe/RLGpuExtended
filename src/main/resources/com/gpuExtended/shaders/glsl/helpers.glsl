@@ -73,16 +73,13 @@ void PopulateSurfaceColor(inout Surface s)
             textureColor.rgb *= 1.75;
         }
 
-//        textureColor.rgb = pow(textureColor.rgb, vec3(1f / 2f));
         textureColor.rgb = gammaToLinear(textureColor.rgb);
-//        textureColor.rgb *= fColor.rgb;
 
         color = textureColor;
     } else {
         // pick interpolated hsl or rgb depending on smooth banding setting
         vec3 modelColor = hslToRgb(int(fHsl));
         modelColor.rgb = pow(modelColor.rgb, vec3( 1f / brightness));
-//        modelColor.rgb = pow(modelColor.rgb, vec3(1f / 2f));
         modelColor = gammaToLinear(modelColor);
 
         vec3 rgb = modelColor * smoothBanding + fColor.rgb * (1.f - smoothBanding);
@@ -213,7 +210,7 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
 
 void FadeRoofs(VertexFlags flags, vec3 fragPos, float dither, float distanceToPlayer)
 {
-    if(!(roofFading > 0))
+    if(roofFading <= 0)
     {
         return;
     }

@@ -153,9 +153,9 @@ void main() {
 
   vec4 mainColor = sampleMainColor();
   vec4 bloom = sampleBloom();
-  vec4 ui = sampleUiTexture();
-
   PostProcessImage(mainColor.rgb, bloom.rgb, colorBlindMode, 0.0, 0);
-  mainColor.rgb = mix(mainColor.rgb, ui.rgb, ui.a);
+
+  vec4 ui = sampleUiTexture();
+  mainColor.rgb = max(vec3(0), mix(mainColor.rgb, ui.rgb, ui.a));
   FragColor = vec4(mainColor.rgb, 1);
 }
