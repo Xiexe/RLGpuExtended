@@ -14,6 +14,7 @@ import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.rendering.passes.ShadowPass;
 import com.gpuExtended.scene.Environment;
 import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.scene.Light;
@@ -65,12 +66,8 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.nio.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.stream.Stream;
 
-import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
@@ -294,6 +291,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int[] currentViewport = new int[4];
 	HashMap<Integer, Boolean> modelRoofCache = new HashMap<>();
 
+	private ShadowPass shadowPassHandler;
+
 	@Inject
 	private ShadowMapOverlay shadowMapOverlay;
 
@@ -421,6 +420,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				shaderHandler.Initialize();
 				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
 				environmentManager.Initialize();
+
+				// Initialize Render Pass Handlers\
+				shadowPassHandler = new ShadowPass();
+				shadowPassHandler.Initialize(config.shadowResolution().getValue(), awtContext);
 
 				eventBus.register(tileMarkerManager);
 
@@ -1768,7 +1771,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.mainPassShader.id());
 
 		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
+		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetFramebuffer().getTexture().getId());
 		glUniform1i(uni.ShadowMap, 2);
 
 		glActiveTexture(GL_TEXTURE3);
@@ -1922,33 +1925,35 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 
-		glViewport(0, 0, shadowMapFramebuffer.getTexture().getWidth(), shadowMapFramebuffer.getTexture().getHeight());
-		shadowMapFramebuffer.bind();
+//		glViewport(0, 0, shadowMapFramebuffer.getTexture().getWidth(), shadowMapFramebuffer.getTexture().getHeight());
+//		shadowMapFramebuffer.bind();
+//
+//		glClearDepthf(1);
+//		glClear(GL_DEPTH_BUFFER_BIT);
+//		glDepthFunc(GL_LEQUAL);
+//
+//		glUseProgram(shaderHandler.shadowPassShader.id());
+//		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.shadowPassShader.id());
+//
+//		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+//		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+//		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+//		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+//		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+//		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+//
+//		glEnable(GL_CULL_FACE);
+//		glEnable(GL_DEPTH_TEST);
+//
+//		glDrawArrays(GL_TRIANGLES, 0, targetBufferOffset);
+//
+//		glDisable(GL_CULL_FACE);
+//		glDisable(GL_DEPTH_TEST);
+//
+//		shadowMapFramebuffer.unbind();
+//		glUseProgram(0);
 
-		glClearDepthf(1);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glDepthFunc(GL_LEQUAL);
-
-		glUseProgram(shaderHandler.shadowPassShader.id());
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.shadowPassShader.id());
-
-		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-
-		glEnable(GL_CULL_FACE);
-		glEnable(GL_DEPTH_TEST);
-
-		glDrawArrays(GL_TRIANGLES, 0, targetBufferOffset);
-
-		glDisable(GL_CULL_FACE);
-		glDisable(GL_DEPTH_TEST);
-
-		shadowMapFramebuffer.unbind();
-		glUseProgram(0);
+		shadowPassHandler.Render(shaderHandler.shadowPassShader.id(), uniforms);
 
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 	}
@@ -1975,7 +1980,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uni.InterfaceTexture, 3);
 
 		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, shadowMapFramebuffer.getTexture().getId());
+		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetFramebuffer().getTexture().getId());
 		glUniform1i(uni.ShadowMap, 4);
 
 		glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
@@ -2197,10 +2202,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
 		tileMarkerManager.InitializeSceneRoofMask(scene);
+
 		environmentManager.LoadSceneLights(scene);
 		environmentManager.CheckRegion();
+
 		sceneUploader.PrepareScene(scene);
 		loadingScene = false;
+
+		shadowPassHandler.UpdateSceneVertexBuffer(scene, shaderHandler.unorderedComputeShader.id());
 
 		checkGLErrors();
 	}
@@ -2658,7 +2667,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	private static int nextPowerOfTwo(int v)
+	public static int nextPowerOfTwo(int v)
 	{
 		v--;
 		v |= v >> 1;

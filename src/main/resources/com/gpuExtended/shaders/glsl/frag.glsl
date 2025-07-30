@@ -80,7 +80,7 @@ void main() {
     ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
-//    ApplyFog(finalColor, fPosition, distanceToCamera);
+    ApplyFog(finalColor, fPosition, distanceToCamera);
 
     FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     if(!flags.isDynamicModel && flags.isTerrain)
@@ -96,6 +96,7 @@ void main() {
 
     //FragColor = vec4(linearToGamma(s.albedo.rgb), s.albedo.a);
     FragColor = vec4(finalColor.rgb, s.albedo.a);
+    //FragColor = vec4(vec3(shadowMapSampled * ndl), 1);
 
 //    ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
 //    distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);

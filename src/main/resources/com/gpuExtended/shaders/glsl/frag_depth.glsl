@@ -38,16 +38,17 @@ void clip(float value) {
 void main() {
     float dither = Dither(gl_FragCoord.xy);
 
-    if (fTextureId > 0) {
-        int textureIdx = fTextureId - 1;
-        // This error is fake news.
-        float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
-        clip((alpha * fAlpha) - dither);
-    }
-    else
-    {
-        clip(fAlpha - dither);
-    }
+    // TODO:: Add texture support back to shadows.
+//    if (fTextureId > 0) {
+//        int textureIdx = fTextureId - 1;
+//        // This error is fake news.
+//        float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
+//        clip((alpha * fAlpha) - dither);
+//    }
+//    else
+//    {
+//        clip(fAlpha - dither);
+//    }
 
     gl_FragDepth = gl_FragCoord.z;
 }
