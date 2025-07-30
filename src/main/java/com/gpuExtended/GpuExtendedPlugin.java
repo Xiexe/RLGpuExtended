@@ -1099,6 +1099,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// viewport buffer.
 		targetBufferOffset = 0;
 
+		checkGLErrors();
+	}
+
+	@Override
+	public void postDrawScene()
+	{
 		// Loop through all models on the roof and push them to the static model buffer.
 		if (sceneUploader.roofs != null) {
 			if (sceneUploader.roofs.length > 0) {
@@ -1117,7 +1123,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 									if (gameObject != null) {
 										Renderable r = gameObject.getRenderable();
 
-										draw(sceneProjection, client.getScene(), r, gameObject.getOrientation(), gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getHash());
+										draw(sceneProjection, client.getScene(), r, gameObject.getOrientation(), gameObject.getX(), gameObject.getZ(), gameObject.getY(), gameObject.getHash());
 									}
 								}
 							}
@@ -1135,12 +1141,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			log.info("Scene Uploader Roofs is Null.");
 		}
 
-		checkGLErrors();
-	}
-
-	@Override
-	public void postDrawScene()
-	{
 		// Upload buffers
 		vertexBuffer.flip();
 		uvBuffer.flip();
