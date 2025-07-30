@@ -80,7 +80,7 @@ void main() {
     ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
-//    ApplyFog(finalColor, fPosition, distanceToCamera);
+    ApplyFog(finalColor, fPosition, distanceToCamera);
 
     FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     if(!flags.isDynamicModel && flags.isTerrain)

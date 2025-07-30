@@ -1099,12 +1099,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// viewport buffer.
 		targetBufferOffset = 0;
 
-		checkGLErrors();
-	}
-
-	@Override
-	public void postDrawScene()
-	{
 		// Loop through all models on the roof and push them to the static model buffer.
 		if (sceneUploader.roofs != null) {
 			if (sceneUploader.roofs.length > 0) {
@@ -1119,12 +1113,31 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 							boolean isRoof = sceneUploader.roofs[tileZ][tileX][tileY] != 0;
 							if (isRoof) {
+//								SceneTilePaint paint = tile.getSceneTilePaint();
+//								if (paint != null) {
+//									Renderable r = paint.getRenderable();
+//									if (r != null) {
+//										draw(sceneProjection, client.getScene(), r, paint.getOrientation(), tile.getX(), tile.getZ(), tile.getY(), tile.getHash());
+//									}
+//								}
+
 								for (GameObject gameObject : tile.getGameObjects()) {
 									if (gameObject != null) {
 										Renderable r = gameObject.getRenderable();
 
-										draw(sceneProjection, client.getScene(), r, gameObject.getOrientation(), gameObject.getX(), gameObject.getZ(), gameObject.getY(), gameObject.getHash());
+										draw(sceneProjection, client.getScene(), r, gameObject.getModelOrientation(), gameObject.getX(), gameObject.getZ(), gameObject.getY(), gameObject.getHash());
 									}
+								}
+
+								WallObject wallObject = tile.getWallObject();
+								if (wallObject != null) {
+									Renderable r = wallObject.getRenderable1();
+									Renderable r1 = wallObject.getRenderable2();
+									if (r != null)
+										draw(sceneProjection, client.getScene(), r, wallObject.getOrientationA(), wallObject.getX(), wallObject.getZ(), wallObject.getY(), wallObject.getHash());
+
+									if (r1 != null)
+										draw(sceneProjection, client.getScene(), r1, wallObject.getOrientationB(), wallObject.getX(), wallObject.getZ(), wallObject.getY(), wallObject.getHash());
 								}
 							}
 						}
@@ -1141,6 +1154,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			log.info("Scene Uploader Roofs is Null.");
 		}
 
+		checkGLErrors();
+	}
+
+	@Override
+	public void postDrawScene()
+	{
 		// Upload buffers
 		vertexBuffer.flip();
 		uvBuffer.flip();
