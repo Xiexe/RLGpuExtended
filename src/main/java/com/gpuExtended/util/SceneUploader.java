@@ -80,6 +80,8 @@ public class SceneUploader
 	public ArrayListMultimap<Vector3, Integer> staticSharedVertexMap;
 	public ArrayListMultimap<Vector3, Integer> dynamicSharedVertexMap;
 
+	public int[][][] roofs;
+
 	@Inject
 	SceneUploader(Client client, GpuExtendedConfig config, EnvironmentManager environmentManager)
 	{
@@ -1003,15 +1005,12 @@ public class SceneUploader
 		Bounds currentBounds = enviornmentManager.currentBounds;
 		if(currentBounds != null)
 		{
-			//scene.setRoofRemovalMode(gpuConfig.roofFading() && currentBounds.isAllowRoofFading() ? 16 : 0);
-
 			if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
 			if(!currentBounds.isHideOtherAreas()) return;
 
 			Tile[][][] tiles = scene.getExtendedTiles();
 			for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
 				for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
-
 					for (int z = 0; z < Constants.MAX_Z; ++z) {
 						Tile tile = tiles[z][x][y];
 						if (tile == null) continue;
@@ -1025,9 +1024,9 @@ public class SceneUploader
 				}
 			}
 		}
-		else {
-			//scene.setRoofRemovalMode(gpuConfig.roofFading() ? 16 : 0);
-		}
+
+		scene.buildRoofs();
+		roofs = scene.getRoofs();
 	}
 
 	private static void removeChunk(Scene scene, int cx, int cy)

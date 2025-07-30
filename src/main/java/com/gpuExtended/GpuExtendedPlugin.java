@@ -67,11 +67,13 @@ import java.awt.image.DataBufferInt;
 import java.nio.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Stream;
 
 import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
 import static com.gpuExtended.util.ResourcePath.path;
+import static com.gpuExtended.util.Utils.GenerateTileHash;
 import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 import static net.runelite.api.Constants.MAX_Z;
@@ -311,6 +313,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			"god-noise-path", () -> path(GpuExtendedPlugin.class, "textures/godtexture.png"));
 	private Texture2D godNoiseTexture;
 
+	private Projection sceneProjection;
+
 	@Override
 	protected void startUp()
 	{
@@ -463,6 +467,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				environmentManager.LoadAreas();
 				checkGLErrors();
+
+				int[] glVersionMajor = new int[1];
+				glGetIntegerv(GL_MAJOR_VERSION, glVersionMajor);
+
+				int[] glVersionMinor = new int[1];
+				glGetIntegerv(GL_MINOR_VERSION, glVersionMinor);
+
+				log.info("OpenGL version: {}.{}", glVersionMajor[0], glVersionMinor[0]);
 			}
 			catch (Throwable e)
 			{
@@ -646,7 +658,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					allowRoofFading = bounds.isAllowRoofFading();
 				}
 
-//				client.getScene().setRoofRemovalMode(allowRoofFading && config.roofFading() ? 16 : 0);
+				client.getScene().setRoofRemovalMode(allowRoofFading && config.roofFading() ? 16 : 0);
 			}
 		}
 	}
@@ -1759,6 +1771,43 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 		}
 
+		// Loop through all models on the roof and push them to the static model buffer.
+		if (sceneUploader.roofs != null) {
+			if (sceneUploader.roofs.length > 0) {
+				for (int tileX = 0; tileX < Constants.EXTENDED_SCENE_SIZE; ++tileX) {
+					for (int tileY = 0; tileY < Constants.EXTENDED_SCENE_SIZE; ++tileY) {
+						for (int tileZ = 0; tileZ < Constants.MAX_Z; ++tileZ) {
+
+							Tile tile = client.getScene().getExtendedTiles()[tileZ][tileX][tileY];
+							if (tile == null) {
+								continue;
+							}
+
+							boolean isRoof = sceneUploader.roofs[tileZ][tileX][tileY] != 0;
+							if (isRoof) {
+								for (GameObject gameObject : tile.getGameObjects()) {
+									if (gameObject != null) {
+										Renderable r = gameObject.getRenderable();
+
+										draw(sceneProjection, client.getScene(), r, gameObject.getOrientation(), gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getHash());
+										log.info("Drawing roof object");
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			else {
+				log.info("Scene Uploader Roofs is Empty.");
+			}
+		}
+		else {
+			client.getScene().buildRoofs();
+			sceneUploader.roofs = client.getScene().getRoofs();
+			log.info("Scene Uploader Roofs is Null.");
+		}
+
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
 		colorFramebuffer.bind();
 		environmentManager.RenderSkybox();
@@ -1840,6 +1889,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		colorFramebuffer.unbind();
 		glUseProgram(0);
 
+		//bloom
 		if (client.getGameState().getState() == GameState.LOGGED_IN.getState()) {
 			colorFramebuffer.generateMipmaps();
 			colorFramebuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
@@ -1908,9 +1958,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBindVertexArray(0);
 			glUseProgram(0);
 			bloomFramebuffer.unbind();
-
-			performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
 		}
+
+		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
 	}
 
 	private void drawShadowPass()
@@ -2311,6 +2361,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void draw(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
+		sceneProjection = projection;
+
 		Model model, offsetModel;
 		if (renderable instanceof Model)
 		{
