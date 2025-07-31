@@ -111,13 +111,23 @@ public class ShadowPass {
                         vertexCount += PushComplexTile(tileContext, shadowVertexBuffer);
                     }
 //
-//                    Tile bridge = tile.getBridge();
-//                    if (bridge != null)
-//                    {
-//                        SceneTileModel bridgeModel = bridge.getSceneTileModel();
-//                        if (bridgeModel != null)
-//                        {}
-//                    }
+                    Tile bridge = tile.getBridge();
+                    if (bridge != null)
+                    {
+                        SceneTileModel bridgeModelComplex = bridge.getSceneTileModel();
+                        if (bridgeModelComplex != null)
+                        {
+                            TileContext bridgeContext = new TileContext(scene, bridge);
+                            vertexCount += PushComplexTile(bridgeContext, shadowVertexBuffer);
+                        }
+
+                        SceneTilePaint bridgePaint = bridge.getSceneTilePaint();
+                        if (bridgePaint != null)
+                        {
+                            TileContext bridgeContext = new TileContext(scene, bridge);
+                            vertexCount += PushTile(bridgeContext, shadowVertexBuffer);
+                        }
+                    }
 
                     WallObject wallObject = tile.getWallObject();
                     if (wallObject != null)
