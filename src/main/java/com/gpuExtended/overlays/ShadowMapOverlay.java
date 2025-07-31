@@ -41,9 +41,6 @@ public class ShadowMapOverlay extends Overlay {
     @Inject
     private GpuExtendedPlugin plugin;
 
-    @Inject
-    private ShaderHandler shaderHandler;
-
     private boolean isActive;
 
     public ShadowMapOverlay() {
@@ -52,7 +49,7 @@ public class ShadowMapOverlay extends Overlay {
         setResizable(true);
     }
 
-    public void setActive(boolean activate) {
+    public void setActive(boolean activate, int uiShader) {
         if (activate == isActive)
             return;
 
@@ -70,7 +67,7 @@ public class ShadowMapOverlay extends Overlay {
 
         clientThread.invoke(() -> {
             try {
-                shaderHandler.Recompile();
+                plugin.shaderHandler.Recompile();
             } catch (IOException | ShaderException ex) {
                 log.error("Error while recompiling shaders:", ex);
                 plugin.stopPlugin();
@@ -81,8 +78,8 @@ public class ShadowMapOverlay extends Overlay {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
-            glUseProgram(shaderHandler.uiShader.id());
-            int uniBounds = glGetUniformLocation(shaderHandler.uiShader.id(), "shadowMapOverlayDimensions");
+            glUseProgram(plugin.shaderHandler.uiShader.id());
+            int uniBounds = glGetUniformLocation(plugin.shaderHandler.uiShader.id(), "shadowMapOverlayDimensions");
             if (uniBounds != -1)
                 glUniform4i(uniBounds, 0, 0, 0, 0);
         }
@@ -93,15 +90,16 @@ public class ShadowMapOverlay extends Overlay {
         var bounds = getBounds();
 
         clientThread.invoke(() -> {
-            if (shaderHandler.uiShader.id() == 0) {
+            int uiShader = plugin.shaderHandler.uiShader.id();
+            if (uiShader == 0) {
                 log.error("ShadowMapOverlay: glUiProgram is 0");
                 return;
             }
-            glUseProgram(shaderHandler.uiShader.id());
-            int uniShadowMap = glGetUniformLocation(shaderHandler.uiShader.id(), "shadowMap");
+            glUseProgram(uiShader);
+            int uniShadowMap = glGetUniformLocation(uiShader, "shadowMap");
             glUniform1i(uniShadowMap, 2);
 
-            int uniBounds = glGetUniformLocation(shaderHandler.uiShader.id(), "shadowMapOverlayDimensions");
+            int uniBounds = glGetUniformLocation(uiShader, "shadowMapOverlayDimensions");
             if (uniBounds != -1) {
                 if (client.getGameState().getState() < GameState.LOGGED_IN.getState()) {
                     glUniform4i(uniBounds, 0, 0, 0, 0);
@@ -125,6 +123,7 @@ public class ShadowMapOverlay extends Overlay {
             plugin.checkGLErrors();
         });
 
+//        log.info("Rendering Shadowmap Debug Overlay.");
         return new Dimension(256, 256);
     }
 }
