@@ -104,9 +104,12 @@ public class ShadowPass {
                         vertexCount += PushTile(tileContext, shadowVertexBuffer);
                     }
 
-//                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
-//                    if (sceneTileModel != null)
-//                    {}
+                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
+                    if (sceneTileModel != null)
+                    {
+                        TileContext tileContext = new TileContext(scene, tile);
+                        vertexCount += PushComplexTile(tileContext, shadowVertexBuffer);
+                    }
 //
 //                    Tile bridge = tile.getBridge();
 //                    if (bridge != null)
@@ -311,6 +314,64 @@ public class ShadowPass {
         vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
 
         return 6;
+    }
+
+    private int PushComplexTile(TileContext context, GpuFloatBuffer vertexBuffer) {
+        final int[] faceX = context.tileModel.getFaceX();
+        final int[] faceY = context.tileModel.getFaceY();
+        final int[] faceZ = context.tileModel.getFaceZ();
+
+        final int[] vertexX = context.tileModel.getVertexX();
+        final int[] vertexY = context.tileModel.getVertexY();
+        final int[] vertexZ = context.tileModel.getVertexZ();
+
+        final int[] triangleColorA = context.tileModel.getTriangleColorA();
+        final int[] triangleColorB = context.tileModel.getTriangleColorB();
+        final int[] triangleColorC = context.tileModel.getTriangleColorC();
+
+        final int[] triangleTextures = context.tileModel.getTriangleTextureId();
+
+        final int faceCount = faceX.length;
+        vertexBuffer.ensureCapacity(faceCount * 12); // 3 vertices * 4 floats per vertex (x, y, z, color)
+
+        int baseX = context.x << Perspective.LOCAL_COORD_BITS;
+        int baseY = context.y << Perspective.LOCAL_COORD_BITS;
+
+        int vertexCount = 0;
+        for (int i = 0; i < faceCount; ++i) {
+            final int triangleA = faceX[i];
+            final int triangleB = faceY[i];
+            final int triangleC = faceZ[i];
+
+            final int colorA = triangleColorA[i];
+            final int colorB = triangleColorB[i];
+            final int colorC = triangleColorC[i];
+
+            if (colorA == 12345678) {
+                continue;
+            }
+
+            // vertexes are stored in scene local, convert to tile local
+            int vertexXA = vertexX[triangleA];
+            int vertexYA = vertexY[triangleA];
+            int vertexZA = vertexZ[triangleA];
+
+            int vertexXB = vertexX[triangleB];
+            int vertexYB = vertexY[triangleB];
+            int vertexZB = vertexZ[triangleB];
+
+            int vertexXC = vertexX[triangleC];
+            int vertexYC = vertexY[triangleC];
+            int vertexZC = vertexZ[triangleC];
+
+            vertexBuffer.put(vertexXA, vertexYA, vertexZA, colorA);
+            vertexBuffer.put(vertexXB, vertexYB, vertexZB, colorB);
+            vertexBuffer.put(vertexXC, vertexYC, vertexZC, colorC);
+
+            vertexCount += 3;
+        }
+
+        return vertexCount;
     }
 
     private int PushRenderable(RenderableContext context, GpuFloatBuffer vertexBuffer) {
