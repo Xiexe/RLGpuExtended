@@ -700,32 +700,31 @@ public class EnvironmentManager
         Color ambient = currentEnvironment.AmbientColor;
         Color sky = currentEnvironment.SkyColor;
 
+        if (currentEnvironment.UseDynamicTimeOfDay) {
+            float normalizedTime = timeOfDay / 24f;
+            float radiansPerDegree = (float)Math.PI / 180f;
+
+            // Pitch: 0 → 90 → 0 (sunrise → noon → sunset)
+            float maxPitchRadians = 0.75f * (float)(Math.PI / 2f); // limit pitch so it doesn't go to exactly 90
+            float pitch = (float)Math.sin(normalizedTime * Math.PI) * maxPitchRadians;
+
+            // Yaw: 90° (east) → 180° (south) → 270° (west)
+            float yaw = (270f - normalizedTime * 180f) * radiansPerDegree;
+
+            lightPitch = pitch;
+            lightYaw   = yaw;
+            lightColor = GetSunColor(normalizedTime);
+            ambient = GetAmbientColor(normalizedTime);
+            sky = GetSkyColor(normalizedTime);
+        }
+        else {
+            lightPitch = (float) Math.toRadians(currentEnvironment.LightPitch);
+            lightYaw = (float) Math.toRadians(currentEnvironment.LightYaw);
+        }
+
         if (overrideLightDirection) {
             lightPitch = (float) Math.toRadians(customLightPitch);
             lightYaw = (float) Math.toRadians(customLightYaw);
-        }
-        else {
-            if (currentEnvironment.UseDynamicTimeOfDay) {
-                float normalizedTime = timeOfDay / 24f;
-                float radiansPerDegree = (float)Math.PI / 180f;
-
-                // Pitch: 0 → 90 → 0 (sunrise → noon → sunset)
-                float maxPitchRadians = 0.75f * (float)(Math.PI / 2f); // limit pitch so it doesn't go to exactly 90
-                float pitch = (float)Math.sin(normalizedTime * Math.PI) * maxPitchRadians;
-
-                // Yaw: 90° (east) → 180° (south) → 270° (west)
-                float yaw = (270f - normalizedTime * 180f) * radiansPerDegree;
-
-                lightPitch = pitch;
-                lightYaw   = yaw;
-                lightColor = GetSunColor(normalizedTime);
-                ambient = GetAmbientColor(normalizedTime);
-                sky = GetSkyColor(normalizedTime);
-            }
-            else {
-                lightPitch = (float) Math.toRadians(currentEnvironment.LightPitch);
-                lightYaw = (float) Math.toRadians(currentEnvironment.LightYaw);
-            }
         }
 
         mainLight.type = Light.LightType.Directional;

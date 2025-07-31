@@ -79,10 +79,9 @@ void PopulateSurfaceColor(inout Surface s)
     } else {
         // pick interpolated hsl or rgb depending on smooth banding setting
         vec3 modelColor = hslToRgb(int(fHsl));
-        vec4 vertexColor = fColor;
         modelColor.rgb = pow(modelColor.rgb, vec3( 1f / brightness));
+        vec3 rgb = modelColor * smoothBanding + fColor.rgb * (1.f - smoothBanding);
 
-        vec3 rgb = modelColor * smoothBanding + vertexColor.rgb * (1.f - smoothBanding);
         rgb = gammaToLinear(rgb);
         color = vec4(rgb, fColor.a);
     }

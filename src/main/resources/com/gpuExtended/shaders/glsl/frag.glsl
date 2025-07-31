@@ -91,29 +91,5 @@ void main() {
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
-    //FragColor = vec4(s.normal.rgb, s.albedo.a);
-    //FragColor = vec4(s.albedo.rgb * mainLight.color.rgb, s.albedo.a);
-
-    //FragColor = vec4(linearToGamma(s.albedo.rgb), s.albedo.a);
     FragColor = vec4(finalColor.rgb, s.albedo.a);
-    //FragColor = vec4(vec3(shadowMapSampled * ndl), 1);
-
-//    ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
-//    distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
-//
-//    float roofTextureP0 = texelFetch(roofMaskMap, ivec3(cellUv, 0), 0).a;
-//    float roofTextureP1 = texelFetch(roofMaskMap, ivec3(cellUv, 1), 0).a;
-//    float roofTextureP2 = texelFetch(roofMaskMap, ivec3(cellUv, 2), 0).a;
-//
-//    if (flags.plane > 0 && flags.isTerrain) {
-//        FragColor = vec4(roofTextureP1, 0, 0, 1);
-//    }
-//
-//    if (flags.plane == 2 && flags.isTerrain) {
-//        FragColor = vec4(0, roofTextureP1, 0, 1);
-//    }
-//
-//    if (flags.plane == 3 && flags.isTerrain) {
-//        FragColor = vec4(0, 0, roofTextureP1, 1);
-//    }
 }
