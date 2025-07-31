@@ -18,7 +18,7 @@
     "type": "point",
     "color": [1.00, 0.35, 0.025],
     "offset": [0, 0, 1.5],
-    "intensity": 1,
+    "intensity": 2,
     "radius": 5,
     "animation": "flicker",
     "decorations": [
@@ -38,7 +38,9 @@
       10307,
       11474,
       12238,
-      20832
+      20832,
+      24172,
+      24173
     ],
     "gameObjects": [
       724,
@@ -119,6 +121,18 @@
     "animation": "flicker",
     "gameObjects": [
       16469
+    ]
+  },
+  {
+    "name": "SMITHING_FURNACE",
+    "type": "point",
+    "color": [1.00, 0.05, 0.00],
+    "offset": [-1.3, 0, 0.8],
+    "intensity": 2,
+    "radius": 2.5,
+    "animation": "flicker",
+    "gameObjects": [
+      24009
     ]
   },
   {
