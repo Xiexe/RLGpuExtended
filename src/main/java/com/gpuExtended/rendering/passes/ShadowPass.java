@@ -7,6 +7,8 @@ import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
+import com.gpuExtended.util.contexts.RenderableContext;
+import com.gpuExtended.util.contexts.TileContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.rlawt.AWTContext;
@@ -76,12 +78,11 @@ public class ShadowPass {
         log.info("Shadow Pass Handler Initialized");
     }
 
-    public void OnPreSceneUpdated(Scene scene) {}
-
+    /** Called from {@link com.gpuExtended.GpuExtendedPlugin#loadScene(Scene)}, since that happens on another thread. */
     public void OnSceneLoad(Scene scene, int sceneId, GpuFloatBuffer shadowVertexBuffer) {
         Stopwatch sw = Stopwatch.createStarted();
         log.debug("OnSceneUpdated: sceneId={}", sceneId);
-        scene.buildRoofs();
+        //scene.buildRoofs();
 
         numModels = 0;
 
@@ -96,11 +97,13 @@ public class ShadowPass {
                     }
 
                     Point tilePoint = tile.getSceneLocation();
+                    SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
+                    if (sceneTilePaint != null)
+                    {
+                        TileContext tileContext = new TileContext(scene, tile);
+                        vertexCount += PushTile(tileContext, shadowVertexBuffer);
+                    }
 
-//                    SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
-//                    if (sceneTilePaint != null)
-//                    {}
-//
 //                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
 //                    if (sceneTileModel != null)
 //                    {}
@@ -116,34 +119,67 @@ public class ShadowPass {
                     WallObject wallObject = tile.getWallObject();
                     if (wallObject != null)
                     {
-                        Renderable r1 = wallObject.getRenderable1();
-                        Renderable r2 = wallObject.getRenderable2();
+                        RenderableContext r1ctx = new RenderableContext(
+                                wallObject.getRenderable1(),
+                                sceneId,
+                                wallObject.getX(),
+                                wallObject.getY(),
+                                wallObject.getZ(),
+                                wallObject.getOrientationA(),
+                                wallObject.getHash()
+                        );
+                        RenderableContext r2ctx = new RenderableContext(
+                                wallObject.getRenderable2(),
+                                sceneId,
+                                wallObject.getX(),
+                                wallObject.getY(),
+                                wallObject.getZ(),
+                                wallObject.getOrientationB(),
+                                wallObject.getHash()
+                        );
 
-                        vertexCount += PushRenderable(r1, sceneId, wallObject.getX(), wallObject.getY(), wallObject.getZ(), wallObject.getOrientationA(), wallObject.getHash(), shadowVertexBuffer);
-                        vertexCount += PushRenderable(r2, sceneId, wallObject.getX(), wallObject.getY(), wallObject.getZ(), wallObject.getOrientationB(), wallObject.getHash(), shadowVertexBuffer);
-                    }
-
-                    GroundObject groundObject = tile.getGroundObject();
-                    if (groundObject != null)
-                    {
-                        Renderable r = groundObject.getRenderable();
-                        vertexCount += PushRenderable(r, sceneId, groundObject.getX(), groundObject.getY(), groundObject.getZ(), 0, groundObject.getHash(), shadowVertexBuffer);
+                        vertexCount += PushRenderable(r1ctx, shadowVertexBuffer);
+                        vertexCount += PushRenderable(r2ctx, shadowVertexBuffer);
                     }
 
                     DecorativeObject decorativeObject = tile.getDecorativeObject();
                     if (decorativeObject != null)
                     {
-                        Renderable r = decorativeObject.getRenderable();
-                        vertexCount += PushRenderable(r, sceneId, decorativeObject.getX(), decorativeObject.getY(), decorativeObject.getZ(), 0, decorativeObject.getHash(), shadowVertexBuffer);
+                        RenderableContext ctx = new RenderableContext(
+                                decorativeObject.getRenderable(),
+                                sceneId,
+                                decorativeObject.getX(),
+                                decorativeObject.getY(),
+                                decorativeObject.getZ(),
+                                0,
+                                decorativeObject.getHash()
+                        );
+                        vertexCount += PushRenderable(ctx, shadowVertexBuffer);
                     }
 //
                     GameObject[] gameObjects = tile.getGameObjects();
                     for (GameObject gameObject : gameObjects)
                     {
                         if (gameObject == null) continue;
-                        Renderable r = gameObject.getRenderable();
-                        vertexCount += PushRenderable(r, sceneId, gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getModelOrientation(), gameObject.getHash(), shadowVertexBuffer);
+                        RenderableContext ctx = new RenderableContext(
+                                gameObject.getRenderable(),
+                                sceneId,
+                                gameObject.getX(),
+                                gameObject.getY(),
+                                gameObject.getZ(),
+                                gameObject.getModelOrientation(),
+                                gameObject.getHash()
+                        );
+                        vertexCount += PushRenderable(ctx, shadowVertexBuffer);
                     }
+
+                    // Probably dont want to draw small objects like this to the shadow map, it looks messy and inflates the vertex count by a lot.
+//                    GroundObject groundObject = tile.getGroundObject();
+//                    if (groundObject != null)
+//                    {
+//                        Renderable r = groundObject.getRenderable();
+//                        vertexCount += PushRenderable(r, sceneId, groundObject.getX(), groundObject.getY(), groundObject.getZ(), 0, groundObject.getHash(), shadowVertexBuffer);
+//                    }
                 }
             }
         }
@@ -154,6 +190,7 @@ public class ShadowPass {
         log.debug("OnSceneUpdated: sceneId={} numModels={} numVertices={} time={}", sceneId, numModels, numVertices, sw.elapsed(TimeUnit.MILLISECONDS));
     }
 
+    /** Called from {@link com.gpuExtended.GpuExtendedPlugin#swapScene(Scene)}*/
     public void OnSceneUpdated(GpuFloatBuffer shadowVertexBuffer) {
         numVertices = nextNumVertices;
 
@@ -161,10 +198,7 @@ public class ShadowPass {
         glBufferData(GL_ARRAY_BUFFER, shadowVertexBuffer.getBuffer(), GL_STATIC_DRAW);
     }
 
-    public void OnPostSceneUpdated(Scene scene) {
-
-    }
-
+    /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
     public void RenderShadowMap() {
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
@@ -198,20 +232,95 @@ public class ShadowPass {
 
         frameBuffer.unbind();
         glUseProgram(0);
+
+//        log.info("Rendering Shadow Map: numModels={} numVertices={}", numModels, numVertices);
     }
 
     public FrameBuffer GetFramebuffer() {
         return frameBuffer;
     }
 
-    private int PushRenderable(Renderable r, int sceneId, int x, int y, int z, int orientation, long hash, GpuFloatBuffer vertexBuffer) {
-        if (r == null) return 0;
+    private int PushTile(TileContext context, GpuFloatBuffer vertexBuffer) {
+        final int[][][] tileHeights = context.scene.getTileHeights();
+
+
+        // These used to be fed in through an overload in sceneUploader,
+        // but they were always 0. So no need to pass them in anymore.
+        // Keeping the variables here just in case for later.
+        final int localX = 0;
+        final int localY = 0;
+
+        final int tileX = context.x + SCENE_OFFSET;
+        final int tileY = context.y + SCENE_OFFSET;
+        final int tileZ = context.plane;
+
+        log.info("Pushing tile at ({}, {}, {}) with paint: {}", tileX, tileY, context.plane, context.tilePaint);
+
+        int swHeight = tileHeights[tileZ][tileX    ][tileY    ];
+        int seHeight = tileHeights[tileZ][tileX + 1][tileY    ];
+        int neHeight = tileHeights[tileZ][tileX + 1][tileY + 1];
+        int nwHeight = tileHeights[tileZ][tileX    ][tileY + 1];
+
+        final int neColor = context.tilePaint.getNeColor();
+        final int nwColor = context.tilePaint.getNwColor();
+        final int seColor = context.tilePaint.getSeColor();
+        final int swColor = context.tilePaint.getSwColor();
+
+        if (neColor == 12345678)
+        {
+            return 0;
+        }
+
+        // Since we're skipping compute shader for shadow map, we want to be in world space already.
+        // Normally in sceneUploader, it would be in local space, and then transformed to world space by the shader.
+        final int tileWorldX = context.x * LOCAL_TILE_SIZE;
+        final int tileWorldY = context.y * LOCAL_TILE_SIZE;
+
+        // 0,0
+        int vertexDx = tileWorldX;
+        int vertexDy = tileWorldY;
+        int vertexDz = swHeight;
+        final int c1 = swColor;
+
+        // 1,0
+        int vertexCx = tileWorldX + Perspective.LOCAL_TILE_SIZE;
+        int vertexCy = tileWorldY;
+        int vertexCz = seHeight;
+        final int c2 = seColor;
+
+        // 1,1
+        int vertexAx = tileWorldX + Perspective.LOCAL_TILE_SIZE;
+        int vertexAy = tileWorldY + Perspective.LOCAL_TILE_SIZE;
+        int vertexAz = neHeight;
+        final int c3 = neColor;
+
+        // 0,1
+        int vertexBx = tileWorldX;
+        int vertexBy = tileWorldY + Perspective.LOCAL_TILE_SIZE;
+        int vertexBz = nwHeight;
+        final int c4 = nwColor;
+
+        vertexBuffer.ensureCapacity(24); // 6 vertices * 4 floats per vertex (x, y, z, w)
+
+        vertexBuffer.put(vertexAx, vertexAz, vertexAy, c3);
+        vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+        vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+
+        vertexBuffer.put(vertexDx, vertexDz, vertexDy, c1);
+        vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+        vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+
+        return 6;
+    }
+
+    private int PushRenderable(RenderableContext context, GpuFloatBuffer vertexBuffer) {
+        if (context.renderable == null) return 0;
 
         Model model;
         Model offsetModel;
-        if (r instanceof Model)
+        if (context.renderable instanceof Model)
         {
-            model = (Model) r;
+            model = (Model) context.renderable;
             offsetModel = model.getUnskewedModel();
             if (offsetModel == null)
             {
@@ -221,21 +330,9 @@ public class ShadowPass {
         else {
             return 0;
         }
-//        else
-//        {
-//            model = r.getModel();
-//            if (model == null)
-//            {
-//                return;
-//            }
-//            offsetModel = model;
-//        }
 
-        if (offsetModel.getSceneId() != sceneId)
+        if (offsetModel.getSceneId() != context.sceneId)
              return 0;
-
-        int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-        int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
         final int[] indices1 = model.getFaceIndices1();
         final int[] indices2 = model.getFaceIndices2();
@@ -246,7 +343,7 @@ public class ShadowPass {
         float[] vz = model.getVerticesZ();
 
         final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
-        vertexBuffer.ensureCapacity(triCount * 12);
+        vertexBuffer.ensureCapacity(triCount * 12); // 3 vertices * 4 floats per vertex (x, y, z, w)
 
         int vertexCount = 0;
         for (int tri = 0; tri < triCount; tri++) {
@@ -254,9 +351,9 @@ public class ShadowPass {
             int i1 = indices2[tri];
             int i2 = indices3[tri];
 
-            vertexBuffer.put(vx[i0] + x, vy[i0] + z, vz[i0] + y, 0);
-            vertexBuffer.put(vx[i1] + x, vy[i1] + z, vz[i1] + y, 0);
-            vertexBuffer.put(vx[i2] + x, vy[i2] + z, vz[i2] + y, 0);
+            vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, 0);
+            vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, 0);
+            vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, 0);
             vertexCount += 3;
         }
 

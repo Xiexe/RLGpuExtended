@@ -1362,8 +1362,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			environmentManager.Update(DeltaTime);
 
 			updateUniformBlocks();
-
-			glBindVertexArray(mainDrawVertexArrayObject);
 			drawShadowPass();
 
 			// This needs to be run before drawing the depth pass or the main pass
@@ -1769,6 +1767,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 			log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 		}
+		glBindVertexArray(mainDrawVertexArrayObject);
 
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
 		colorFramebuffer.bind();
@@ -2247,7 +2246,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		int radius = 96; // ~ 64 * sqrt(2)
 
 		// Get the necessary rendering parameters from the client
-		int zoom = client.get3dZoom() / 2;
+		int zoom = client.get3dZoom();
 		int clipMaxX = client.getRasterizer3D_clipMidX2();
 		int clipMinX = client.getRasterizer3D_clipNegativeMidX();
 		int clipCeilY = client.getRasterizer3D_clipNegativeMidY();

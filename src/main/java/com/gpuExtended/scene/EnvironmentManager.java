@@ -809,7 +809,6 @@ public class EnvironmentManager
     {
         GameObject gameObject = event.getGameObject();
         Renderable renderable = gameObject.getRenderable();
-
         if (renderable instanceof DynamicObject) {
             if(gameObjectLights.containsKey(gameObject.getId()))
             {
@@ -837,12 +836,11 @@ public class EnvironmentManager
     public void OnGameObjectDespawned(GameObjectDespawned event)
     {
         GameObject gameObject = event.getGameObject();
-
         if(gameObjectLightHashMap.containsKey(gameObject))
         {
             sceneLights.remove(gameObjectLightHashMap.get(gameObject));
             gameObjectLightHashMap.remove(gameObject);
-            log.info("GameObject Light D-spawned: " + event.getGameObject().getId());
+            log.info("GameObject Light De-spawned: " + event.getGameObject().getId());
         }
     }
 

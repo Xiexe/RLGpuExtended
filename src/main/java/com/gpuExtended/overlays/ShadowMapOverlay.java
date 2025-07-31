@@ -124,6 +124,6 @@ public class ShadowMapOverlay extends Overlay {
         });
 
 //        log.info("Rendering Shadowmap Debug Overlay.");
-        return new Dimension(256, 256);
+        return new Dimension(512, 512);
     }
 }
