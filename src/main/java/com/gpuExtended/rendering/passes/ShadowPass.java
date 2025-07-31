@@ -1,27 +1,21 @@
 package com.gpuExtended.rendering.passes;
 
+import com.google.common.base.Stopwatch;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
-import com.gpuExtended.util.GpuIntBuffer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.rlawt.AWTContext;
-import org.lwjgl.opencl.CL12;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30;
 
-import javax.annotation.Nonnull;
 import javax.inject.Inject;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
+import java.util.concurrent.TimeUnit;
 
-import static com.gpuExtended.GpuExtendedPlugin.nextPowerOfTwo;
 import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opengl.GL11C.*;
@@ -35,7 +29,6 @@ import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30C.*;
 import static org.lwjgl.opengl.GL31C.glUniformBlockBinding;
 import static org.lwjgl.opengl.GL41C.glClearDepthf;
-import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
 @Singleton
@@ -45,22 +38,14 @@ public class ShadowPass {
 
     private FrameBuffer frameBuffer;
     private int vertexArrayObject;
+    private int vertexBuffer;
 
-    private GpuIntBuffer modelBuffer;
-    private GpuIntBuffer vertexBuffer;
-    private GpuFloatBuffer uvBuffer;
-    private GpuFloatBuffer normalBuffer;
-    private GpuIntBuffer flagsBuffers;
-
-    private GLBuffer modelInfoInBuffer = new GLBuffer("model_info_in_buffer");
-    private GLBuffer vertexOutBuffer = new GLBuffer("vertex_out_buffer");
-    private GLBuffer vertexInBuffer = new GLBuffer("vertex_in_buffer");
-
-
+    private GpuFloatBuffer nextSceneVertexBuffer;
     private int numModels = 0;
-    private int bufferOffset = 0;
+    private int numVertices = 0;
+    private int nextNumVertices = 0;
 
-    public void Initialize(int resolution, AWTContext awtContext) {
+    public void Init(int resolution, AWTContext awtContext) {
         FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
         fboSettings.name = "shadow_pass";
         fboSettings.width = resolution;//config.shadowResolution().getValue();
@@ -80,25 +65,27 @@ public class ShadowPass {
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
 
         vertexArrayObject = GL30.glGenVertexArrays();
-        InitGLBuffer(vertexOutBuffer);
-        InitGLBuffer(vertexInBuffer);
-        InitGLBuffer(modelInfoInBuffer);
-        InitVAO();
+        vertexBuffer = GL30.glGenBuffers();
 
-        modelBuffer = new GpuIntBuffer();
+        GL30.glBindVertexArray(vertexArrayObject);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * Float.BYTES, 0);
+        glEnableVertexAttribArray(0);
+        GL30.glBindVertexArray(0);
 
         log.info("Shadow Pass Handler Initialized");
     }
 
-    public void OnPreSceneUpdated(Scene scene) {
+    public void OnPreSceneUpdated(Scene scene) {}
 
-    }
-
-    public void OnSceneUpdated(Scene scene) {
-        numModels = 0;
-        bufferOffset = 0;
+    public void OnSceneLoad(Scene scene, int sceneId, GpuFloatBuffer shadowVertexBuffer) {
+        Stopwatch sw = Stopwatch.createStarted();
+        log.debug("OnSceneUpdated: sceneId={}", sceneId);
         scene.buildRoofs();
 
+        numModels = 0;
+
+        int vertexCount = 0;
         Tile[][][] tiles = scene.getExtendedTiles();
         for (int z = 0; z < Constants.MAX_Z; z++) {
             for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
@@ -108,13 +95,23 @@ public class ShadowPass {
                         continue;
                     }
 
-                    SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
-                    if (sceneTilePaint != null)
-                    {}
+                    Point tilePoint = tile.getSceneLocation();
 
-                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
-                    if (sceneTileModel != null)
-                    {}
+//                    SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
+//                    if (sceneTilePaint != null)
+//                    {}
+//
+//                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
+//                    if (sceneTileModel != null)
+//                    {}
+//
+//                    Tile bridge = tile.getBridge();
+//                    if (bridge != null)
+//                    {
+//                        SceneTileModel bridgeModel = bridge.getSceneTileModel();
+//                        if (bridgeModel != null)
+//                        {}
+//                    }
 
                     WallObject wallObject = tile.getWallObject();
                     if (wallObject != null)
@@ -122,48 +119,51 @@ public class ShadowPass {
                         Renderable r1 = wallObject.getRenderable1();
                         Renderable r2 = wallObject.getRenderable2();
 
-                        PushRenderable(r1, wallObject.getX(), wallObject.getY(), wallObject.getZ(), wallObject.getOrientationA(), wallObject.getHash());
-                        PushRenderable(r2, wallObject.getX(), wallObject.getY(), wallObject.getZ(), wallObject.getOrientationB(), wallObject.getHash());
+                        vertexCount += PushRenderable(r1, sceneId, wallObject.getX(), wallObject.getY(), wallObject.getZ(), wallObject.getOrientationA(), wallObject.getHash(), shadowVertexBuffer);
+                        vertexCount += PushRenderable(r2, sceneId, wallObject.getX(), wallObject.getY(), wallObject.getZ(), wallObject.getOrientationB(), wallObject.getHash(), shadowVertexBuffer);
                     }
 
                     GroundObject groundObject = tile.getGroundObject();
                     if (groundObject != null)
                     {
                         Renderable r = groundObject.getRenderable();
-                        PushRenderable(r, groundObject.getX(), groundObject.getY(), groundObject.getZ(), 0, groundObject.getHash());
+                        vertexCount += PushRenderable(r, sceneId, groundObject.getX(), groundObject.getY(), groundObject.getZ(), 0, groundObject.getHash(), shadowVertexBuffer);
                     }
 
                     DecorativeObject decorativeObject = tile.getDecorativeObject();
                     if (decorativeObject != null)
                     {
                         Renderable r = decorativeObject.getRenderable();
-                        PushRenderable(r, decorativeObject.getX(), decorativeObject.getY(), decorativeObject.getZ(), 0, decorativeObject.getHash());
+                        vertexCount += PushRenderable(r, sceneId, decorativeObject.getX(), decorativeObject.getY(), decorativeObject.getZ(), 0, decorativeObject.getHash(), shadowVertexBuffer);
                     }
-
+//
                     GameObject[] gameObjects = tile.getGameObjects();
                     for (GameObject gameObject : gameObjects)
                     {
                         if (gameObject == null) continue;
                         Renderable r = gameObject.getRenderable();
-                        PushRenderable(r, gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getModelOrientation(), gameObject.getHash());
+                        vertexCount += PushRenderable(r, sceneId, gameObject.getX(), gameObject.getY(), gameObject.getZ(), gameObject.getModelOrientation(), gameObject.getHash(), shadowVertexBuffer);
                     }
                 }
             }
         }
 
-        modelBuffer.flip();
-        UpdateGLBuffer(modelInfoInBuffer, GL_SHADER_STORAGE_BUFFER, modelBuffer.getBuffer(), GL_STREAM_DRAW, 0);
-        // each element is an ivec4, which is 16 bytes
-        UpdateGLBuffer(vertexOutBuffer, GL_ARRAY_BUFFER, bufferOffset * 16, GL_STREAM_DRAW, CL12.CL_MEM_WRITE_ONLY);
+        nextNumVertices = vertexCount;
 
-        log.info("Dispatching Compute Shader with ID: {}", plugin.shaderHandler.largeOrderedComputeShader.id());
-        DispatchSceneCompute(plugin.shaderHandler.largeOrderedComputeShader.id());
+        sw.stop();
+        log.debug("OnSceneUpdated: sceneId={} numModels={} numVertices={} time={}", sceneId, numModels, numVertices, sw.elapsed(TimeUnit.MILLISECONDS));
+    }
+
+    public void OnSceneUpdated(GpuFloatBuffer shadowVertexBuffer) {
+        numVertices = nextNumVertices;
+
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, shadowVertexBuffer.getBuffer(), GL_STATIC_DRAW);
     }
 
     public void OnPostSceneUpdated(Scene scene) {
 
     }
-
 
     public void RenderShadowMap() {
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
@@ -190,9 +190,7 @@ public class ShadowPass {
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         GL30.glBindVertexArray(vertexArrayObject);
 
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-        glDrawArrays(GL_TRIANGLES, 0, bufferOffset);
+        glDrawArrays(GL_TRIANGLES, 0, numVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
         glDisable(GL_CULL_FACE);
@@ -202,29 +200,14 @@ public class ShadowPass {
         glUseProgram(0);
     }
 
-    private void DispatchSceneCompute(int computeShaderId) {
-        // We have to run a compute shader to sort the scene's verts because of weirdness with runescape.
-        // It doesn't just handle sorting, it also handles offsetting the model, and rotating it in the world.
-        GL20C.glUseProgram(computeShaderId);
-
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelInfoInBuffer.glBufferId); // modelbuffer_in
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_IN_BINDING_ID, vertexInBuffer.glBufferId); // vertexbuffer_in
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_OUT_BINDING_ID, vertexOutBuffer.glBufferId); // vertex out
-
-        glDispatchCompute(numModels, 1, 1);
-        glUseProgram(0);
-    }
-
     public FrameBuffer GetFramebuffer() {
         return frameBuffer;
     }
 
-    private void PushRenderable(Renderable r, int x, int y, int z, int orientation, long hash) {
-        if (r == null) return;
+    private int PushRenderable(Renderable r, int sceneId, int x, int y, int z, int orientation, long hash, GpuFloatBuffer vertexBuffer) {
+        if (r == null) return 0;
 
-        Model model = r.getModel();
-        if (model == null) return;
-
+        Model model;
         Model offsetModel;
         if (r instanceof Model)
         {
@@ -235,15 +218,21 @@ public class ShadowPass {
                 offsetModel = model;
             }
         }
-        else
-        {
-            model = r.getModel();
-            if (model == null)
-            {
-                return;
-            }
-            offsetModel = model;
+        else {
+            return 0;
         }
+//        else
+//        {
+//            model = r.getModel();
+//            if (model == null)
+//            {
+//                return;
+//            }
+//            offsetModel = model;
+//        }
+
+        if (offsetModel.getSceneId() != sceneId)
+             return 0;
 
         int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
         int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
@@ -256,29 +245,23 @@ public class ShadowPass {
         float[] vy = model.getVerticesY();
         float[] vz = model.getVerticesZ();
 
-        int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
-        int vertexCount = faceCount * 3;
-        int uvOffset = offsetModel.getUvBufferOffset();
-        int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-        int exFlags = GetExFlags(hash, tileX, tileY, z, false);
+        final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
+        vertexBuffer.ensureCapacity(triCount * 12);
 
-        GpuIntBuffer b = modelBuffer;
+        int vertexCount = 0;
+        for (int tri = 0; tri < triCount; tri++) {
+            int i0 = indices1[tri];
+            int i1 = indices2[tri];
+            int i2 = indices3[tri];
 
-        b.ensureCapacity(12);
-        IntBuffer buffer = b.getBuffer();
-        buffer.put(offsetModel.getBufferOffset());
-        buffer.put(uvOffset);
-        buffer.put(faceCount);
-        buffer.put(bufferOffset);
-        buffer.put(FLAG_SCENE_BUFFER | flags);
-        buffer.put(x).put(y).put(z);
-        buffer.put(exFlags);
-        buffer.put(-1);
-        buffer.put(-1);
-        buffer.put(-1);
+            vertexBuffer.put(vx[i0] + x, vy[i0] + z, vz[i0] + y, 0);
+            vertexBuffer.put(vx[i1] + x, vy[i1] + z, vz[i1] + y, 0);
+            vertexBuffer.put(vx[i2] + x, vy[i2] + z, vz[i2] + y, 0);
+            vertexCount += 3;
+        }
 
         numModels++;
-        bufferOffset += vertexCount;
+        return vertexCount;
     }
 
     public void Dispose() {
@@ -289,72 +272,6 @@ public class ShadowPass {
         if (vertexArrayObject != 0) {
             GL30.glDeleteVertexArrays(vertexArrayObject);
             vertexArrayObject = 0;
-        }
-
-        DestroyGLBuffer(modelInfoInBuffer);
-        DestroyGLBuffer(vertexOutBuffer);
-        DestroyGLBuffer(vertexInBuffer);
-
-        modelBuffer = null;
-    }
-
-    private void InitVAO() {
-        glBindVertexArray(vertexArrayObject);
-
-        glEnableVertexAttribArray(VPOS_BINDING_ID);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexOutBuffer.glBufferId);
-        glVertexAttribPointer(VPOS_BINDING_ID, 3, GL_FLOAT, false, 16, 0);
-
-        glEnableVertexAttribArray(VHSL_BINDING_ID);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexOutBuffer.glBufferId);
-        glVertexAttribIPointer(VHSL_BINDING_ID, 1, GL_INT, 16, 12);
-    }
-
-    private void InitGLBuffer(GLBuffer glBuffer)
-    {
-        glBuffer.glBufferId = glGenBuffers();
-    }
-
-    private void DestroyGLBuffer(GLBuffer glBuffer)
-    {
-        if (glBuffer.glBufferId != -1)
-        {
-            glDeleteBuffers(glBuffer.glBufferId);
-            glBuffer.glBufferId = -1;
-        }
-        glBuffer.size = -1;
-
-        if (glBuffer.clBuffer != -1)
-        {
-            CL12.clReleaseMemObject(glBuffer.clBuffer);
-            glBuffer.clBuffer = -1;
-        }
-    }
-
-    private void UpdateGLBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage, long clFlags)
-    {
-        int size = data.remaining() << 2;
-        UpdateGLBuffer(glBuffer, target, size, usage, clFlags);
-        glBufferSubData(target, 0, data);
-    }
-
-    private void UpdateGLBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage, long clFlags)
-    {
-        int size = data.remaining() << 2;
-        UpdateGLBuffer(glBuffer, target, size, usage, clFlags);
-        glBufferSubData(target, 0, data);
-    }
-
-    private void UpdateGLBuffer(@Nonnull GLBuffer glBuffer, int target, int size, int usage, long clFlags)
-    {
-        glBindBuffer(target, glBuffer.glBufferId);
-        if (size > glBuffer.size)
-        {
-            int newSize = Math.max(1024, nextPowerOfTwo(size));
-            log.trace("Buffer resize: {} {} -> {}", glBuffer.name, glBuffer.size, newSize);
-
-            glBuffer.size = newSize;
-            glBufferData(target, newSize, usage);
         }
     }
 

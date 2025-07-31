@@ -276,6 +276,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GpuFloatBuffer nextSceneTexBuffer;
 	private GpuFloatBuffer nextSceneNormalBuffer;
 	private GpuIntBuffer nextSceneFlagsBuffer;
+	private GpuFloatBuffer nextSceneShadowVertexBuffer;
+
+
 
 	private long Time;
 	private long LastTime;
@@ -310,6 +313,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	ResourcePath godTextureResourcePath = Props.getPathOrDefault(
 			"god-noise-path", () -> path(GpuExtendedPlugin.class, "textures/godtexture.png"));
 	private Texture2D godNoiseTexture;
+
+	private Projection sceneProjection;
 
 	@Override
 	protected void startUp()
@@ -423,7 +428,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environmentManager.Initialize();
 
 				// Initialize Render Pass Handlers
-				shadowPassHandler.Initialize(config.shadowResolution().getValue(), awtContext);
+				shadowPassHandler.Init(config.shadowResolution().getValue(), awtContext);
 				// --
 
 				eventBus.register(tileMarkerManager);
@@ -1092,6 +1097,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		// still redraw the previous frame's scene to emulate the client behavior of not painting over the
 		// viewport buffer.
 		targetBufferOffset = 0;
+
 		checkGLErrors();
 	}
 
@@ -2110,13 +2116,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
 		GpuIntBuffer flagsBuffer = new GpuIntBuffer();
 
+		GpuFloatBuffer shadowSceneVertexBuffer = new GpuFloatBuffer();
+
 		sceneUploader.UploadScene(scene, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+		shadowPassHandler.OnSceneLoad(scene, sceneUploader.sceneId, shadowSceneVertexBuffer);
 
 		vertexBuffer.flip();
 		uvBuffer.flip();
 		normalBuffer.flip();
+		shadowSceneVertexBuffer.flip();
 
 		nextSceneVertexBuffer = vertexBuffer;
+		nextSceneShadowVertexBuffer = shadowSceneVertexBuffer;
 		nextSceneTexBuffer = uvBuffer;
 		nextSceneNormalBuffer = normalBuffer;
 		nextSceneFlagsBuffer = flagsBuffer;
@@ -2193,8 +2204,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		updateBuffer(staticModelUvInBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(staticModelNormalInBuffer, GL_ARRAY_BUFFER, nextSceneNormalBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(staticModelFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneFlagsBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
+		shadowPassHandler.OnSceneUpdated(nextSceneShadowVertexBuffer);
 
 		nextSceneVertexBuffer = null;
+		nextSceneShadowVertexBuffer = null;
 		nextSceneTexBuffer = null;
 		nextSceneNormalBuffer = null;
 		nextSceneFlagsBuffer = null;
@@ -2209,9 +2222,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		environmentManager.CheckRegion();
 
 		sceneUploader.PrepareScene(scene);
-		loadingScene = false;
 
-		shadowPassHandler.OnSceneUpdated(scene);
+		loadingScene = false;
 
 		checkGLErrors();
 	}
@@ -2350,6 +2362,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		{
 			PackDynamicModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
 		}
+
+		sceneProjection = projection;
 	}
 
 	private void PackStaticModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
@@ -2559,6 +2573,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private boolean CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash)
 	{
+		if (projection == null) return false;
+
 		model.calculateBoundsCylinder();
 
 		if (projection instanceof IntProjection)

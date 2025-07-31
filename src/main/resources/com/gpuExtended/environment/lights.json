@@ -1113,6 +1113,21 @@
     ]
   },
   {
+    "name": "VARROCK_HOUSE_LIGHT",
+    "type": "point",
+    "color": [1, 0.5, 0.0],
+    "offset": [0, 0, 5],
+    "intensity": 4,
+    "radius": 6,
+    "animation": "flicker",
+    "tiles" : [
+      [3184, 3443, 0],
+      [3184, 3443, 1],
+      [3184, 3438, 0],
+      [3184, 3438, 1]
+    ]
+  },
+  {
     "name": "BARROWS_SARCOPHAGUS",
     "type": "point",
     "color": [0.3, 0.3, 1],
