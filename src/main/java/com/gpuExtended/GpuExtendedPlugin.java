@@ -1960,7 +1960,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 //		shadowMapFramebuffer.unbind();
 //		glUseProgram(0);
 
-		shadowPassHandler.RenderShadowMap();
+		shadowPassHandler.OnRenderShadowMap();
 
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 	}

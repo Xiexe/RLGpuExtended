@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.rlawt.AWTContext;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
@@ -89,9 +88,6 @@ public class ShadowPass {
     /** Called from {@link com.gpuExtended.GpuExtendedPlugin#loadScene(Scene)}, since that happens on another thread. */
     public void OnSceneLoad(Scene scene, int sceneId, GpuFloatBuffer shadowVertexBuffer) {
         Stopwatch sw = Stopwatch.createStarted();
-        log.debug("OnSceneUpdated: sceneId={}", sceneId);
-        //scene.buildRoofs();
-
         numModels = 0;
 
         int vertexCount = 0;
@@ -208,7 +204,7 @@ public class ShadowPass {
         nextNumVertices = vertexCount;
 
         sw.stop();
-        log.debug("OnSceneUpdated: sceneId={} numModels={} numVertices={} time={}", sceneId, numModels, numVertices, sw.elapsed(TimeUnit.MILLISECONDS));
+        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} numVertices={} time={}", sceneId, numModels, numVertices, sw.elapsed(TimeUnit.MILLISECONDS));
     }
 
     /** Called from {@link com.gpuExtended.GpuExtendedPlugin#swapScene(Scene)}*/
@@ -220,7 +216,7 @@ public class ShadowPass {
     }
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
-    public void RenderShadowMap() {
+    public void OnRenderShadowMap() {
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
 
@@ -257,13 +253,8 @@ public class ShadowPass {
 //        log.info("Rendering Shadow Map: numModels={} numVertices={}", numModels, numVertices);
     }
 
-    public FrameBuffer GetFramebuffer() {
-        return frameBuffer;
-    }
-
     private int PushTile(TileContext context, GpuFloatBuffer vertexBuffer) {
         final int[][][] tileHeights = context.scene.getTileHeights();
-
 
         // These used to be fed in through an overload in sceneUploader,
         // but they were always 0. So no need to pass them in anymore.
@@ -365,7 +356,6 @@ public class ShadowPass {
             final int colorB = triangleColorB[i];
             final int colorC = triangleColorC[i];
 
-
             if (colorA == 12345678) {
                 continue;
             }
@@ -448,7 +438,6 @@ public class ShadowPass {
             int color2 = color2s[tri];
             int color3 = color3s[tri];
 
-
             if (color3 == -1) // Model only has one color.
             {
                 color2 = color3 = color1;
@@ -474,7 +463,6 @@ public class ShadowPass {
             }
 
             int alpha = getFaceAlpha(faceTextures, transparencies, tri);
-
             vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, alpha);
             vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, alpha);
             vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, alpha);
@@ -484,6 +472,10 @@ public class ShadowPass {
 
         numModels++;
         return vertexCount;
+    }
+
+    public FrameBuffer GetFramebuffer() {
+        return frameBuffer;
     }
 
     public void Dispose() {
