@@ -241,6 +241,18 @@
     ]
   },
   {
+    "name": "HUNTERS_GUILD",
+    "bounds": [
+      {
+        "name": "UNDERGROUND",
+        "start": [1534, 9407, -1],
+        "end": [1579, 9471, -1],
+        "groundPlane": 0,
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "PERIOULS_MOONS",
     "bounds": [
       {

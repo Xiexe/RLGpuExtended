@@ -1,5 +1,5 @@
 const float bias = 0.0007;
-const float lightSize = 0.0025;
+const float lightSize = 0.01;
 const int shadowSamples = 32;
 
 float LightAttenuation(float dist, float radius) {
@@ -23,7 +23,7 @@ float PCSSEstimatePenumbraSize(sampler2D shadowTex, vec4 projCoords, float curre
     blockerDepthSum /= float(blockerCount);
 
     float estimatedPenumbra = (currentDepth - blockerDepthSum) * lightSize / blockerDepthSum;
-    return max(0, estimatedPenumbra + 0.00001);
+    return max(0, estimatedPenumbra);
 }
 
 float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float penumbraSize) {
@@ -41,10 +41,11 @@ float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float
 }
 
 float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shadowBias) {
+    float fudgeFactor = 4;
     vec2 shadowRes = textureSize(shadowTex, 0);
     float currentDepth = projCoords.z - shadowBias;
-    float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * 15;
-    float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize);
+    float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * fudgeFactor;
+    float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize + 0.0004);
 
     return shadow * (1.0 - fadeOut);
 }

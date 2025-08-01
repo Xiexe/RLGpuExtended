@@ -3,6 +3,8 @@ package com.gpuExtended.rendering.passes;
 import com.google.common.base.Stopwatch;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.regions.Area;
+import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.shader.Uniforms;
@@ -11,6 +13,7 @@ import com.gpuExtended.util.contexts.RenderableContext;
 import com.gpuExtended.util.contexts.TileContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.rlawt.AWTContext;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -115,6 +118,23 @@ public class ShadowPass {
                     if (tile == null) {
                         continue;
                     }
+
+                    boolean shouldSkipTile = false;
+                    if (plugin.environmentManager.currentArea != null) {
+                        Area currentArea = plugin.environmentManager.currentArea;
+                        Bounds[] areaBounds = currentArea.getBounds();
+                        if (areaBounds != null && currentArea.isHideOtherAreas()) {
+                            WorldPoint tileLocation = tile.getWorldLocation();
+                            for (Bounds currentSubBounds : areaBounds) {
+                                if (!currentSubBounds.contains(tileLocation, 2)) {
+                                    shouldSkipTile = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (shouldSkipTile)
+                        continue;
 
                     Point tilePoint = tile.getSceneLocation();
                     SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
