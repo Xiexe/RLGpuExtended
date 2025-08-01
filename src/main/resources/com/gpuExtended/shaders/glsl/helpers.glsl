@@ -208,54 +208,6 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
     }
 }
 
-void FadeRoofs(VertexFlags flags, vec3 fragPos, float dither, float distanceToPlayer)
-{
-    if(roofFading <= 0)
-    {
-        return;
-    }
-
-    ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
-    distanceToPlayer = smoothstep((roofFadeDistance + 8) * TILE_SIZE, roofFadeDistance * TILE_SIZE, distanceToPlayer);
-
-    float roofTextureP0 = texelFetch(roofMaskMap, ivec3(cellUv, 0), 0).a;
-    float roofTextureP1 = texelFetch(roofMaskMap, ivec3(cellUv, 1), 0).a;
-    float roofTextureP2 = texelFetch(roofMaskMap, ivec3(cellUv, 2), 0).a;
-
-    float roofMaskIsOnPlane0 = roofTextureP0 + roofTextureP1 + roofTextureP2;
-    float roofMaskIsOnPlane1 = roofTextureP1 + roofTextureP2;
-    float roofMaskIsOnPlane2 = roofTextureP2;
-
-    float roofMask = 0;
-    switch(int(playerPosition.z))
-    {
-        case 0:
-        if(flags.plane > 0)
-        {
-            roofMask = roofMaskIsOnPlane0;
-        }
-        break;
-
-        case 1:
-        if(flags.plane > 1)
-        {
-            roofMask = roofMaskIsOnPlane1;
-        }
-        break;
-
-        case 2:
-        if(flags.plane > 2)
-        {
-            roofMask = roofMaskIsOnPlane2;
-        }
-        break;
-    }
-    roofMask = clamp(roofMask, 0, 1);
-
-    float roofClip = roofMask * (dither - 0.001 - distanceToPlayer);
-    clip(roofClip);
-}
-
 // Pre-defined set of sample points for blocker search and PCF
 const vec2 poissonDisk[64] = vec2[](
     vec2(-0.499557, 0.035246), vec2(0.227272, -0.179687),

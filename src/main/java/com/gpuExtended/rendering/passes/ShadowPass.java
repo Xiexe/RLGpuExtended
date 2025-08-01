@@ -39,14 +39,18 @@ public class ShadowPass {
     @Inject
     public GpuExtendedPlugin plugin;
 
+    // TODO:: Figure out a way to do this without 2 framebuffer maybe.
     private FrameBuffer frameBuffer;
-    private int vertexArrayObject;
-    private int vertexBuffer;
+    private FrameBuffer dynamicFrameBuffer;
 
-    private GpuFloatBuffer nextSceneVertexBuffer;
-    private int numModels = 0;
-    private int numVertices = 0;
-    private int nextNumVertices = 0;
+    private GpuFloatBuffer workingShadowVertexBuffer;
+    private GpuFloatBuffer currentShadowVertexBuffer;
+    private int staticVertexArrayObjectId;
+    private int staticVertexBufferObjectId;
+
+    private int numStaticModels = 0;
+    private int numStaticVertices = 0;
+    private int newNumStaticSceneVertices = 0;
 
     public void Init(int resolution, AWTContext awtContext) {
         FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
@@ -66,18 +70,19 @@ public class ShadowPass {
         textureSettings.wrapT = GL_CLAMP_TO_EDGE;
 
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
+        dynamicFrameBuffer = new FrameBuffer(fboSettings, textureSettings);
 
-        vertexArrayObject = GL30.glGenVertexArrays();
-        vertexBuffer = GL30.glGenBuffers();
+        staticVertexArrayObjectId = GL30.glGenVertexArrays();
+        staticVertexBufferObjectId = GL30.glGenBuffers();
 
-        GL30.glBindVertexArray(vertexArrayObject);
+        GL30.glBindVertexArray(staticVertexArrayObjectId);
 
         glEnableVertexAttribArray(VPOS_BINDING_ID);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, staticVertexBufferObjectId);
         glVertexAttribPointer(VPOS_BINDING_ID, 3, GL_FLOAT, false, 16, 0);
 
         glEnableVertexAttribArray(VHSL_BINDING_ID);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, staticVertexBufferObjectId);
         glVertexAttribIPointer(VHSL_BINDING_ID, 1, GL_INT, 16, 12);
 
         GL30.glBindVertexArray(0);
@@ -86,12 +91,23 @@ public class ShadowPass {
     }
 
     /** Called from {@link com.gpuExtended.GpuExtendedPlugin#loadScene(Scene)}, since that happens on another thread. */
-    public void OnSceneLoad(Scene scene, int sceneId, GpuFloatBuffer shadowVertexBuffer) {
+    public void OnSceneLoad(Scene scene, int sceneId) {
         Stopwatch sw = Stopwatch.createStarted();
-        numModels = 0;
 
+        workingShadowVertexBuffer = new GpuFloatBuffer(); // Reset the buffer for the new scene.
+        numStaticModels = 0;
+
+        GatherSceneGeometry(scene, sceneId); // Populate the scene buffer
+        workingShadowVertexBuffer.flip(); // get the buffer ready for reading.
+
+        sw.stop();
+        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} numVertices={} time={}", sceneId, numStaticModels, numStaticVertices, sw.elapsed(TimeUnit.MILLISECONDS));
+    }
+
+    private void GatherSceneGeometry(Scene scene, int sceneId) {
         int vertexCount = 0;
         Tile[][][] tiles = scene.getExtendedTiles();
+
         for (int z = 0; z < Constants.MAX_Z; z++) {
             for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
                 for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
@@ -105,14 +121,14 @@ public class ShadowPass {
                     if (sceneTilePaint != null)
                     {
                         TileContext tileContext = new TileContext(scene, tile);
-                        vertexCount += PushTile(tileContext, shadowVertexBuffer);
+                        vertexCount += PushTile(tileContext, workingShadowVertexBuffer);
                     }
 
                     SceneTileModel sceneTileModel = tile.getSceneTileModel();
                     if (sceneTileModel != null)
                     {
                         TileContext tileContext = new TileContext(scene, tile);
-                        vertexCount += PushComplexTile(tileContext, shadowVertexBuffer);
+                        vertexCount += PushComplexTile(tileContext, workingShadowVertexBuffer);
                     }
 //
                     Tile bridge = tile.getBridge();
@@ -122,14 +138,14 @@ public class ShadowPass {
                         if (bridgeModelComplex != null)
                         {
                             TileContext bridgeContext = new TileContext(scene, bridge);
-                            vertexCount += PushComplexTile(bridgeContext, shadowVertexBuffer);
+                            vertexCount += PushComplexTile(bridgeContext, workingShadowVertexBuffer);
                         }
 
                         SceneTilePaint bridgePaint = bridge.getSceneTilePaint();
                         if (bridgePaint != null)
                         {
                             TileContext bridgeContext = new TileContext(scene, bridge);
-                            vertexCount += PushTile(bridgeContext, shadowVertexBuffer);
+                            vertexCount += PushTile(bridgeContext, workingShadowVertexBuffer);
                         }
                     }
 
@@ -155,8 +171,8 @@ public class ShadowPass {
                                 wallObject.getHash()
                         );
 
-                        vertexCount += PushRenderable(r1ctx, shadowVertexBuffer);
-                        vertexCount += PushRenderable(r2ctx, shadowVertexBuffer);
+                        vertexCount += PushRenderable(r1ctx, workingShadowVertexBuffer);
+                        vertexCount += PushRenderable(r2ctx, workingShadowVertexBuffer);
                     }
 
                     DecorativeObject decorativeObject = tile.getDecorativeObject();
@@ -171,7 +187,7 @@ public class ShadowPass {
                                 0,
                                 decorativeObject.getHash()
                         );
-                        vertexCount += PushRenderable(ctx, shadowVertexBuffer);
+                        vertexCount += PushRenderable(ctx, workingShadowVertexBuffer);
                     }
 //
                     GameObject[] gameObjects = tile.getGameObjects();
@@ -187,7 +203,7 @@ public class ShadowPass {
                                 gameObject.getModelOrientation(),
                                 gameObject.getHash()
                         );
-                        vertexCount += PushRenderable(ctx, shadowVertexBuffer);
+                        vertexCount += PushRenderable(ctx, workingShadowVertexBuffer);
                     }
 
                     // Probably dont want to draw small objects like this to the shadow map, it looks messy and inflates the vertex count by a lot.
@@ -201,22 +217,24 @@ public class ShadowPass {
             }
         }
 
-        nextNumVertices = vertexCount;
-
-        sw.stop();
-        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} numVertices={} time={}", sceneId, numModels, numVertices, sw.elapsed(TimeUnit.MILLISECONDS));
+        newNumStaticSceneVertices = vertexCount;
     }
 
     /** Called from {@link com.gpuExtended.GpuExtendedPlugin#swapScene(Scene)}*/
-    public void OnSceneUpdated(GpuFloatBuffer shadowVertexBuffer) {
-        numVertices = nextNumVertices;
+    public void OnSceneUpdated() {
+        numStaticVertices = newNumStaticSceneVertices;
+        currentShadowVertexBuffer = workingShadowVertexBuffer; // Copy the working buffer, so we can use it to render. Cannot use the working buffer directly, as it's populated on another thread.
 
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, shadowVertexBuffer.getBuffer(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, staticVertexBufferObjectId);
+        glBufferData(GL_ARRAY_BUFFER, currentShadowVertexBuffer.getBuffer(), GL_STATIC_DRAW);
+
+        // Done. Dispose of the old buffers
+        currentShadowVertexBuffer = null;
+        workingShadowVertexBuffer = null;
     }
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
-    public void OnRenderShadowMap() {
+    public void OnRenderStaticShadowMap() {
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
 
@@ -236,12 +254,13 @@ public class ShadowPass {
         glUniformBlockBinding(shaderProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
         glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        GL30.glBindVertexArray(vertexArrayObject);
+        GL30.glBindVertexArray(staticVertexArrayObjectId);
 
-        glDrawArrays(GL_TRIANGLES, 0, numVertices);
+        glDrawArrays(GL_TRIANGLES, 0, numStaticVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
         glDisable(GL_CULL_FACE);
@@ -251,6 +270,43 @@ public class ShadowPass {
         glUseProgram(0);
 
 //        log.info("Rendering Shadow Map: numModels={} numVertices={}", numModels, numVertices);
+    }
+
+    public void OnRenderDynamicShadowMap() {
+//        log.info("[Shadow Pass] Rendering dynamic shadow map from offset: {} from buffer with length: {}", plugin.tempOffset, plugin.vertexBuffer.getBuffer());
+        glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
+        dynamicFrameBuffer.bind();
+
+        glClearDepthf(1);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glDepthFunc(GL_LEQUAL);
+
+        int shaderProgram = plugin.shaderHandler.shadowPassShader.id();
+        glUseProgram(shaderProgram);
+        Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(shaderProgram);
+
+        glUniformBlockBinding(shaderProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glEnable(GL_DEPTH_TEST);
+
+        int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        GL30.glBindVertexArray(plugin.getMainDrawVertexArrayObject());
+
+        glDrawArrays(GL_TRIANGLES, 0, plugin.getMainSceneVertexCount());
+        GL30.glBindVertexArray(lastVertexArray);
+
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_DEPTH_TEST);
+
+        dynamicFrameBuffer.unbind();
+        glUseProgram(0);
     }
 
     private int PushTile(TileContext context, GpuFloatBuffer vertexBuffer) {
@@ -266,7 +322,7 @@ public class ShadowPass {
         final int tileY = context.y + SCENE_OFFSET;
         final int tileZ = context.plane;
 
-        log.info("Pushing tile at ({}, {}, {}) with paint: {}", tileX, tileY, context.plane, context.tilePaint);
+//        log.info("Pushing tile at ({}, {}, {}) with paint: {}", tileX, tileY, context.plane, context.tilePaint);
 
         int swHeight = tileHeights[tileZ][tileX    ][tileY    ];
         int seHeight = tileHeights[tileZ][tileX + 1][tileY    ];
@@ -470,7 +526,7 @@ public class ShadowPass {
             vertexCount += 3;
         }
 
-        numModels++;
+        numStaticModels++;
         return vertexCount;
     }
 
@@ -478,36 +534,18 @@ public class ShadowPass {
         return frameBuffer;
     }
 
+    public FrameBuffer GetDynamicFramebuffer() {
+        return dynamicFrameBuffer;
+    }
+
     public void Dispose() {
         if (frameBuffer != null) {
             frameBuffer.cleanup();
             frameBuffer = null;
         }
-        if (vertexArrayObject != 0) {
-            GL30.glDeleteVertexArrays(vertexArrayObject);
-            vertexArrayObject = 0;
+        if (staticVertexArrayObjectId != 0) {
+            GL30.glDeleteVertexArrays(staticVertexArrayObjectId);
+            staticVertexArrayObjectId = 0;
         }
-    }
-
-    private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation)
-    {
-        int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-        boolean hillskew = offsetModel != model;
-
-        int flags = (plane << BIT_ZHEIGHT) 					 		 |
-                (hillskew ? (1 << BIT_HILLSKEW) : 0)  	 		 |
-                orientation;
-
-        return flags;
-    }
-
-    private int GetExFlags(long hash, int x, int y, int z, boolean isDynamicModel)
-    {
-        int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-        int flags = (plane << BIT_PLANE) |
-                (x << BIT_XPOS) |
-                (y << BIT_YPOS) |
-                (isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0);
-        return flags;
     }
 }

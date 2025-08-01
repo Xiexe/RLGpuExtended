@@ -85,7 +85,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public static GpuExtendedPlugin Instance;
 
 	@Inject
-	private Client client;
+	public Client client;
 
 	@Inject
 	private ClientUI clientUI;
@@ -188,7 +188,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private final GLBuffer dynModelNormalBuffer = new GLBuffer("tmp normal buffer");
 	private final GLBuffer dynModelFlagsBuffer = new GLBuffer("tmp flags buffer");
 
-	private final GLBuffer vertexOutBuffer = new GLBuffer("out vertex buffer");
+	public final GLBuffer vertexOutBuffer = new GLBuffer("out vertex buffer");
 	private final GLBuffer uvOutBuffer = new GLBuffer("out tex buffer");
 	private final GLBuffer normalOutBuffer = new GLBuffer("out normal buffer");
 	private final GLBuffer flagsOutBuffer = new GLBuffer("out flags buffer");
@@ -247,7 +247,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	/**
 	 * offset into the temporary scene vertex buffer
 	 */
-	private int tempOffset;
+	public int tempOffset;
 
 	/**
 	 * offset into the temporary scene uv buffer
@@ -267,7 +267,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int viewportOffsetX;
 	private int viewportOffsetY;
 
-
 	private boolean lwjglInitted = false;
 
 	private int sceneId;
@@ -276,9 +275,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private GpuFloatBuffer nextSceneTexBuffer;
 	private GpuFloatBuffer nextSceneNormalBuffer;
 	private GpuIntBuffer nextSceneFlagsBuffer;
-	private GpuFloatBuffer nextSceneShadowVertexBuffer;
-
-
 
 	private long Time;
 	private long LastTime;
@@ -732,6 +728,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	    shaderHandler.cleanup();
 	}
 
+	// TODO:: unique vao for dynamic model "temp" buffer so that we can populate it with only dynamic models.
 	private void initVao(int vaoHandle)
 	{
 		glBindVertexArray(vaoHandle);
@@ -1767,6 +1764,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 			log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 		}
+
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+//		glEnable(GL_DEPTH_TEST);
+
 		glBindVertexArray(mainDrawVertexArrayObject);
 
 		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
@@ -1782,24 +1784,20 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uni.ShadowMap, 2);
 
 		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileFillColorTexture.getId());
-		glUniform1i(uni.TileMarkerFillColorMap, 3);
+		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetDynamicFramebuffer().getTexture().getId());
+		glUniform1i(uni.DynamicShadowMap, 3);
 
 		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileBorderColorTexture.getId());
-		glUniform1i(uni.TileMarkerBorderColorMap, 4);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileFillColorTexture.getId());
+		glUniform1i(uni.TileMarkerFillColorMap, 4);
 
 		glActiveTexture(GL_TEXTURE5);
-		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileSettingsTexture.getId());
-		glUniform1i(uni.TileMarkerSettingsMap, 5);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileBorderColorTexture.getId());
+		glUniform1i(uni.TileMarkerBorderColorMap, 5);
 
 		glActiveTexture(GL_TEXTURE6);
-		glBindTexture(GL_TEXTURE_3D, tileMarkerManager.roofMaskTexture.getId());
-		glUniform1i(uni.RoofMaskTextureMap, 6);
-
-		glActiveTexture(GL_TEXTURE7);
-		glBindTexture(GL_TEXTURE_2D, godNoiseTexture.getId());
-		glUniform1i(uni.GodNoiseTextureMap, 7);
+		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileSettingsTexture.getId());
+		glUniform1i(uni.TileMarkerSettingsMap, 6);
 
 		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
 		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
@@ -1960,7 +1958,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 //		shadowMapFramebuffer.unbind();
 //		glUseProgram(0);
 
-		shadowPassHandler.OnRenderShadowMap();
+		shadowPassHandler.OnRenderStaticShadowMap();
+		shadowPassHandler.OnRenderDynamicShadowMap();
 
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
 	}
@@ -2115,18 +2114,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
 		GpuIntBuffer flagsBuffer = new GpuIntBuffer();
 
-		GpuFloatBuffer shadowSceneVertexBuffer = new GpuFloatBuffer();
-
 		sceneUploader.UploadScene(scene, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
-		shadowPassHandler.OnSceneLoad(scene, sceneUploader.sceneId, shadowSceneVertexBuffer);
+		shadowPassHandler.OnSceneLoad(scene, sceneUploader.sceneId);
 
 		vertexBuffer.flip();
 		uvBuffer.flip();
 		normalBuffer.flip();
-		shadowSceneVertexBuffer.flip();
 
 		nextSceneVertexBuffer = vertexBuffer;
-		nextSceneShadowVertexBuffer = shadowSceneVertexBuffer;
 		nextSceneTexBuffer = uvBuffer;
 		nextSceneNormalBuffer = normalBuffer;
 		nextSceneFlagsBuffer = flagsBuffer;
@@ -2203,10 +2198,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		updateBuffer(staticModelUvInBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(staticModelNormalInBuffer, GL_ARRAY_BUFFER, nextSceneNormalBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
 		updateBuffer(staticModelFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneFlagsBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-		shadowPassHandler.OnSceneUpdated(nextSceneShadowVertexBuffer);
+		shadowPassHandler.OnSceneUpdated();
 
 		nextSceneVertexBuffer = null;
-		nextSceneShadowVertexBuffer = null;
 		nextSceneTexBuffer = null;
 		nextSceneNormalBuffer = null;
 		nextSceneFlagsBuffer = null;
@@ -2419,7 +2413,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			boolean isNPC = renderable instanceof NPC;
 
 			int vertexCount = sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
-
+			
 			GpuIntBuffer b = bufferForTriangles(vertexCount / 3);
 			b.ensureCapacity(12);
 			IntBuffer buffer = b.getBuffer();
@@ -2574,8 +2568,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		if (projection == null) return false;
 
-		model.calculateBoundsCylinder();
-
 		if (projection instanceof IntProjection)
 		{
 			IntProjection p = (IntProjection) projection;
@@ -2589,9 +2581,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		return true;
 	}
 
-	private boolean CheckModelIsVisible( Model model, Projection projection, int x, int y, int z )
+	private boolean CheckModelIsVisible(Model model, Projection projection, int x, int y, int z)
 	{
-		model.calculateBoundsCylinder();
 		if (projection instanceof IntProjection)
 		{
 			IntProjection p = (IntProjection) projection;
@@ -2713,6 +2704,26 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				glBuffer.clBuffer = CL10GL.clCreateFromGLBuffer(openCLManager.context, clFlags, glBuffer.glBufferId, (int[]) null);
 			}
 		}
+	}
+
+	public GLBuffer getMainDrawVertexBuffer() {
+		return vertexOutBuffer;
+	}
+
+	public int getMainSceneVertexCount() {
+		return targetBufferOffset;
+	}
+
+	public int getMainDrawDynamicVertexCount() {
+		return tempOffset;
+	}
+
+	public int getMainDrawVertexArrayObject() {
+		return mainDrawVertexArrayObject;
+	}
+
+	public int getMainDrawTempVertexArrayObject() {
+		return mainDrawTempVertexArrayObject;
 	}
 
 	public void checkGLErrors()

@@ -69,20 +69,21 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
-    float shadowMapSampled = GetShadowMap(fPosition, ndl);
+    float shadowMapSampled = GetShadowMap(shadowMap, fPosition, ndl);
+    float shadowMapSampledDynamic = GetShadowMap(dynamicShadowMap, fPosition, ndl);
+    float shadowMap = min(shadowMapSampledDynamic, shadowMapSampled);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
     vec3 diffuse = s.albedo.rgb * ndl;
-    vec3 lighting = diffuse * mainLight.color.rgb * shadowMapSampled;
+    vec3 lighting = diffuse * mainLight.color.rgb * shadowMap;
     vec3 litFragment = lighting.rgb + ambientColor.rgb * s.albedo.rgb;
     ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
     ApplyFog(finalColor, fPosition, distanceToCamera);
 
-    FadeRoofs(flags, fPosition, dither, distanceToPlayer);
     if(!flags.isDynamicModel && flags.isTerrain)
     {
         DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
@@ -92,5 +93,5 @@ void main() {
     }
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
-//    FragColor = vec4(vec3(shadowMapSampled * ndl), s.albedo.a);
+//    FragColor = vec4(vec3(shadowMap * ndl), s.albedo.a);
 }

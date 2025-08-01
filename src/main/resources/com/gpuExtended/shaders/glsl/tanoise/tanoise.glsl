@@ -1,30 +1,3 @@
-float godnoise(in vec3 x)
-{
-    vec3 p = floor(x);
-    vec3 f = fract(x);
-    f = f*f*(3.0-2.0*f);
-
-    vec2 uv = (p.xy+vec2(37.0,239.0)*p.z) + f.xy;
-    uv.y = 1-uv.y;
-
-    vec2 rg = textureLod(godNoiseMap, (uv+0.5)/256.0,0.0).yx;
-    return mix( rg.x, rg.y, f.z )*2.0-1.0;
-}
-
-const mat3 rot1 = mat3(-0.37, 0.36, 0.85,-0.14,-0.93, 0.34,0.92, 0.01,0.4);
-const mat3 rot2 = mat3(-0.55,-0.39, 0.74, 0.33,-0.91,-0.24,0.77, 0.12,0.63);
-const mat3 rot3 = mat3(-0.71, 0.52,-0.47,-0.08,-0.72,-0.68,-0.7,-0.45,0.56);
-
-/* directional artifacts can be reduced by rotating each octave */
-float god_fractal(vec3 m) {
-    return   0.5333333*godnoise(m*rot1)
-            +0.2666667*godnoise(2.0*m*rot2)
-            +0.1333333*godnoise(4.0*m*rot3)
-            +0.0666667*godnoise(8.0*m);
-}
-
-
-
 #define F4 0.309016994374947451
 
 vec4 mod289(vec4 x) {

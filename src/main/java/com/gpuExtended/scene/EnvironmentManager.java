@@ -113,7 +113,7 @@ public class EnvironmentManager
 //    private Light testLight = new Light();
 
     private float timeOfDay = 0.0f; // 0.0 = midnight, 12.0 = noon, 24.0 = next midnight
-    private float timeOfDayCycleLength = 1800;
+    private float timeOfDayCycleLength = 2700; // 45 minutes (in seconds)
     public List<ColorKey> sunColorKeys = new ArrayList<>();
     public List<ColorKey> ambientColorKeys = new ArrayList<>();
     public List<ColorKey> skyColorKeys = new ArrayList<>();
@@ -144,12 +144,12 @@ public class EnvironmentManager
         if(client.getGameState() != GameState.LOGGED_IN)
             return;
 
-        timeOfDay += (24f / 1800) * deltaTime;
+        timeOfDay += (24f / 2700) * deltaTime;
         if (timeOfDay >= 24f)
             timeOfDay -= 24f;
 
         if(currentEnvironment.isTransitioning) {
-            currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
+            currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.5f);
         }
 
         UpdateMainLightSettings();
@@ -300,6 +300,7 @@ public class EnvironmentManager
 
         if(currentEnvironment != null) {
             currentEnvironment.isTransitioning = true;
+            currentEnvironment.transitionProgress = 1.0f; // Force transition to the new environment immediately
         }
     }
 
@@ -630,8 +631,9 @@ public class EnvironmentManager
                 cached.Type = currentEnvironment.Type;
                 cached.UseDynamicTimeOfDay = currentEnvironment.UseDynamicTimeOfDay;
 
+                // TODO:: Temp hack to make transitions not fade when going to or from underground
                 currentEnvironment.PrepareEnvironmentTransition(cached);
-                currentEnvironment.transitionProgress = 0;
+                currentEnvironment.transitionProgress = currentEnvironment.Name.equals("DEFAULT_UNDERGROUND") || newEnvironment.Name.equals("DEFAULT_UNDERGROUND") ? 1 : 0;
                 currentEnvironment.isTransitioning = true;
             }
 

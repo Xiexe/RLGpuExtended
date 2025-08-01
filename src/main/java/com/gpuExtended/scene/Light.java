@@ -259,7 +259,7 @@ public class Light
         this.viewMatrix = Mat4.rotateX((float) Math.PI + this.position.x);
         Mat4.mul(this.viewMatrix, Mat4.rotateY((float) Math.PI + this.position.y));
 
-        int shadowDrawDistance = 90;
+        int shadowDrawDistance = 100;
         int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
         int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
         int west = Math.max(camX - drawDistanceSceneUnits, 0);

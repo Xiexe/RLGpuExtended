@@ -62,10 +62,9 @@ layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
 
 uniform sampler2DArray textures;
 uniform sampler2D shadowMap;
+uniform sampler2D dynamicShadowMap;
 uniform sampler2D tileFillColorMap; // holds colors of tiles
 uniform sampler2D tileBorderColorMap; // holds textures of tiles
 uniform sampler2D tileSettingsMap; // holds settings of tiles
-uniform sampler3D roofMaskMap;
-uniform sampler2D godNoiseMap;
 
 uniform vec2 textureAnimations[128];

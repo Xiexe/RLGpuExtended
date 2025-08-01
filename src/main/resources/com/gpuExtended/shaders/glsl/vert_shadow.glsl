@@ -19,7 +19,7 @@ out float gAlpha;
 
 void main() {
     vec3 vPos = vPosition;
-    float a = float(vHsl) / 255f;//float(vHsl >> 24 & 0xff) / 255.f;
+    float a = float(vHsl >> 24 & 0xff) / 255.f;
 
     gVertex = vPos;
     gTextureId = int(vUv.x);
