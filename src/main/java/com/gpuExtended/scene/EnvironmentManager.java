@@ -148,8 +148,6 @@ public class EnvironmentManager
         if (timeOfDay >= 24f)
             timeOfDay -= 24f;
 
-//        timeOfDay = 0;
-
         if(currentEnvironment.isTransitioning) {
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.25f);
         }

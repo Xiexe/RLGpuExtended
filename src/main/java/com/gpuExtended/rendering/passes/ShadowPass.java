@@ -13,11 +13,13 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.rlawt.AWTContext;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
 import java.util.concurrent.TimeUnit;
 
+import static com.gpuExtended.util.SceneUploader.*;
 import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opengl.GL11C.*;
@@ -70,11 +72,17 @@ public class ShadowPass {
         vertexBuffer = GL30.glGenBuffers();
 
         GL30.glBindVertexArray(vertexArrayObject);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-        glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * Float.BYTES, 0);
-        glEnableVertexAttribArray(0);
-        GL30.glBindVertexArray(0);
 
+        glEnableVertexAttribArray(VPOS_BINDING_ID);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glVertexAttribPointer(VPOS_BINDING_ID, 3, GL_FLOAT, false, 16, 0);
+
+        glEnableVertexAttribArray(VHSL_BINDING_ID);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glVertexAttribIPointer(VHSL_BINDING_ID, 1, GL_INT, 16, 12);
+
+        GL30.glBindVertexArray(0);
+        glEnableVertexAttribArray(0);
         log.info("Shadow Pass Handler Initialized");
     }
 
@@ -315,13 +323,13 @@ public class ShadowPass {
 
         vertexBuffer.ensureCapacity(24); // 6 vertices * 4 floats per vertex (x, y, z, w)
 
-        vertexBuffer.put(vertexAx, vertexAz, vertexAy, c3);
-        vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
-        vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
+        vertexBuffer.put(vertexAx, vertexAz, vertexAy, 0);
+        vertexBuffer.put(vertexBx, vertexBz, vertexBy, 0);
+        vertexBuffer.put(vertexCx, vertexCz, vertexCy, 0);
 
-        vertexBuffer.put(vertexDx, vertexDz, vertexDy, c1);
-        vertexBuffer.put(vertexCx, vertexCz, vertexCy, c2);
-        vertexBuffer.put(vertexBx, vertexBz, vertexBy, c4);
+        vertexBuffer.put(vertexDx, vertexDz, vertexDy, 0);
+        vertexBuffer.put(vertexCx, vertexCz, vertexCy, 0);
+        vertexBuffer.put(vertexBx, vertexBz, vertexBy, 0);
 
         return 6;
     }
@@ -357,6 +365,7 @@ public class ShadowPass {
             final int colorB = triangleColorB[i];
             final int colorC = triangleColorC[i];
 
+
             if (colorA == 12345678) {
                 continue;
             }
@@ -374,9 +383,9 @@ public class ShadowPass {
             int vertexYC = vertexY[triangleC];
             int vertexZC = vertexZ[triangleC];
 
-            vertexBuffer.put(vertexXA, vertexYA, vertexZA, colorA);
-            vertexBuffer.put(vertexXB, vertexYB, vertexZB, colorB);
-            vertexBuffer.put(vertexXC, vertexYC, vertexZC, colorC);
+            vertexBuffer.put(vertexXA, vertexYA, vertexZA, 0);
+            vertexBuffer.put(vertexXB, vertexYB, vertexZB, 0);
+            vertexBuffer.put(vertexXC, vertexYC, vertexZC, 0);
 
             vertexCount += 3;
         }
@@ -413,6 +422,19 @@ public class ShadowPass {
         float[] vy = model.getVerticesY();
         float[] vz = model.getVerticesZ();
 
+        final int[] color1s = model.getFaceColors1();
+        final int[] color2s = model.getFaceColors2();
+        final int[] color3s = model.getFaceColors3();
+
+        final short[] faceTextures = model.getFaceTextures();
+        final byte[] transparencies = model.getFaceTransparencies();
+        final byte[] facePriorities = model.getFaceRenderPriorities();
+
+        final byte overrideAmount = model.getOverrideAmount();
+        final byte overrideHue = model.getOverrideHue();
+        final byte overrideSat = model.getOverrideSaturation();
+        final byte overrideLum = model.getOverrideLuminance();
+
         final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
         vertexBuffer.ensureCapacity(triCount * 12); // 3 vertices * 4 floats per vertex (x, y, z, w)
 
@@ -422,9 +444,41 @@ public class ShadowPass {
             int i1 = indices2[tri];
             int i2 = indices3[tri];
 
-            vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, 0);
-            vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, 0);
-            vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, 0);
+            int color1 = color1s[tri];
+            int color2 = color2s[tri];
+            int color3 = color3s[tri];
+
+
+            if (color3 == -1) // Model only has one color.
+            {
+                color2 = color3 = color1;
+            }
+            else if (color3 == -2) // Model should be skipped. Pad buffer.
+            {
+                vertexBuffer.put(0, 0, 0, 0);
+                vertexBuffer.put(0, 0, 0, 0);
+                vertexBuffer.put(0, 0, 0, 0);
+
+                vertexCount += 3;
+                continue;
+            }
+
+            if (faceTextures == null || faceTextures[tri] == -1)
+            {
+                if (overrideAmount > 0)
+                {
+                    color1 = interpolateHSL(color1, overrideHue, overrideSat, overrideLum, overrideAmount);
+                    color2 = interpolateHSL(color2, overrideHue, overrideSat, overrideLum, overrideAmount);
+                    color3 = interpolateHSL(color3, overrideHue, overrideSat, overrideLum, overrideAmount);
+                }
+            }
+
+            int alpha = getFaceAlpha(faceTextures, transparencies, tri);
+
+            vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, alpha);
+            vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, alpha);
+            vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, alpha);
+
             vertexCount += 3;
         }
 

@@ -914,7 +914,7 @@ public class SceneUploader
 		return packHsl(srgbToHsl(srgb));
 	}
 
-	private static int interpolateHSL(int hsl, byte hue2, byte sat2, byte lum2, byte lerp)
+	public static int interpolateHSL(int hsl, byte hue2, byte sat2, byte lum2, byte lerp)
 	{
 		int hue = hsl >> 10 & 63;
 		int sat = hsl >> 7 & 7;
@@ -938,7 +938,7 @@ public class SceneUploader
 		return (hue << 10 | sat << 7 | lum) & 65535;
 	}
 
-	private static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
+	public static int packAlphaPriority(short[] faceTextures, byte[] faceTransparencies, byte[] facePriorities, int face)
 	{
 		int alpha = 0;
 		if (faceTransparencies != null && (faceTextures == null || faceTextures[face] == -1))
@@ -951,6 +951,16 @@ public class SceneUploader
 			priority = (facePriorities[face] & 0xff) << 16;
 		}
 		return alpha | priority;
+	}
+
+	public static int getFaceAlpha(short[] faceTextures, byte[] faceTransparencies, int face) {
+		int alpha = 0;
+		if (faceTransparencies != null && (faceTextures == null || faceTextures[face] == -1))
+		{
+			alpha = (faceTransparencies[face] & 0xFF) << 24;
+		}
+
+		return alpha;
 	}
 
 	public void PrepareScene(Scene scene)

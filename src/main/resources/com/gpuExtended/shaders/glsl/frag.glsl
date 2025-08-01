@@ -92,4 +92,5 @@ void main() {
     }
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
+//    FragColor = vec4(vec3(shadowMapSampled * ndl), s.albedo.a);
 }

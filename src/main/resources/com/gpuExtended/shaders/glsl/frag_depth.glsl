@@ -3,10 +3,12 @@
 #include "shaders/glsl/constants.glsl"
 #include "shaders/glsl/structs.glsl"
 #include "shaders/glsl/uniforms.glsl"
+#include "shaders/glsl/tanoise/tanoise.glsl"
 
 flat in int fTextureId;
 in vec2 fUv;
 in float fAlpha;
+in vec3 fPosition;
 
 float Dither8x8Bayer( int x, int y ) {
     const float dither[ 64 ] = {
@@ -39,16 +41,15 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
 
     // TODO:: Add texture support back to shadows.
-//    if (fTextureId > 0) {
-//        int textureIdx = fTextureId - 1;
-//        // This error is fake news.
-//        float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
-//        clip((alpha * fAlpha) - dither);
-//    }
-//    else
-//    {
-//        clip(fAlpha - dither);
-//    }
+    if (fTextureId > 0) {
+        int textureIdx = fTextureId - 1;
+        float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
+        clip((alpha * fAlpha) - dither);
+    }
+    else
+    {
+        clip(fAlpha - dither);
+    }
 
     gl_FragDepth = gl_FragCoord.z;
 }
