@@ -74,7 +74,6 @@ import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.constants.Variables.*;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 import static net.runelite.api.Constants.MAX_Z;
-import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
 
@@ -167,13 +166,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public boolean showPerformanceOverlay = false;
 	public boolean showLightOverlay = false;
 
-//	private int mainDrawVertexArrayObject;
-//	private int mainDrawTempVertexArrayObject;
-
 	private int interfaceTexture;
 	private int interfacePbo;
 
-//	private FrameBuffer colorFramebuffer;
 	private FrameBuffer bloomFramebuffer;
 	private FrameBuffer shadowMapFramebuffer;
 	private FrameBuffer depthMapFramebuffer;
@@ -184,32 +179,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int fboSceneHandle;
 	private int rboSceneHandle;
 
-	//private FrameBufferObject shadowMapFbo;
+	public final GLBuffer lightBinsBuffer = new GLBuffer("light bins buffer");
 
-//	private final GLBuffer staticModelVertexInBuffer = new GLBuffer("scene vertex buffer");
-//	private final GLBuffer staticModelUvInBuffer = new GLBuffer("scene tex buffer");
-//	private final GLBuffer staticModelNormalInBuffer = new GLBuffer("scene normal buffer");
-//	private final GLBuffer staticModelFlagsInBuffer = new GLBuffer("scene flags buffer");
-//
-//	private final GLBuffer dynModelVertexInBuffer = new GLBuffer("tmp vertex buffer");
-//	private final GLBuffer dynModelUvBuffer = new GLBuffer("tmp tex buffer");
-//	private final GLBuffer dynModelNormalBuffer = new GLBuffer("tmp normal buffer");
-//	private final GLBuffer dynModelFlagsBuffer = new GLBuffer("tmp flags buffer");
-//
-//	public final GLBuffer vertexOutBuffer = new GLBuffer("out vertex buffer");
-//	private final GLBuffer uvOutBuffer = new GLBuffer("out tex buffer");
-//	private final GLBuffer normalOutBuffer = new GLBuffer("out normal buffer");
-//	private final GLBuffer flagsOutBuffer = new GLBuffer("out flags buffer");
-
-
-	// Used for model sorting.
-//	private final GLBuffer tmpModelBufferLarge = new GLBuffer("model buffer large");
-//	private final GLBuffer tmpModelBufferSmall = new GLBuffer("model buffer small");
-//	private final GLBuffer tmpModelBufferUnordered = new GLBuffer("model buffer unordered");
-
-	private final GLBuffer lightBinsBuffer = new GLBuffer("light bins buffer");
-
-	private int textureArrayId;
+	public int textureArrayId;
 	private int tileHeightTex;
 
 	public final GLBuffer glCameraUniformBuffer = new GLBuffer("camera uniform buffer");
@@ -225,42 +197,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private ByteBuffer bBufferTileMarkerBlock;
 	private ByteBuffer bBufferSystemInfoBlock;
 	private ByteBuffer bBufferConfigBlock;
-
-//	public GpuIntBuffer vertexBuffer;
-//	public GpuIntBuffer flagsBuffer;
-//	public GpuFloatBuffer uvBuffer;
-//	public GpuFloatBuffer normalBuffer;
-
-//	private GpuIntBuffer modelBufferUnordered;
-//	private GpuIntBuffer modelBufferSmall;
-//	private GpuIntBuffer modelBuffer;
-
-//	private int unorderedModels;
-//
-//	/**
-//	 * number of models in small buffer
-//	 */
-//	private int smallModels;
-//
-//	/**
-//	 * number of models in large buffer
-//	 */
-//	private int largeModels;
-
-	/**
-	 * offset in the target buffer for model
-	 */
-//	private int targetBufferOffset;
-
-	/**
-	 * offset into the temporary scene vertex buffer
-	 */
-//	public int tempOffset;
-
-	/**
-	 * offset into the temporary scene uv buffer
-	 */
-//	private int tempUvOffset;
 
 	private int lastCanvasWidth;
 	private int lastCanvasHeight;
@@ -279,10 +215,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private int sceneId;
 	private int nextSceneId;
-//	private GpuIntBuffer nextSceneVertexBuffer;
-//	private GpuFloatBuffer nextSceneTexBuffer;
-//	private GpuFloatBuffer nextSceneNormalBuffer;
-//	private GpuIntBuffer nextSceneFlagsBuffer;
 
 	private long Time;
 	private long LastTime;
@@ -308,17 +240,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private SceneTileMaskOverlay sceneTileMaskOverlay;
 
 	@Inject
-	private TileMarkerManager tileMarkerManager;
+	public TileMarkerManager tileMarkerManager;
 
 	@Inject
 	private RegionOverlay regionOverlay;
 
-
-	ResourcePath godTextureResourcePath = Props.getPathOrDefault(
-			"god-noise-path", () -> path(GpuExtendedPlugin.class, "textures/godtexture.png"));
-	private Texture2D godNoiseTexture;
-
-	private Projection sceneProjection;
 
 	@Override
 	protected void startUp()
@@ -344,10 +270,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				}
 
 				setupCustomGsonSerializers();
-
 				fboSceneHandle = rboSceneHandle = -1; // AA FBO
-//				targetBufferOffset = 0;
-//				unorderedModels = smallModels = largeModels = 0;
 
 				AWTContext.loadNatives();
 
@@ -416,15 +339,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					}
 				}
 
-//				vertexBuffer = new GpuIntBuffer();
-//				uvBuffer = new GpuFloatBuffer();
-//				normalBuffer = new GpuFloatBuffer();
-//				flagsBuffer = new GpuIntBuffer();
-
-//				modelBufferUnordered = new GpuIntBuffer();
-//				modelBufferSmall = new GpuIntBuffer();
-//				modelBuffer = new GpuIntBuffer();
-
 				setupSyncMode();
 
 				shaderHandler.Initialize();
@@ -432,6 +346,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				environmentManager.Initialize();
 
 				// Initialize Render Pass Handlers
+				mainPassHandlerLegacy.Init();
 				shadowPassHandler.Init(config.shadowResolution().getValue(), awtContext);
 				// --
 
@@ -443,20 +358,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initColorFramebuffer();
 				initShadowMapTexture();
 				initDepthMapTexture();
-
-				Texture2D.TextureSettings settings = new Texture2D.TextureSettings() {{
-					level = 0;
-					internalFormat = GL_RGBA;
-					border = 0;
-					format = GL_RGBA;
-					type = GL_UNSIGNED_BYTE;
-					pixels = 0;
-					minFilter = GL_LINEAR;
-					magFilter = GL_LINEAR;
-					wrapS = GL_REPEAT;
-					wrapT = GL_REPEAT;
-				}};
-				godNoiseTexture = Texture2D.loadFromResourcePath(godTextureResourcePath, settings);
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -547,12 +448,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				eventBus.unregister(tileMarkerManager);
 
-//				if (colorFramebuffer != null)
-//				{
-//					colorFramebuffer.cleanup();
-//					colorFramebuffer = null;
-//				}
-
 				if (bloomFramebuffer != null)
 				{
 					bloomFramebuffer.dispose();
@@ -589,15 +484,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			glCapabilities = null;
 
-//			vertexBuffer = null;
-//			uvBuffer = null;
-//			normalBuffer = null;
-//			flagsBuffer = null;
-//
-//			modelBufferSmall = null;
-//			modelBuffer = null;
-//			modelBufferUnordered = null;
-
+			mainPassHandlerLegacy.Dispose();
 			shadowPassHandler.Dispose();
 
 			lastAnisotropicFilteringLevel = -1;
@@ -650,18 +537,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 						}
 					}
 				});
-			}
-
-			if(client.getGameState() == GameState.LOGGED_IN) {
-				Bounds bounds = environmentManager.currentBounds;
-
-				boolean allowRoofFading = true;
-				if(bounds != null)
-				{
-					allowRoofFading = bounds.isAllowRoofFading();
-				}
-
-//				client.getScene().setRoofRemovalMode(allowRoofFading && config.roofFading() ? 16 : 0);
 			}
 		}
 	}
@@ -736,42 +611,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	    shaderHandler.cleanup();
 	}
 
-//	// TODO:: unique vao for dynamic model "temp" buffer so that we can populate it with only dynamic models.
-//	private void initVao(int vaoHandle)
-//	{
-//		glBindVertexArray(vaoHandle);
-//
-//		glEnableVertexAttribArray(VPOS_BINDING_ID);
-//		glBindBuffer(GL_ARRAY_BUFFER, vertexOutBuffer.glBufferId);
-//		glVertexAttribPointer(VPOS_BINDING_ID, 3, GL_FLOAT, false, 16, 0);
-//
-//		glEnableVertexAttribArray(VHSL_BINDING_ID);
-//		glBindBuffer(GL_ARRAY_BUFFER, vertexOutBuffer.glBufferId);
-//		glVertexAttribIPointer(VHSL_BINDING_ID, 1, GL_INT, 16, 12);
-//
-//		glEnableVertexAttribArray(VUV_BINDING_ID);
-//		glBindBuffer(GL_ARRAY_BUFFER, uvOutBuffer.glBufferId);
-//		glVertexAttribPointer(VUV_BINDING_ID, 4, GL_FLOAT, false, 0, 0);
-//
-//		glEnableVertexAttribArray(VNORM_BINDING_ID);
-//		glBindBuffer(GL_ARRAY_BUFFER, normalOutBuffer.glBufferId);
-//		glVertexAttribPointer(VNORM_BINDING_ID, 4, GL_FLOAT, false, 0, 0);
-//
-//		glEnableVertexAttribArray(VFLAGS_BINDING_ID);
-//		glBindBuffer(GL_ARRAY_BUFFER, flagsOutBuffer.glBufferId);
-//		glVertexAttribIPointer(VFLAGS_BINDING_ID, 4, GL_INT, 0, 0);
-//	}
-
 	private void initVao()
 	{
-		// Create compute VAO
-//		mainDrawVertexArrayObject = glGenVertexArrays();
-//		initVao(mainDrawVertexArrayObject);
-//
-//		// Create temp VAO
-//		mainDrawTempVertexArrayObject = glGenVertexArrays();
-//		initVao(mainDrawTempVertexArrayObject);
-
 		// Create UI VAO
 		vaoUiHandle = glGenVertexArrays();
 		// Create UI buffer
@@ -806,12 +647,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void shutdownVao()
 	{
-//		glDeleteVertexArrays(mainDrawVertexArrayObject);
-//		mainDrawVertexArrayObject = -1;
-//
-//		glDeleteVertexArrays(mainDrawTempVertexArrayObject);
-//		mainDrawTempVertexArrayObject = -1;
-
 		glDeleteBuffers(vboUiHandle);
 		vboUiHandle = -1;
 
@@ -821,25 +656,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void initBuffers()
 	{
-//		initGlBuffer(staticModelVertexInBuffer);
-//		initGlBuffer(staticModelUvInBuffer);
-//		initGlBuffer(staticModelNormalInBuffer);
-//		initGlBuffer(staticModelFlagsInBuffer);
-//
-//		initGlBuffer(dynModelVertexInBuffer);
-//		initGlBuffer(dynModelUvBuffer);
-//		initGlBuffer(dynModelNormalBuffer);
-//		initGlBuffer(dynModelFlagsBuffer);
-//
-//		initGlBuffer(tmpModelBufferLarge);
-//		initGlBuffer(tmpModelBufferSmall);
-//		initGlBuffer(tmpModelBufferUnordered);
-//
-//		initGlBuffer(vertexOutBuffer);
-//		initGlBuffer(uvOutBuffer);
-//		initGlBuffer(normalOutBuffer);
-//		initGlBuffer(flagsOutBuffer);
-
 		initGlBuffer(lightBinsBuffer);
 
 		initGlBuffer(glCameraUniformBuffer);
@@ -890,25 +706,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void shutdownBuffers()
 	{
-//		destroyGlBuffer(staticModelVertexInBuffer);
-//		destroyGlBuffer(staticModelUvInBuffer);
-//		destroyGlBuffer(staticModelNormalInBuffer);
-//		destroyGlBuffer(staticModelFlagsInBuffer);
 		destroyGlBuffer(lightBinsBuffer);
-
-//		destroyGlBuffer(dynModelVertexInBuffer);
-//		destroyGlBuffer(dynModelUvBuffer);
-//		destroyGlBuffer(dynModelNormalBuffer);
-//		destroyGlBuffer(dynModelFlagsBuffer);
-//
-//		destroyGlBuffer(tmpModelBufferLarge);
-//		destroyGlBuffer(tmpModelBufferSmall);
-//		destroyGlBuffer(tmpModelBufferUnordered);
-//
-//		destroyGlBuffer(vertexOutBuffer);
-//		destroyGlBuffer(uvOutBuffer);
-//		destroyGlBuffer(normalOutBuffer);
-//		destroyGlBuffer(flagsOutBuffer);
 
 		destroyGlBuffer(glCameraUniformBuffer);
 		destroyGlBuffer(glPlayerUniformBuffer);
@@ -998,20 +796,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private void initColorFramebuffer()
 	{
+		// Bloom
 		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
-		fboSettings.name = "color";
+		fboSettings.name = "bloom";
 		fboSettings.width = 64;
 		fboSettings.height = 64;
 		fboSettings.glAttachment = GL_COLOR_ATTACHMENT0;
 		fboSettings.awtContext = awtContext;
-
-		// Bloom
-		FrameBuffer.FrameBufferSettings fboSettingsB = new FrameBuffer.FrameBufferSettings();
-		fboSettingsB.name = "bloom";
-		fboSettingsB.width = 64;
-		fboSettingsB.height = 64;
-		fboSettingsB.glAttachment = GL_COLOR_ATTACHMENT0;
-		fboSettingsB.awtContext = awtContext;
 
 		Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
 		textureSettings.internalFormat = GL_RGBA16F;
@@ -1022,8 +813,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		textureSettings.wrapS = GL_CLAMP_TO_EDGE;
 		textureSettings.wrapT = GL_CLAMP_TO_EDGE;
 
-//		colorFramebuffer = new FrameBuffer(fboSettings, textureSettings);
-		bloomFramebuffer = new FrameBuffer(fboSettingsB, textureSettings);
+		bloomFramebuffer = new FrameBuffer(fboSettings, textureSettings);
 	}
 
 	private void shutdownInterfaceTexture()
@@ -1096,7 +886,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		final Scene scene = client.getScene();
 		scene.setDrawDistance(getDrawDistance());
 
-//		targetBufferOffset = 0;
 		mainPassHandlerLegacy.OnDrawScene();
 
 		checkGLErrors();
@@ -1106,71 +895,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void postDrawScene()
 	{
 		mainPassHandlerLegacy.OnPostDrawScene();
-		// Upload buffers
-//		vertexBuffer.flip();
-//		uvBuffer.flip();
-//		normalBuffer.flip();
-//		flagsBuffer.flip();
-//		modelBuffer.flip();
-//		modelBufferSmall.flip();
-//		modelBufferUnordered.flip();
-
-//		IntBuffer vertexBuffer = this.vertexBuffer.getBuffer();
-//		FloatBuffer uvBuffer = this.uvBuffer.getBuffer();
-//		FloatBuffer normalBuffer = this.normalBuffer.getBuffer();
-//		IntBuffer flagsBuffer = this.flagsBuffer.getBuffer();
-//		IntBuffer modelBuffer = this.modelBuffer.getBuffer();
-//		IntBuffer modelBufferSmall = this.modelBufferSmall.getBuffer();
-//		IntBuffer modelBufferUnordered = this.modelBufferUnordered.getBuffer();
-
-		// temp buffers
-//		updateBuffer(dynModelVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(dynModelUvBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(dynModelNormalBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(dynModelFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-//
-//		// model buffers
-//		updateBuffer(tmpModelBufferLarge, GL_ARRAY_BUFFER, modelBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(tmpModelBufferSmall, GL_ARRAY_BUFFER, modelBufferSmall, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(tmpModelBufferUnordered, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-
-		// Output buffers
-//		updateBuffer(vertexOutBuffer,
-//			GL_ARRAY_BUFFER,
-//			targetBufferOffset * 16, // each element is an ivec4, which is 16 bytes
-//			GL_STREAM_DRAW,
-//			CL12.CL_MEM_WRITE_ONLY);
-//
-//		updateBuffer(uvOutBuffer,
-//			GL_ARRAY_BUFFER,
-//			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
-//			GL_STREAM_DRAW,
-//			CL12.CL_MEM_WRITE_ONLY);
-//
-//		updateBuffer(normalOutBuffer,
-//			GL_ARRAY_BUFFER,
-//			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
-//			GL_STREAM_DRAW,
-//			CL12.CL_MEM_WRITE_ONLY);
-//
-//		updateBuffer(flagsOutBuffer,
-//			GL_ARRAY_BUFFER,
-//			targetBufferOffset * 16, // each element is a vec4, which is 16 bytes
-//			GL_STREAM_DRAW,
-//			CL12.CL_MEM_WRITE_ONLY);
-
-//		// Bind UBO to compute programs
-//		glUniformBlockBinding(shaderHandler.smallOrderedComputeShader.id(), uniforms.GetUniforms(shaderHandler.smallOrderedComputeShader.id()).BlockSmall, CAMERA_BUFFER_BINDING_ID);
-//		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-//
-//		glUniformBlockBinding(shaderHandler.largeOrderedComputeShader.id(), uniforms.GetUniforms(shaderHandler.largeOrderedComputeShader.id()).BlockLarge, CAMERA_BUFFER_BINDING_ID);
-//		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-//
-//		dispatchModelSortingComputeShader(shaderHandler.unorderedComputeShader.id(), unorderedModels, tmpModelBufferUnordered);
-//		dispatchModelSortingComputeShader(shaderHandler.smallOrderedComputeShader.id(), smallModels, tmpModelBufferSmall);
-//		dispatchModelSortingComputeShader(shaderHandler.largeOrderedComputeShader.id(), largeModels, tmpModelBufferLarge);
-
-//		checkGLErrors();
 	}
 
 //	public void dispatchModelSortingComputeShader(int computeShader, int models, GLBuffer modelBuffer)
@@ -1304,7 +1028,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glClearColor(0, 0, 0, 1f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//		colorFramebuffer.clearFramebuffer();
 		bloomFramebuffer.clearFramebuffer();
 
 		mainPassHandlerLegacy.OnPreRender();
@@ -1359,6 +1082,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 			// </editor-fold>
 
+			if (mainPassHandlerLegacy.frameBuffer.getTexture().getWidth() != currentViewport[2] || mainPassHandlerLegacy.frameBuffer.getTexture().getHeight() != currentViewport[3]) {
+				mainPassHandlerLegacy.frameBuffer.resize(currentViewport[2], currentViewport[3]);
+				bloomFramebuffer.resize(currentViewport[2], currentViewport[3]);
+
+				log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
+				log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
+			}
+
 			long currentTime = System.currentTimeMillis();
 			DeltaTime = (currentTime - LastTime) / 1000.0f;
 			Time = currentTime - StartTime;
@@ -1366,14 +1097,13 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			environmentManager.Update(DeltaTime);
 
 			updateUniformBlocks();
-// 			drawShadowPass();
 			shadowPassHandler.OnRenderStaticShadowMap();
 			shadowPassHandler.OnRenderDynamicShadowMap();
 
 			glDpiAwareViewport(renderWidthOff, renderCanvasHeight - renderViewportHeight - renderHeightOff, renderViewportWidth, renderViewportHeight);
 			glGetIntegerv(GL_VIEWPORT, currentViewport);
-//			drawMainPass();
-			mainPassHandlerLegacy.Render();
+
+			mainPassHandlerLegacy.OnRender();
 			drawBloomPass();
 
 			lastPlayerPosition[0] = client.getLocalPlayer().getLocalLocation().getX();
@@ -1411,18 +1141,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		// Clear buffers
 
-//		vertexBuffer.clear();
-//		uvBuffer.clear();
-//		normalBuffer.clear();
-//		flagsBuffer.clear();
-//
-//		modelBuffer.clear();
-//		modelBufferSmall.clear();
-//		modelBufferUnordered.clear();
-//
-//		smallModels = largeModels = unorderedModels = 0;
-//		tempOffset = 0;
-//		tempUvOffset = 0;
+
+		mainPassHandlerLegacy.OnPostRender();
 
 		drawUi(overlayColor, canvasHeight, canvasWidth);
 
@@ -1766,104 +1486,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUseProgram(0);
 	}
 
-//	private void drawMainPass() {
-////		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
-////		if (colorFramebuffer.getTexture().getWidth() != currentViewport[2] || colorFramebuffer.getTexture().getHeight() != currentViewport[3]) {
-////			colorFramebuffer.resize(currentViewport[2], currentViewport[3]);
-////			bloomFramebuffer.resize(currentViewport[2], currentViewport[3]);
-////
-////			log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
-////			log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
-////		}
-////
-////		glEnable(GL_CULL_FACE);
-////		glCullFace(GL_BACK);
-////		glEnable(GL_DEPTH_TEST);
-////
-////		glBindVertexArray(mainDrawVertexArrayObject);
-////
-////		glViewport(0, 0, colorFramebuffer.getTexture().getWidth(), colorFramebuffer.getTexture().getHeight());
-////		colorFramebuffer.bind();
-////		environmentManager.RenderSkybox();
-////
-////		glUseProgram(shaderHandler.mainPassShader.id());
-////		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-////		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.mainPassShader.id());
-////
-////		glActiveTexture(GL_TEXTURE2);
-////		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetFramebuffer().getTexture().getId());
-////		glUniform1i(uni.ShadowMap, 2);
-////
-////		glActiveTexture(GL_TEXTURE3);
-////		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetDynamicFramebuffer().getTexture().getId());
-////		glUniform1i(uni.DynamicShadowMap, 3);
-////
-////		glActiveTexture(GL_TEXTURE4);
-////		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileFillColorTexture.getId());
-////		glUniform1i(uni.TileMarkerFillColorMap, 4);
-////
-////		glActiveTexture(GL_TEXTURE5);
-////		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileBorderColorTexture.getId());
-////		glUniform1i(uni.TileMarkerBorderColorMap, 5);
-////
-////		glActiveTexture(GL_TEXTURE6);
-////		glBindTexture(GL_TEXTURE_2D, tileMarkerManager.tileSettingsTexture.getId());
-////		glUniform1i(uni.TileMarkerSettingsMap, 6);
-////
-////		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.mainPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-////
-////		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
-////		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
-////		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-////
-////		final TextureProvider textureProvider = client.getTextureProvider();
-////		if (textureArrayId == -1) {
-////			// lazy init textures as they may not be loaded at plugin start.
-////			// this will return -1 and retry if not all textures are loaded yet, too.
-////			textureArrayId = textureManager.initTextureArray(textureProvider);
-////			if (textureArrayId > -1) {
-////				// if texture upload is successful, compute and set texture animations
-////				float[] texAnims = textureManager.computeTextureAnimations(textureProvider);
-////				glUniform2fv(uni.TextureAnimations, texAnims);
-////			}
-////		}
-//////
-////		glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
-////
-////		// We just allow the GL to do face culling. Note this requires the priority renderer
-////		// to have logic to disregard culled faces in the priority depth testing.
-////		glEnable(GL_CULL_FACE);
-////
-////		// Enable blending for alpha
-////		glEnable(GL_BLEND);
-////		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-////
-////		if (computeMode == ComputeMode.OPENGL) {
-////			// Before reading the SSBOs written to from postDrawScene() we must insert a barrier
-////			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-////		} else {
-////			// Wait for the command queue to finish, so that we know the compute is done
-////			openCLManager.finish();
-////		}
-////
-////		glDrawArrays(GL_TRIANGLES, 0, targetBufferOffset);
-////
-////		glDisable(GL_BLEND);
-////		glDisable(GL_CULL_FACE);
-////		glActiveTexture(GL_TEXTURE0);
-////		colorFramebuffer.unbind();
-////		glUseProgram(0);
-//
-//		if (client.getGameState().getState() == GameState.LOGGED_IN.getState()) {
-//
-//		}
-//	}
-
 	private void drawBloomPass() {
 		mainPassHandlerLegacy.frameBuffer.generateMipmaps();
 		mainPassHandlerLegacy.frameBuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
@@ -1933,49 +1555,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUseProgram(0);
 		bloomFramebuffer.unbind();
 	}
-
-//	private void drawShadowPass()
-//	{
-//		if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
-//		{
-//			return;
-//		}
-//
-//		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
-//
-////		glViewport(0, 0, shadowMapFramebuffer.getTexture().getWidth(), shadowMapFramebuffer.getTexture().getHeight());
-////		shadowMapFramebuffer.bind();
-////
-////		glClearDepthf(1);
-////		glClear(GL_DEPTH_BUFFER_BIT);
-////		glDepthFunc(GL_LEQUAL);
-////
-////		glUseProgram(shaderHandler.shadowPassShader.id());
-////		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.shadowPassShader.id());
-////
-////		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-////		glUniformBlockBinding(shaderHandler.shadowPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-////
-////		glEnable(GL_CULL_FACE);
-////		glEnable(GL_DEPTH_TEST);
-////
-////		glDrawArrays(GL_TRIANGLES, 0, targetBufferOffset);
-////
-////		glDisable(GL_CULL_FACE);
-////		glDisable(GL_DEPTH_TEST);
-////
-////		shadowMapFramebuffer.unbind();
-////		glUseProgram(0);
-//
-//		shadowPassHandler.OnRenderStaticShadowMap();
-//		shadowPassHandler.OnRenderDynamicShadowMap();
-//
-//		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
-//	}
 
 	//todo:: rename to something?
 	private void drawUi(final int overlayColor, final int canvasHeight, final int canvasWidth)
@@ -2108,12 +1687,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged)
 	{
-//		if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
-//		{
-//			// Avoid drawing the last frame's buffer during LOADING after LOGIN_SCREEN
-//			targetBufferOffset = 0;
-//		}
-
 		mainPassHandlerLegacy.OnGameStateChanged(gameStateChanged);
 	}
 
@@ -2128,23 +1701,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void loadScene(Scene scene)
 	{
 		loadingScene = true;
-//		GpuIntBuffer vertexBuffer = new GpuIntBuffer();
-//		GpuFloatBuffer uvBuffer = new GpuFloatBuffer();
-//		GpuFloatBuffer normalBuffer = new GpuFloatBuffer();
-//		GpuIntBuffer flagsBuffer = new GpuIntBuffer();
-//
-//		sceneUploader.UploadScene(scene, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 		mainPassHandlerLegacy.OnLoadScene(scene);
 		shadowPassHandler.OnSceneLoad(scene, sceneUploader.sceneId);
-//
-//		vertexBuffer.flip();
-//		uvBuffer.flip();
-//		normalBuffer.flip();
-//
-//		nextSceneVertexBuffer = vertexBuffer;
-//		nextSceneTexBuffer = uvBuffer;
-//		nextSceneNormalBuffer = normalBuffer;
-//		nextSceneFlagsBuffer = flagsBuffer;
 		nextSceneId = sceneUploader.sceneId;
 	}
 
@@ -2214,17 +1772,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		sceneId = nextSceneId;
-//		updateBuffer(staticModelVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(staticModelUvInBuffer, GL_ARRAY_BUFFER, nextSceneTexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(staticModelNormalInBuffer, GL_ARRAY_BUFFER, nextSceneNormalBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-//		updateBuffer(staticModelFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneFlagsBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
+
 		mainPassHandlerLegacy.OnSceneLoaded();
 		shadowPassHandler.OnSceneUpdated();
 
-//		nextSceneVertexBuffer = null;
-//		nextSceneTexBuffer = null;
-//		nextSceneNormalBuffer = null;
-//		nextSceneFlagsBuffer = null;
 		nextSceneId = -1;
 
 		modelRoofCache.clear();
@@ -2297,339 +1848,24 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 
 	/**
-	 * Check is a model is visible and should be drawn.
-	 */
-	private boolean isVisible(Model model, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z)
-	{
-		model.calculateBoundsCylinder();
-
-		final int xzMag = model.getXYZMag();
-		final int bottomY = model.getBottomY();
-		final int zoom = client.get3dZoom() / 2;
-		final int modelHeight = model.getModelHeight();
-
-		int Rasterizer3D_clipMidX2 = client.getRasterizer3D_clipMidX2(); // width / 2
-		int Rasterizer3D_clipNegativeMidX = client.getRasterizer3D_clipNegativeMidX(); // -width / 2
-		int Rasterizer3D_clipNegativeMidY = client.getRasterizer3D_clipNegativeMidY(); // -height / 2
-		int Rasterizer3D_clipMidY2 = client.getRasterizer3D_clipMidY2(); // height / 2
-
-		int var11 = yawCos * z - yawSin * x >> 16;
-		int var12 = pitchSin * y + pitchCos * var11 >> 16;
-		int var13 = pitchCos * xzMag >> 16;
-		int depth = var12 + var13;
-		if (depth > 50)
-		{
-			int rx = z * yawSin + yawCos * x >> 16;
-			int var16 = (rx - xzMag) * zoom;
-			if (var16 / depth < Rasterizer3D_clipMidX2)
-			{
-				int var17 = (rx + xzMag) * zoom;
-				if (var17 / depth > Rasterizer3D_clipNegativeMidX)
-				{
-					int ry = pitchCos * y - var11 * pitchSin >> 16;
-					int yheight = pitchSin * xzMag >> 16;
-					int ybottom = (pitchCos * bottomY >> 16) + yheight; // use bottom height instead of y pos for height
-					int var20 = (ry + ybottom) * zoom;
-					if (var20 / depth > Rasterizer3D_clipNegativeMidY)
-					{
-						int ytop = (pitchCos * modelHeight >> 16) + yheight;
-						int var22 = (ry - ytop) * zoom;
-						return var22 / depth < Rasterizer3D_clipMidY2;
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	/**
 	 * Draw a renderable in the scene
 	 */
 	@Override
 	public void draw(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
-		Model model, offsetModel;
-		if (renderable instanceof Model)
-		{
-			model = (Model) renderable;
-			offsetModel = model.getUnskewedModel();
-			if (offsetModel == null)
-			{
-				offsetModel = model;
-			}
-		}
-		else
-		{
-			model = renderable.getModel();
-			if (model == null)
-			{
-				return;
-			}
-			offsetModel = model;
-		}
-
-		if (offsetModel.getSceneId() == sceneId)
-		{
-			PackStaticModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
-		}
-		else
-		{
-			PackDynamicModel(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
-		}
-
-		sceneProjection = projection;
-	}
-
-	private void PackStaticModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
-	{
-		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
-		assert model == renderable;
-
-		if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
-			int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-			int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-
-			int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
-			int uvOffset = offsetModel.getUvBufferOffset();
-			int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-			int exFlags = GetExFlags(hash, tileX, tileY, z, false);
-
-			GpuIntBuffer b = bufferForTriangles(faceCount);
-
-			b.ensureCapacity(12);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(offsetModel.getBufferOffset());
-			buffer.put(uvOffset);
-			buffer.put(faceCount);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER | flags);
-			buffer.put(x).put(y).put(z);
-			buffer.put(exFlags);
-			buffer.put(-1);
-			buffer.put(-1);
-			buffer.put(GetModelConfig(hash, tileX, tileY, z));
-
-			targetBufferOffset += faceCount * 3;
-		}
-
-		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
-	}
-
-	private void PackDynamicModel(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash)
-	{
-		performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
-		// Apply height to renderable from the model
-		if (model != renderable)
-		{
-			renderable.setModelHeight(model.getModelHeight());
-		}
-
-		int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-		int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-
-		if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
-			int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-			int exFlags = GetExFlags(hash, tileX, tileY, z, true);
-			boolean hasUv = model.getFaceTextures() != null;
-			boolean isNPC = renderable instanceof NPC;
-
-			int vertexCount = sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
-			
-			GpuIntBuffer b = bufferForTriangles(vertexCount / 3);
-			b.ensureCapacity(12);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(tempOffset);
-			buffer.put(hasUv ? tempUvOffset : -1);
-			buffer.put(vertexCount / 3);
-			buffer.put(targetBufferOffset);
-			buffer.put(flags);
-			buffer.put(x).put(y).put(z);
-			buffer.put(exFlags);
-			buffer.put(-1);
-			buffer.put(-1);
-			buffer.put(GetModelConfig(hash, x, y, z));
-
-			tempOffset += vertexCount;
-			targetBufferOffset += vertexCount;
-			if (hasUv) {
-				tempUvOffset += vertexCount;
-			}
-		}
-
-		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
-	}
-
-	private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation)
-	{
-		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-		boolean hillskew = offsetModel != model;
-
-		int flags = (plane << BIT_ZHEIGHT) 					 		 |
-					(hillskew ? (1 << BIT_HILLSKEW) : 0)  	 		 |
-					orientation;
-
-		return flags;
-	}
-
-	private int GetExFlags(long hash, int x, int y, int z, boolean isDynamicModel)
-	{
-		int plane = (int) ((hash >> TileObject.HASH_PLANE_SHIFT) & 3);
-		int flags = (plane << BIT_PLANE) |
-					(x << BIT_XPOS) |
-					(y << BIT_YPOS) |
-					(isDynamicModel ? (1 << BIT_ISDYNAMICMODEL) : 0);
-		return flags;
-	}
-
-	private int GetModelConfig(long hash, int x, int y, int z)
-	{
-		// hash bits
-		// | 1111 1111 1111 1 |    11 | 1  1111 1111 1111 1111 1111 1111 1111 111 |               1 |   11 |    11 1111 1 |     111 1111 |
-		// |   13 unused bits | plane |                        32-bit id or index | right-clickable | type | 7-bit sceneY | 7-bit sceneX |
-		//
-		// 0    - straight walls, fences etc
-		// 1    - diagonal walls corner, fences etc connectors
-		// 2    - entire walls, fences etc corners
-		// 3    - straight wall corners, fences etc connectors
-		// 4    - straight inside wall decoration
-		// 5    - straight outside wall decoration
-		// 6    - diagonal outside wall decoration
-		// 7    - diagonal inside wall decoration
-		// 8    - diagonal in wall decoration
-		// 9    - diagonal walls, fences etc
-		// 10    - all kinds of objects, trees, statues, signs, fountains etc etc
-		// 11    - ground objects like daisies etc
-		// 12    - straight sloped roofs
-		// 13    - diagonal sloped roofs
-		// 14    - diagonal slope connecting roofs
-		// 15    - straight sloped corner connecting roofs
-		// 16    - straight sloped corner roof
-		// 17    - straight flat top roofs
-		// 18    - straight bottom egde roofs
-		// 19    - diagonal bottom edge connecting roofs
-		// 20    - straight bottom edge connecting roofs
-		// 21    - straight bottom edge connecting corner roofs
-
-		return -1;
+		mainPassHandlerLegacy.OnDrawModel(projection, scene, renderable, orientation, x, y, z, hash);
 	}
 
 	@Override
 	public void drawScenePaint(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY)
 	{
-		if (paint.getBufferLen() > 0)
-		{
-			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-			final int localY = 0;
-			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
-
-			int faceCount = paint.getBufferLen();
-			boolean isBridge = ((faceCount >> 5) & 1) != 0;
-			boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
-			int renderLevel = (faceCount >> 3) & 3;
-			int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
-
-			GpuIntBuffer b = modelBufferUnordered;
-			++unorderedModels;
-
-			b.ensureCapacity(12);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(paint.getBufferOffset());
-			buffer.put(paint.getUvBufferOffset());
-			buffer.put(2);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER);
-			buffer.put(localX).put(localY).put(localZ);
-			buffer.put(flags);
-			buffer.put(-1);
-			buffer.put(-1);
-			buffer.put(-1);
-
-			targetBufferOffset += 2 * 3;
-		}
+		mainPassHandlerLegacy.OnDrawSceneTile(scene, paint, plane, tileX, tileY);
 	}
 
 	@Override
 	public void drawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY)
 	{
-		if (model.getBufferLen() > 0)
-		{
-			final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-			final int localY = 0;
-			final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
-
-			int faceCount = model.getBufferLen();
-			boolean isBridge = ((faceCount >> 5) & 1) != 0;
-			boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
-			int renderLevel = (faceCount >> 3) & 3;
-			faceCount &= 7;
-
-			int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);;
-
-			GpuIntBuffer b = modelBufferUnordered;
-			++unorderedModels;
-
-			b.ensureCapacity(12);
-			IntBuffer buffer = b.getBuffer();
-			buffer.put(model.getBufferOffset());
-			buffer.put(model.getUvBufferOffset());
-			buffer.put(faceCount);
-			buffer.put(targetBufferOffset);
-			buffer.put(FLAG_SCENE_BUFFER);
-			buffer.put(localX).put(localY).put(localZ);
-			buffer.put(flags);
-			buffer.put(-1);
-			buffer.put(-1);
-			buffer.put(-1);
-
-			targetBufferOffset += faceCount * 3;
-		}
-	}
-
-	private boolean CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash)
-	{
-		if (projection == null) return false;
-
-		if (projection instanceof IntProjection)
-		{
-			IntProjection p = (IntProjection) projection;
-			if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
-			{
-				return false;
-			}
-		}
-
-		client.checkClickbox(projection, model, orientation, x, y, z, hash);
-		return true;
-	}
-
-	private boolean CheckModelIsVisible(Model model, Projection projection, int x, int y, int z)
-	{
-		if (projection instanceof IntProjection)
-		{
-			IntProjection p = (IntProjection) projection;
-			return isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ());
-		}
-		return true;
-	}
-
-	/**
-	 * returns the correct buffer based on triangle count and updates model count
-	 *
-	 * @param triangles
-	 * @return
-	 */
-	private GpuIntBuffer bufferForTriangles(int triangles)
-	{
-		if (triangles <= SMALL_TRIANGLE_COUNT)
-		{
-			smallModels++;
-			return modelBufferSmall;
-		}
-		else
-		{
-			largeModels++;
-			return modelBuffer;
-		}
+		mainPassHandlerLegacy.OnDrawSceneTileModel(scene, model, tileX, tileY);
 	}
 
 	private int getScaledValue(final double scale, final int value)
@@ -2725,26 +1961,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				glBuffer.clBuffer = CL10GL.clCreateFromGLBuffer(openCLManager.context, clFlags, glBuffer.glBufferId, (int[]) null);
 			}
 		}
-	}
-
-	public GLBuffer getMainDrawVertexBuffer() {
-		return vertexOutBuffer;
-	}
-
-	public int getMainSceneVertexCount() {
-		return targetBufferOffset;
-	}
-
-	public int getMainDrawDynamicVertexCount() {
-		return tempOffset;
-	}
-
-	public int getMainDrawVertexArrayObject() {
-		return mainDrawVertexArrayObject;
-	}
-
-	public int getMainDrawTempVertexArrayObject() {
-		return mainDrawTempVertexArrayObject;
 	}
 
 	public void checkGLErrors()

@@ -360,9 +360,9 @@ public class ShadowPass {
         glEnable(GL_DEPTH_TEST);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        GL30.glBindVertexArray(plugin.getMainDrawVertexArrayObject());
+        GL30.glBindVertexArray(plugin.mainPassHandlerLegacy.vertexBufferContext.vertexArrayObjectId);
 
-        glDrawArrays(GL_TRIANGLES, 0, plugin.getMainSceneVertexCount());
+        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassHandlerLegacy.computeBufferContext.totalVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
         glDisable(GL_CULL_FACE);
