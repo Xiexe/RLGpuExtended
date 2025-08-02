@@ -259,9 +259,9 @@ public class EnvironmentManager
             float dayStart        = 0.0f;
             float sunriseStart    = 0.10f;
             float sunriseEnd      = 0.20f;
-            float middayStart     = 0.25f;
+            float middayStart     = 0.30f;
             float middayEnd       = 0.70f;
-            float sunsetStart     = 0.75f;
+            float sunsetStart     = 0.80f;
             float sunsetEnd       = 0.90f;
             float dayEnd          = 1.00f;
 

@@ -259,7 +259,7 @@ public class Light
         this.viewMatrix = Mat4.rotateX((float) Math.PI + this.position.x);
         Mat4.mul(this.viewMatrix, Mat4.rotateY((float) Math.PI + this.position.y));
 
-        int shadowDrawDistance = 100;
+        int shadowDrawDistance = 65;
         int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
         int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
         int west = Math.max(camX - drawDistanceSceneUnits, 0);
@@ -270,12 +270,12 @@ public class Light
         int farPlane = 10000;
 
         int maxDrawDistance = 100;
-        float maxScale = 0.7f;
-        float minScale = 0.4f;
+        float maxScale = 1;//0.7f;
+        float minScale = 0f;//0.4f;
         float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
         float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
         Mat4.mul(this.projectionMatrix, Mat4.scale(scale, scale, scale));
-        Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, 1, farPlane));
+        Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, 0, farPlane));
         Mat4.mul(this.projectionMatrix, this.viewMatrix);
         Mat4.mul(this.projectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
     }

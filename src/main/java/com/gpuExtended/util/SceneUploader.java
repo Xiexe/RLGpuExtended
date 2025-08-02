@@ -827,7 +827,6 @@ public class SceneUploader
 //				float distance = calculateDistance(vertex, nearestNonWaterVertex);
 //
 //				for (Integer vertexIndex : sharedVertexPositionMap.get(vertex)) {
-//					// Example: store the distance in the w component of the vertex buffer
 //					normalFloatBuffer.put(vertexIndex + 3, distance);
 //				}
 //			}

@@ -2,6 +2,7 @@ package com.gpuExtended.rendering;
 
 public class Vector4 extends Vector3
 {
+    public static final int BYTES = 16;
     public float w = 0;
 
     public Vector4(float x, float y, float z, float w)

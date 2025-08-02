@@ -19,6 +19,7 @@ uniform vec4 alphaOverlay;
 
 #if SHADOW_MAP_OVERLAY
 uniform sampler2D shadowMap;
+uniform sampler2D dynamicShadowMap;
 uniform ivec4 shadowMapOverlayDimensions;
 #endif
 #if TILE_MASK_OVERLAY
@@ -133,12 +134,21 @@ void PostProcessImage(inout vec3 image, vec3 bloom, int colorBlindMode, float fo
   image = linearToGamma(image);
 }
 
+float linearize_depth(float depth,float near,float far)
+{
+  return (2.0 * near) / (far + near - depth * (far - near));
+}
+
 // TODO:: fix shadowmap overlay rendering.
 void main() {
   #if SHADOW_MAP_OVERLAY
     vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
     if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
-      FragColor = texture(shadowMap, uv);
+      vec4 shadowMap = texture(shadowMap, uv);
+      vec4 dynamicShadowMap = texture(dynamicShadowMap, uv);
+      float depth = min(shadowMap.x, dynamicShadowMap.x);
+
+      FragColor = vec4(vec3(depth), 1);
       return;
     }
   #endif

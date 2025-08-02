@@ -141,6 +141,15 @@ public class Mat4
 		}
 	}
 
+	public static float[] perspective(float w, float h, float n) {
+		return new float[] {
+				2 / w, 0, 0, 0,
+				0, -2 / h, 0, 0,
+				0, 0, 0, 1,
+				0, 0, 2 * n, 0
+		};
+	}
+
 	public static float[] ortho(float width, float height, float near, float far)
 	{
 		return new float[]

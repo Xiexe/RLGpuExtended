@@ -54,6 +54,7 @@
   },
   {
     "name": "VARROCK",
+    "environment": "DEFAULT",
     "bounds": [
       {
         "start": [3136, 3397, -1],
@@ -81,6 +82,12 @@
         "name": "BANK_VAULT",
         "start": [3184, 9815, -1],
         "end": [3199, 9837, -1],
+        "hideOtherAreas": true
+      },
+      {
+        "name": "QUEST_DEFENDER_OF_VARROCK",
+        "start": [3839, 4864, -1],
+        "end": [4031, 5055, -1],
         "hideOtherAreas": true
       }
     ]

@@ -94,8 +94,8 @@ void PopulateSurfaceNormal(inout Surface s, VertexFlags f, vec4 normal, vec4 fla
     normal.y = -normal.y; // runescape uses -y as up by default. Lets make that more sane.
     flatNormal.y = -flatNormal.y; // runescape uses -y as up by default. Lets make that more sane.
 
-    bool hasValidNormals = (normal.x != 0.0 || normal.y != 0.0 || normal.z != 0.0);
-    s.normal = mix(flatNormal, normal, hasValidNormals && (f.isDynamicModel || f.isTerrain || CheckIsTree(fTextureId)));
+    bool hasValidNormals = (normal.x > 0.0 || normal.y > 0.0 || normal.z > 0.0);
+    s.normal = mix(flatNormal, normal, hasValidNormals);
     s.normal.rgb = normalize(s.normal.rgb);
 }
 

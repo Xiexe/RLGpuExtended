@@ -39,6 +39,7 @@
       10307,
       11474,
       12238,
+      16901,
       20832,
       24172,
       24173
@@ -50,7 +51,9 @@
       10658,
       11606,
       11472,
-      17237
+      17237,
+      41565,
+      50170
     ]
   },
   {
@@ -98,7 +101,7 @@
   {
     "name": "GENERIC_FIRE",
     "type": "point",
-    "color": [1.00, 0.4, 0.00],
+    "color": [1.00, 0.25, 0.00],
     "offset": [0, 0, 1],
     "intensity": 4,
     "radius": 6,
@@ -113,15 +116,16 @@
     ]
   },
   {
-    "name": "GENERIC_FURNACE",
+    "name": "YELLOW_FURNACE",
     "type": "point",
     "color": [1.00, 0.52, 0.00],
     "offset": [-0.1, 0, 0.5],
     "intensity": 2,
-    "radius": 4,
+    "radius": 6,
     "animation": "flicker",
     "gameObjects": [
-      16469
+      16469,
+      41411
     ]
   },
   {
@@ -301,6 +305,67 @@
     "gameObjects": [
       4932,
       4933
+    ]
+  },
+  {
+    "name": "CAMDOZAAL_WALL_TORCHES",
+    "type": "point",
+    "color": [0.4, 0.4, 1.00],
+    "offset": [0, 0.5, 1.5],
+    "intensity": 5,
+    "radius": 8,
+    "animation": "flicker",
+    "gameObjects": [
+      41467,
+      50101
+    ]
+  },
+  {
+    "name": "CAMDOZAAL_WALL_TORCHES_HIGH",
+    "type": "point",
+    "color": [0.4, 0.4, 1.00],
+    "offset": [0.5, 0, 3],
+    "intensity": 5,
+    "radius": 4,
+    "animation": "flicker",
+    "decorations": [
+      41487
+    ]
+  },
+  {
+    "name": "CAMDOZAAL_ICE",
+    "type": "point",
+    "color": [0.4, 0.4, 1.00],
+    "offset": [0, 0, 3],
+    "intensity": 8,
+    "radius": 6,
+    "animation": "flicker",
+    "gameObjects": [
+      6460
+    ]
+  },
+  {
+    "name": "CAMDOZAAL_MUSHROOM",
+    "type": "point",
+    "color": [0.4, 0.4, 1.00],
+    "offset": [0, 0, 2],
+    "intensity": 8,
+    "radius": 6,
+    "animation": "flicker",
+    "gameObjects": [
+      12057
+    ]
+  },
+  {
+    "name": "CAMDOZAAL_VAULT_WALL_LIGHT",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, 0, 4],
+    "intensity": 2,
+    "radius": 5,
+    "animation": "pulse",
+    "walls": [
+      41520
     ]
   },
   {
@@ -1309,12 +1374,20 @@
   {
     "name": "NPC_PHASYMATYS_GHOST",
     "type": "point",
-    "color": [0.1, 1, 0.1],
-    "offset": [0, 0, 1],
+    "color": [
+      0.1,
+      1,
+      0.1
+    ],
+    "offset": [
+      0,
+      0,
+      1
+    ],
     "intensity": 2,
     "radius": 6,
     "animation": "pulse",
-    "npcs" : [
+    "npcs": [
       2988,
       3007,
       2998,
@@ -1322,4 +1395,14 @@
       2999
     ]
   }
+//  },
+//  {
+//    "name": "ANIM_ALCHEMY",
+//    "type": "point",
+//    "color": [1, 1, 0],
+//    "offset": [0, 0, 0],
+//    "intensity": 1,
+//    "radius": 5,
+//    "spotAnimId" :
+//  }
 ]

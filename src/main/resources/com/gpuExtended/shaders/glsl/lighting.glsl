@@ -45,7 +45,7 @@ float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float sha
     vec2 shadowRes = textureSize(shadowTex, 0);
     float currentDepth = projCoords.z - shadowBias;
     float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * fudgeFactor;
-    float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize + 0.0004);
+    float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize + 0.0008);
 
     return shadow * (1.0 - fadeOut);
 }
@@ -77,12 +77,13 @@ float GetShadowMap(sampler2D shadowTex, vec3 fragPos, float ndl) {
     if (fadeOut >= 1.0)
         return 1.0;
 
+//    return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.000);
     switch (envType)
     {
         case ENV_TYPE_DEFAULT:
             return 1.0 - PCSSShadows(shadowTex, projCoords, fadeOut, bias);
         case ENV_TYPE_UNDERGROUND:
-            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.005);
+            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.0025);
         default:
             return 0.0;
     }

@@ -94,7 +94,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private OpenCLManager openCLManager;
 
 	@Inject
-	private ClientThread clientThread;
+	public ClientThread clientThread;
 
 	@Inject
 	private EventBus eventBus;
@@ -106,7 +106,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private Gson gson;
 
 	@Inject
-	private TextureManager textureManager;
+	public TextureManager textureManager;
 
 	@Inject
 	public SceneUploader sceneUploader;
@@ -151,7 +151,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public AWTContext awtContext;
 	private Callback debugCallback;
 
-	private GLCapabilities glCapabilities;
+	public GLCapabilities glCapabilities;
 
 	public boolean enableShadowMapOverlay = false;
 	public boolean enableTileMaskOverlay = false;
@@ -1767,7 +1767,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
-//		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);
 
 		glBindVertexArray(mainDrawVertexArrayObject);
 
@@ -1821,7 +1821,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				glUniform2fv(uni.TextureAnimations, texAnims);
 			}
 		}
-
+//
 		glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
 
 		// We just allow the GL to do face culling. Note this requires the priority renderer
@@ -1988,6 +1988,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glActiveTexture(GL_TEXTURE4);
 		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetFramebuffer().getTexture().getId());
 		glUniform1i(uni.ShadowMap, 4);
+
+		glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, shadowPassHandler.GetDynamicFramebuffer().getTexture().getId());
+		glUniform1i(uni.DynamicShadowMap, 5);
 
 		glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
 		glUniform2i(uni.TexSourceDimensions, canvasWidth, canvasHeight);

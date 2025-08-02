@@ -40,7 +40,6 @@ void clip(float value) {
 void main() {
     float dither = Dither(gl_FragCoord.xy);
 
-    // TODO:: Add texture support back to shadows.
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
         float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
