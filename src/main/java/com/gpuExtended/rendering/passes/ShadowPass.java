@@ -633,7 +633,7 @@ public class ShadowPass {
 
     public void Dispose() {
         if (frameBuffer != null) {
-            frameBuffer.cleanup();
+            frameBuffer.dispose();
             frameBuffer = null;
         }
         if (staticVertexArrayObjectId != 0) {

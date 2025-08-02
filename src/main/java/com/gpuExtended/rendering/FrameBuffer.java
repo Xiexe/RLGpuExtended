@@ -5,9 +5,6 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL11;
 import net.runelite.rlawt.AWTContext;
 
-import java.nio.ByteBuffer;
-
-import static com.gpuExtended.rendering.Texture2D.MIP_LEVELS;
 import static org.lwjgl.opengl.GL11C.*;
 
 public class FrameBuffer {
@@ -66,7 +63,7 @@ public class FrameBuffer {
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
     }
 
-    public void cleanup() {
+    public void dispose() {
         GL30.glDeleteFramebuffers(id);
         texture.cleanup();
         isInitialized = false;
