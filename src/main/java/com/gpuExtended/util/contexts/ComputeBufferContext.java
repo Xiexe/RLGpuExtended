@@ -107,17 +107,21 @@ public class ComputeBufferContext {
         this.uvOutBuffer = null;
         this.normalOutBuffer = null;
         this.flagsOutBuffer = null;
+
         this.staticVertexInBuffer = null;
         this.staticUvInBuffer = null;
         this.staticNormalInBuffer = null;
         this.staticFlagsInBuffer = null;
+
         this.dynamicVertexInBuffer = null;
         this.dynamicUvInBuffer = null;
         this.dynamicNormalInBuffer = null;
         this.dynamicFlagsBuffer = null;
+
         this.tmpUnsortedModelBuffer = null;
         this.tmpSmallModelBuffer = null;
         this.tmpLargeModelBuffer = null;
+
         this.unsortedModelBuffer = null;
         this.smallModelBuffer = null;
         this.largeModelBuffer = null;
@@ -125,6 +129,7 @@ public class ComputeBufferContext {
         this.numUnsortedModels = 0;
         this.numSmallModels = 0;
         this.numLargeModels = 0;
+
         this.totalVertices = 0;
     }
 }

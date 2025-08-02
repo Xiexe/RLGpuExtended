@@ -632,13 +632,23 @@ public class ShadowPass {
     }
 
     public void Dispose() {
-        if (frameBuffer != null) {
-            frameBuffer.dispose();
-            frameBuffer = null;
-        }
-        if (staticVertexArrayObjectId != 0) {
-            GL30.glDeleteVertexArrays(staticVertexArrayObjectId);
-            staticVertexArrayObjectId = 0;
-        }
+        GL30.glDeleteVertexArrays(staticVertexArrayObjectId);
+        staticVertexArrayObjectId = -1;
+
+        frameBuffer.dispose();
+        frameBuffer = null;
+
+        dynamicFrameBuffer.dispose();
+        dynamicFrameBuffer = null;
+
+        workingShadowVertexBuffer = null;
+        currentShadowVertexBuffer = null;
+        workingShadowUvBuffer = null;
+        currentShadowUvBuffer = null;
+
+        textureArrayId = -1;
+        numStaticModels = 0;
+        numStaticVertices = 0;
+        newNumStaticSceneVertices = 0;
     }
 }

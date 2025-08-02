@@ -633,7 +633,9 @@ public class EnvironmentManager
 
                 // TODO:: Temp hack to make transitions not fade when going to or from underground
                 currentEnvironment.PrepareEnvironmentTransition(cached);
-                currentEnvironment.transitionProgress = currentEnvironment.Name.equals("DEFAULT_UNDERGROUND") || newEnvironment.Name.equals("DEFAULT_UNDERGROUND") ? 1 : 0;
+                if (currentEnvironment.Name != null) {
+                    currentEnvironment.transitionProgress = currentEnvironment.Name.equals("DEFAULT_UNDERGROUND") || newEnvironment.Name.equals("DEFAULT_UNDERGROUND") ? 1 : 0;
+                }
                 currentEnvironment.isTransitioning = true;
             }
 

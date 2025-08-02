@@ -1,12 +1,15 @@
 package com.gpuExtended.rendering;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL11;
 import net.runelite.rlawt.AWTContext;
 
 import static org.lwjgl.opengl.GL11C.*;
+import static org.lwjgl.opengl.GL30C.*;
 
+@Slf4j
 public class FrameBuffer {
     public static class FrameBufferSettings {
         public String name;
@@ -89,11 +92,22 @@ public class FrameBuffer {
 
     public void blit(FrameBuffer target, int srcAttachment, int dstAttachment, int interpolation)
     {
-        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, this.id);
-        glReadBuffer(srcAttachment);
+//        log.info("Blitting framebuffer {} to {}", this.settings.name, target.settings.name);
+        this.bind();
+        if (!isComplete())
+        {
+            this.unbind();
+            return;
+        }
+        glReadBuffer(srcAttachment); // Read from source texture
 
-        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, target.getId());
-        glDrawBuffer(dstAttachment);
+        target.bind();
+        if (!target.isComplete())
+        {
+            target.unbind();
+            return;
+        }
+        glDrawBuffer(dstAttachment); // Draw to target texture
 
         GL30.glBlitFramebuffer(
                 0,
@@ -108,12 +122,18 @@ public class FrameBuffer {
                 interpolation
         );
 
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
+        this.unbind();
     }
 
     public void generateMipmaps()
     {
         bind();
+        if (!isComplete())
+        {
+            unbind();
+            return;
+        }
+
         texture.generateMipmaps();
         unbind();
     }
@@ -124,5 +144,9 @@ public class FrameBuffer {
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.awtContext.getFramebuffer(false));
+    }
+
+    public boolean isComplete() {
+        return GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE;
     }
 }

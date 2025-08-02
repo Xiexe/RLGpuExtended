@@ -57,6 +57,39 @@ public class MainPassLegacy {
         computeBufferContext = new ComputeBufferContext();
 
         vertexBufferContext.PrepareBufferArray();
+
+        log.info("[VertexBufferContext] VAO ID: {}", vertexBufferContext.vertexArrayObjectId);
+        log.info("[VertexBufferContext] VBO ID: {}", vertexBufferContext.vertexBufferObjectId);
+//        log.info("[VertexBufferContext] Vertex Buffer Id: {}", vertexBufferContext.vertexBuffer.getBuffer());
+//        log.info("[VertexBufferContext] UV Buffer Id: {}", vertexBufferContext.uvBuffer);
+//        log.info("[VertexBufferContext] Normal Buffer Id: {}", vertexBufferContext.normalBuffer);
+//        log.info("[VertexBufferContext] Flags Buffer Id: {}", vertexBufferContext.flagsBuffer);
+
+        // log the names and ids of all the GLbuffers
+        log.info("[ComputeBufferContext] Vertex Out Buffer Id: {}", computeBufferContext.vertexOutBuffer.glBufferId);
+        log.info("[ComputeBufferContext] UV Out Buffer Id: {}", computeBufferContext.uvOutBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Normal Out Buffer Id: {}", computeBufferContext.normalOutBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Flags Out Buffer Id: {}", computeBufferContext.flagsOutBuffer.glBufferId);
+
+        log.info("[ComputeBufferContext] Static Vertex In Buffer Id: {}", computeBufferContext.staticVertexInBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Static UV In Buffer Id: {}", computeBufferContext.staticUvInBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Static Normal In Buffer Id: {}", computeBufferContext.staticNormalInBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Static Flags In Buffer Id: {}", computeBufferContext.staticFlagsInBuffer.glBufferId);
+
+        log.info("[ComputeBufferContext] Dynamic Vertex In Buffer Id: {}", computeBufferContext.dynamicVertexInBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Dynamic UV In Buffer Id: {}", computeBufferContext.dynamicUvInBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Dynamic Normal In Buffer Id: {}", computeBufferContext.dynamicNormalInBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Dynamic Flags Buffer Id: {}", computeBufferContext.dynamicFlagsBuffer.glBufferId);
+
+        log.info("[ComputeBufferContext] Tmp Unsorted Model Buffer Id: {}", computeBufferContext.tmpUnsortedModelBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Tmp Small Model Buffer Id: {}", computeBufferContext.tmpSmallModelBuffer.glBufferId);
+        log.info("[ComputeBufferContext] Tmp Large Model Buffer Id: {}", computeBufferContext.tmpLargeModelBuffer.glBufferId);
+
+//        log.info("[ComputeBufferContext] Unsorted Model Buffer Id: {}", computeBufferContext.unsortedModelBuffer.getBuffer());
+//        log.info("[ComputeBufferContext] Small Model Buffer Id: {}", computeBufferContext.smallModelBuffer.glBufferId);
+//        log.info("[ComputeBufferContext] Large Model Buffer Id: {}", computeBufferContext.largeModelBuffer.glBufferId);
+
+        log.info("[MainPassLegacy] Initialized buffers for main pass rendering.");
     }
 
     private void InitFramebuffer(){
@@ -600,12 +633,17 @@ public class MainPassLegacy {
             glInvalidateBufferData(glBuffer.glBufferId);
         }
 
+        boolean bufferResized = false;
         if (size > glBuffer.size) {
             int newSize = Math.max(1024, NextPowerOfTwo(size));
-            log.trace("Buffer resize: {} {} -> {}", glBuffer.name, glBuffer.size, newSize);
-
             glBuffer.size = newSize;
-            glBufferData(target, newSize, usage);
+            bufferResized = true;
+        }
+
+        // Always orphan if streaming or dynamic usage — even if size is unchanged, otherwise, we get a bunch of errors.
+        boolean shouldOrphan = bufferResized || (usage == GL_STREAM_DRAW || usage == GL_DYNAMIC_DRAW);
+        if (shouldOrphan) {
+            glBufferData(target, glBuffer.size, usage);
         }
     }
 
