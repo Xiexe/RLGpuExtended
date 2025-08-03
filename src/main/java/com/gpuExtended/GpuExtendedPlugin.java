@@ -262,10 +262,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					Instance = this;
 				}
 
-				client.setDrawCallbacks(this);
-				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
-				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
-
 				if(client.getGameState() == GameState.LOGGED_IN) {
 					client.setGameState(GameState.LOADING);
 				}
@@ -359,6 +355,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initVao();
 				initInterfaceTexture();
 				initBloomFramebuffer();
+
+				client.setDrawCallbacks(this);
+				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
+				client.setExpandedMapLoading(config.expandedMapLoadingChunks());
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -855,7 +855,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			lastCanvasWidth = canvasWidth;
 			lastCanvasHeight = canvasHeight;
 
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, interfacePbo);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, interfacePbo);
 			glBufferData(GL_PIXEL_UNPACK_BUFFER, canvasWidth * canvasHeight * 4L, GL_STREAM_DRAW);
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 			glBindTexture(GL_TEXTURE_2D, interfaceTexture);
@@ -893,21 +893,19 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			return;
 		}
 
+		final int canvasHeight = client.getCanvasHeight();
+		final int canvasWidth = client.getCanvasWidth();
+		prepareInterfaceTexture(canvasWidth, canvasHeight);
+
+		final int viewportHeight = client.getViewportHeight();
+		final int viewportWidth = client.getViewportWidth();
+
 		shadowMapOverlay.setActive(config.showShadowMap(), shaderHandler.uiShader.id());
 		sceneTileMaskOverlay.setActive(config.showTileMask());
 		regionOverlay.setActive(config.showRegionOverlay());
 		performanceOverlay.setActive(config.showPerformanceOverlay());
 		lightOverlay.SetActive(config.showLightOverlays());
 
-		final int canvasHeight = client.getCanvasHeight();
-		final int canvasWidth = client.getCanvasWidth();
-
-		final int viewportHeight = client.getViewportHeight();
-		final int viewportWidth = client.getViewportWidth();
-		if (canvasWidth == 0 || canvasHeight == 0)
-			return;
-
-		prepareInterfaceTexture(canvasWidth, canvasHeight);
 
 		// Setup anti-aliasing
 		final AntiAliasingMode antiAliasingMode = config.antiAliasingMode();
