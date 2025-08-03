@@ -1258,7 +1258,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.glBufferId);
-			//glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
+			glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
 			glBufferData(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
 		// </editor-fold>
@@ -1695,7 +1695,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		sceneId = nextSceneId;
 
 		environmentManager.CheckRegion();
-		environmentManager.LoadSceneLights(scene);
 		sceneUploader.PrepareScene(scene);
 
 		mainPassHandlerLegacy.OnSceneLoaded();
@@ -1703,6 +1702,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
+		environmentManager.LoadSceneLights(scene);
 
 		loadingScene = false;
 
