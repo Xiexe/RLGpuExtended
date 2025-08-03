@@ -100,7 +100,7 @@ public class ShadowPass {
 
         GL30.glBindVertexArray(0);
         glEnableVertexAttribArray(0);
-        log.info("Shadow Pass Handler Initialized");
+        log.info("[Shadow Pass] Initialized Shadow Render Pass");
     }
 
     /** Called from {@link com.gpuExtended.GpuExtendedPlugin#loadScene(Scene)}, since that happens on another thread. */
@@ -341,17 +341,18 @@ public class ShadowPass {
         glUniformBlockBinding(shaderProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
-        final TextureProvider textureProvider = plugin.client.getTextureProvider();
-        if (textureArrayId == -1) {
-            // lazy init textures as they may not be loaded at plugin start.
-            // this will return -1 and retry if not all textures are loaded yet, too.
-            textureArrayId = plugin.textureManager.initTextureArray(textureProvider);
-            if (textureArrayId > -1) {
-                // if texture upload is successful, compute and set texture animations
-                float[] texAnims = plugin.textureManager.computeTextureAnimations(textureProvider);
-                glUniform2fv(uni.TextureAnimations, texAnims);
-            }
-        }
+        // TODO:: This probably should be initted somewhere else. Currently its in both the main pass and shadow pass.
+//        final TextureProvider textureProvider = plugin.client.getTextureProvider();
+//        if (textureArrayId == -1) {
+//            // lazy init textures as they may not be loaded at plugin start.
+//            // this will return -1 and retry if not all textures are loaded yet, too.
+//            textureArrayId = plugin.textureManager.initTextureArray(textureProvider);
+//            if (textureArrayId > -1) {
+//                // if texture upload is successful, compute and set texture animations
+//                float[] texAnims = plugin.textureManager.computeTextureAnimations(textureProvider);
+//                glUniform2fv(uni.TextureAnimations, texAnims);
+//            }
+//        }
 //
         glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
 

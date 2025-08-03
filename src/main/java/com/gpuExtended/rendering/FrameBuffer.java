@@ -92,7 +92,7 @@ public class FrameBuffer {
 
     public void blit(FrameBuffer target, int srcAttachment, int dstAttachment, int interpolation)
     {
-//        log.info("Blitting framebuffer {} to {}", this.settings.name, target.settings.name);
+
         this.bind();
         if (!isComplete())
         {
@@ -109,6 +109,7 @@ public class FrameBuffer {
         }
         glDrawBuffer(dstAttachment); // Draw to target texture
 
+//                log.info("Blitting framebuffer {} to {}", this.settings.name, target.settings.name);
         GL30.glBlitFramebuffer(
                 0,
                 0,
@@ -140,10 +141,14 @@ public class FrameBuffer {
 
     public void clearFramebuffer()
     {
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.id);
+        bind();
+        if (!isComplete()) {
+            unbind();
+            return;
+        }
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.awtContext.getFramebuffer(false));
+        unbind();
     }
 
     public boolean isComplete() {

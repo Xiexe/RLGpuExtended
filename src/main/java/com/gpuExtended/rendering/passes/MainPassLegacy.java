@@ -57,39 +57,7 @@ public class MainPassLegacy {
         computeBufferContext = new ComputeBufferContext();
 
         vertexBufferContext.PrepareBufferArray();
-
-        log.info("[VertexBufferContext] VAO ID: {}", vertexBufferContext.vertexArrayObjectId);
-        log.info("[VertexBufferContext] VBO ID: {}", vertexBufferContext.vertexBufferObjectId);
-//        log.info("[VertexBufferContext] Vertex Buffer Id: {}", vertexBufferContext.vertexBuffer.getBuffer());
-//        log.info("[VertexBufferContext] UV Buffer Id: {}", vertexBufferContext.uvBuffer);
-//        log.info("[VertexBufferContext] Normal Buffer Id: {}", vertexBufferContext.normalBuffer);
-//        log.info("[VertexBufferContext] Flags Buffer Id: {}", vertexBufferContext.flagsBuffer);
-
-        // log the names and ids of all the GLbuffers
-        log.info("[ComputeBufferContext] Vertex Out Buffer Id: {}", computeBufferContext.vertexOutBuffer.glBufferId);
-        log.info("[ComputeBufferContext] UV Out Buffer Id: {}", computeBufferContext.uvOutBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Normal Out Buffer Id: {}", computeBufferContext.normalOutBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Flags Out Buffer Id: {}", computeBufferContext.flagsOutBuffer.glBufferId);
-
-        log.info("[ComputeBufferContext] Static Vertex In Buffer Id: {}", computeBufferContext.staticVertexInBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Static UV In Buffer Id: {}", computeBufferContext.staticUvInBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Static Normal In Buffer Id: {}", computeBufferContext.staticNormalInBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Static Flags In Buffer Id: {}", computeBufferContext.staticFlagsInBuffer.glBufferId);
-
-        log.info("[ComputeBufferContext] Dynamic Vertex In Buffer Id: {}", computeBufferContext.dynamicVertexInBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Dynamic UV In Buffer Id: {}", computeBufferContext.dynamicUvInBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Dynamic Normal In Buffer Id: {}", computeBufferContext.dynamicNormalInBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Dynamic Flags Buffer Id: {}", computeBufferContext.dynamicFlagsBuffer.glBufferId);
-
-        log.info("[ComputeBufferContext] Tmp Unsorted Model Buffer Id: {}", computeBufferContext.tmpUnsortedModelBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Tmp Small Model Buffer Id: {}", computeBufferContext.tmpSmallModelBuffer.glBufferId);
-        log.info("[ComputeBufferContext] Tmp Large Model Buffer Id: {}", computeBufferContext.tmpLargeModelBuffer.glBufferId);
-
-//        log.info("[ComputeBufferContext] Unsorted Model Buffer Id: {}", computeBufferContext.unsortedModelBuffer.getBuffer());
-//        log.info("[ComputeBufferContext] Small Model Buffer Id: {}", computeBufferContext.smallModelBuffer.glBufferId);
-//        log.info("[ComputeBufferContext] Large Model Buffer Id: {}", computeBufferContext.largeModelBuffer.glBufferId);
-
-        log.info("[MainPassLegacy] Initialized buffers for main pass rendering.");
+        log.info("[Main Pass Legacy] Initialized Main Render Pass");
     }
 
     private void InitFramebuffer(){
@@ -266,10 +234,10 @@ public class MainPassLegacy {
     }
 
     public void OnSceneLoaded() {
-        EnsureBufferCapacity(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(computeBufferContext.staticFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.flagsBuffer.getBuffer(), GL_STATIC_COPY, CL12.CL_MEM_READ_ONLY);
+        plugin.streamBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.streamBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.streamBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.streamBuffer(computeBufferContext.staticFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.flagsBuffer.getBuffer(), GL_STATIC_COPY);
 
         nextSceneVertexBufferContext.vertexBuffer = null;
         nextSceneVertexBufferContext.uvBuffer = null;
@@ -306,22 +274,22 @@ public class MainPassLegacy {
         IntBuffer modelBufferLarge = cCtx.largeModelBuffer.getBuffer();
 
         // compute sorting buffers
-        EnsureBufferCapacity(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(cCtx.tmpSmallModelBuffer, GL_ARRAY_BUFFER, modelBufferSmall, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(cCtx.tmpLargeModelBuffer, GL_ARRAY_BUFFER, modelBufferLarge, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+        plugin.streamBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
+        plugin.streamBuffer(cCtx.tmpSmallModelBuffer, GL_ARRAY_BUFFER, modelBufferSmall, GL_DYNAMIC_DRAW);
+        plugin.streamBuffer(cCtx.tmpLargeModelBuffer, GL_ARRAY_BUFFER, modelBufferLarge, GL_DYNAMIC_DRAW);
 
         // dynamic model buffers
-        EnsureBufferCapacity(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(cCtx.dynamicUvInBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(cCtx.dynamicNormalInBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
-        EnsureBufferCapacity(cCtx.dynamicFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW, CL12.CL_MEM_READ_ONLY);
+        plugin.streamBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
+        plugin.streamBuffer(cCtx.dynamicUvInBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW);
+        plugin.streamBuffer(cCtx.dynamicNormalInBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW);
+        plugin.streamBuffer(cCtx.dynamicFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW);
 
         // Output buffers
         final int size = cCtx.totalVertices * Vector4.BYTES; // each buffer contains a Vector4 for each vertex
-        EnsureBufferCapacity(cCtx.vertexOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW, CL12.CL_MEM_WRITE_ONLY);
-        EnsureBufferCapacity(cCtx.uvOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW, CL12.CL_MEM_WRITE_ONLY);
-        EnsureBufferCapacity(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW, CL12.CL_MEM_WRITE_ONLY);
-        EnsureBufferCapacity(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW, CL12.CL_MEM_WRITE_ONLY);
+        plugin.ensureBufferCapacity(cCtx.vertexOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.ensureBufferCapacity(cCtx.uvOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.ensureBufferCapacity(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.ensureBufferCapacity(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
         DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaderHandler.unorderedComputeShader.id());
         DispatchSortingCompute(cCtx.tmpSmallModelBuffer, cCtx.numSmallModels, plugin.shaderHandler.smallOrderedComputeShader.id());
@@ -610,52 +578,6 @@ public class MainPassLegacy {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_FLAGS_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicFlagsBuffer.glBufferId); // tempflagsbuffer_in
 
         glDispatchCompute(numModels, 1, 1);
-    }
-
-    private void EnsureBufferCapacity(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage, long clFlags) {
-        int size = data.remaining() << 2;
-        EnsureBufferCapacity(glBuffer, target, size, usage, clFlags);
-        glBufferSubData(target, 0, data);
-    }
-
-    private void EnsureBufferCapacity(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage, long clFlags) {
-        int size = data.remaining() << 2;
-        EnsureBufferCapacity(glBuffer, target, size, usage, clFlags);
-        glBufferSubData(target, 0, data);
-    }
-
-    private void EnsureBufferCapacity(@Nonnull GLBuffer glBuffer, int target, int size, int usage, long clFlags) {
-        glBindBuffer(target, glBuffer.glBufferId);
-
-        // https://www.khronos.org/opengl/wiki/Buffer_Object_Streaming suggests buffer re-specification is useful
-        // to avoid implicit syncing. We always need to trash the whole buffer anyway so this can't hurt.
-        if (plugin.glCapabilities.glInvalidateBufferData != 0L) {
-            glInvalidateBufferData(glBuffer.glBufferId);
-        }
-
-        boolean bufferResized = false;
-        if (size > glBuffer.size) {
-            int newSize = Math.max(1024, NextPowerOfTwo(size));
-            glBuffer.size = newSize;
-            bufferResized = true;
-        }
-
-        // Always orphan if streaming or dynamic usage — even if size is unchanged, otherwise, we get a bunch of errors.
-        boolean shouldOrphan = bufferResized || (usage == GL_STREAM_DRAW || usage == GL_DYNAMIC_DRAW);
-        if (shouldOrphan) {
-            glBufferData(target, glBuffer.size, usage);
-        }
-    }
-
-    private static int NextPowerOfTwo(int v) {
-        v--;
-        v |= v >> 1;
-        v |= v >> 2;
-        v |= v >> 4;
-        v |= v >> 8;
-        v |= v >> 16;
-        v++;
-        return v;
     }
 
     private boolean CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash) {

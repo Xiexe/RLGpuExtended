@@ -2,9 +2,14 @@ package com.gpuExtended.util.contexts;
 
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
+import lombok.extern.slf4j.Slf4j;
+import org.lwjgl.opengl.GL;
 
 import static org.lwjgl.opengl.GL15C.glGenBuffers;
+import static org.lwjgl.opengl.GL43C.GL_BUFFER;
+import static org.lwjgl.opengl.GL43C.glObjectLabel;
 
+@Slf4j
 public class ComputeBufferContext {
     // buffers used for outputting from compute shader
     public GLBuffer vertexOutBuffer;
@@ -92,6 +97,7 @@ public class ComputeBufferContext {
 
     private void InitGLBuffer(GLBuffer glBuffer) {
         glBuffer.glBufferId = glGenBuffers();
+        log.info("Initialized GLBuffer: {}, {}", glBuffer.glBufferId, glBuffer.name);
     }
 
     public void Clear() {

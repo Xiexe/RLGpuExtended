@@ -56,6 +56,7 @@ import org.lwjgl.opencl.CL10GL;
 import org.lwjgl.opencl.CL12;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
+import org.lwjgl.opengl.GLDebugMessageCallback;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.system.Callback;
 import org.lwjgl.system.Configuration;
@@ -72,10 +73,12 @@ import java.util.HashMap;
 
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.constants.Variables.*;
+import static java.lang.Character.getType;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 import static net.runelite.api.Constants.MAX_Z;
 import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
+import static org.lwjgl.opengl.GLDebugMessageCallback.getMessage;
 
 @Slf4j
 @PluginDescriptor(
@@ -157,6 +160,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private Canvas canvas;
 	public AWTContext awtContext;
 	private Callback debugCallback;
+	private GLDebugMessageCallback glDebugCallback;
 
 	public GLCapabilities glCapabilities;
 
@@ -337,16 +341,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					}
 				}
 
-				setupSyncMode();
-
-				shaderHandler.Initialize();
-				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
-				environmentManager.Initialize();
+				createGlDebugCallback();
 
 				// Initialize Render Pass Handlers
 				mainPassHandlerLegacy.Init();
 				shadowPassHandler.Init(config.shadowResolution().getValue(), awtContext);
 				// --
+
+				setupSyncMode();
+
+				shaderHandler.Initialize();
+				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
+				environmentManager.Initialize();
 
 				eventBus.register(tileMarkerManager);
 
@@ -663,6 +669,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void initGlBuffer(GLBuffer glBuffer)
 	{
 		glBuffer.glBufferId = glGenBuffers();
+		log.info("Initialized GLBuffer: {}, {}", glBuffer.glBufferId, glBuffer.name);
 	}
 
 	private void initUniformBufferBlocks()
@@ -687,7 +694,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private ByteBuffer initUniformBufferBlock(GLBuffer glBuffer, int blockSizeBytes)
 	{
 		ByteBuffer byteBuffer = BufferUtils.createByteBuffer(blockSizeBytes);
-		updateBuffer(glBuffer, GL_UNIFORM_BUFFER, blockSizeBytes, GL_DYNAMIC_DRAW, CL_MEM_READ_ONLY);
+		ensureBufferCapacity(glBuffer, GL_UNIFORM_BUFFER, blockSizeBytes, GL_DYNAMIC_DRAW);
 		return byteBuffer;
 	}
 
@@ -947,11 +954,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		lastAntiAliasingMode = antiAliasingMode;
+
+//		glDpiAwareViewport(0, 0, canvasWidth, canvasHeight);
+//		glGetIntegerv(GL_VIEWPORT, currentViewport);
+
 		glClearColor(0, 0, 0, 1f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		bloomFramebuffer.clearFramebuffer();
-
 		mainPassHandlerLegacy.OnPreRender();
 
 		if (gameState.getState() >= GameState.LOADING.getState()
@@ -1004,6 +1014,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			}
 			// </editor-fold>
 
+			glDpiAwareViewport(renderWidthOff, renderCanvasHeight - renderViewportHeight - renderHeightOff, renderViewportWidth, renderViewportHeight);
+			glGetIntegerv(GL_VIEWPORT, currentViewport);
+
 			if (mainPassHandlerLegacy.frameBuffer.getTexture().getWidth() != currentViewport[2] || mainPassHandlerLegacy.frameBuffer.getTexture().getHeight() != currentViewport[3]) {
 				mainPassHandlerLegacy.frameBuffer.resize(currentViewport[2], currentViewport[3]);
 				bloomFramebuffer.resize(currentViewport[2], currentViewport[3]);
@@ -1021,10 +1034,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			updateUniformBlocks();
 			shadowPassHandler.OnRenderStaticShadowMap();
 			shadowPassHandler.OnRenderDynamicShadowMap();
-
-			glDpiAwareViewport(renderWidthOff, renderCanvasHeight - renderViewportHeight - renderHeightOff, renderViewportWidth, renderViewportHeight);
-			glGetIntegerv(GL_VIEWPORT, currentViewport);
-
 			mainPassHandlerLegacy.OnRender();
 			drawBloomPass();
 
@@ -1149,6 +1158,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferCameraBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
+			glBufferData(GL_UNIFORM_BUFFER, glCameraUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferCameraBlock);
 		// </editor-fold>
 
@@ -1164,6 +1174,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferPlayerBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
+			glBufferData(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferPlayerBlock);
 		// </editor-fold>
 
@@ -1253,7 +1264,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.glBufferId);
-			glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
+			//glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
+			glBufferData(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
 		// </editor-fold>
 
@@ -1360,6 +1372,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferTileMarkerBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.glBufferId);
+			glBufferData(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferTileMarkerBlock);
 		// </editor-fold>
 
@@ -1375,6 +1388,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferSystemInfoBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
+			glBufferData(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
 		// </editor-fold>
 
@@ -1392,6 +1406,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferConfigBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
+			glBufferData(GL_UNIFORM_BUFFER, glConfigUniformBuffer.size, GL_DYNAMIC_DRAW);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
 		// </editor-fold>
 
@@ -1820,37 +1835,49 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		return Ints.constrainToRange(config.drawDistance(), 0, limit);
 	}
 
-	private void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage, long clFlags)
-	{
-		int size = data.remaining() << 2;
-		updateBuffer(glBuffer, target, size, usage, clFlags);
-		glBufferSubData(target, 0, data);
-	}
-
-	private void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage, long clFlags)
-	{
-		int size = data.remaining() << 2;
-		updateBuffer(glBuffer, target, size, usage, clFlags);
-		glBufferSubData(target, 0, data);
-	}
-
-	private void updateBuffer(@Nonnull GLBuffer glBuffer, int target, int size, int usage, long clFlags)
+	/**
+	 * Re-allocates a buffer with new data. This is used for streaming buffers that are updated
+	 * every frame, as it orphans the old buffer and prevents CPU-GPU synchronization stalls.
+	 */
+	public void streamBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage)
 	{
 		glBindBuffer(target, glBuffer.glBufferId);
-		if (glCapabilities.glInvalidateBufferData != 0L)
-		{
-			// https://www.khronos.org/opengl/wiki/Buffer_Object_Streaming suggests buffer re-specification is useful
-			// to avoid implicit synching. We always need to trash the whole buffer anyway so this can't hurt.
-			glInvalidateBufferData(glBuffer.glBufferId);
-		}
+		int size = data.remaining() << 2;
 		if (size > glBuffer.size)
 		{
-			int newSize = Math.max(1024, nextPowerOfTwo(size));
-			log.trace("Buffer resize: {} {} -> {}", glBuffer.name, glBuffer.size, newSize);
+			glBuffer.size = Math.max(1024, nextPowerOfTwo(size));
+		}
+		glBufferData(target, glBuffer.size, usage); // Orphan the buffer
+		glBufferSubData(target, 0, data);           // Upload the new data
+	}
 
-			glBuffer.size = newSize;
-			glBufferData(target, newSize, usage);
-			recreateCLBuffer(glBuffer, clFlags);
+	/**
+	 * Re-allocates a buffer with new data. This is used for streaming buffers that are updated
+	 * every frame, as it orphans the old buffer and prevents CPU-GPU synchronization stalls.
+	 */
+	public void streamBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage)
+	{
+		glBindBuffer(target, glBuffer.glBufferId);
+		int size = data.remaining() << 2;
+		if (size > glBuffer.size)
+		{
+			glBuffer.size = Math.max(1024, nextPowerOfTwo(size));
+		}
+		glBufferData(target, glBuffer.size, usage); // Orphan the buffer
+		glBufferSubData(target, 0, data);           // Upload the new data
+	}
+
+	/**
+	 * Ensures a buffer has a certain capacity, growing it if necessary.
+	 * This is used for buffers written to by the GPU, which should not be orphaned every frame.
+	 */
+	public void ensureBufferCapacity(@Nonnull GLBuffer glBuffer, int target, int size, int usage)
+	{
+		glBindBuffer(target, glBuffer.glBufferId);
+		if (size > glBuffer.size)
+		{
+			glBuffer.size = Math.max(1024, nextPowerOfTwo(size));
+			glBufferData(target, glBuffer.size, usage);
 		}
 	}
 
@@ -1887,40 +1914,98 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	public void checkGLErrors()
 	{
-//		if (!log.isDebugEnabled())
-//		{
-//			return;
-//		}
-//
-//		for (; ; )
-//		{
-//			int err = glGetError();
-//			if (err == GL_NO_ERROR)
-//			{
-//				return;
-//			}
-//
-//			String errStr;
-//			switch (err)
-//			{
-//				case GL_INVALID_ENUM:
-//					errStr = "INVALID_ENUM";
-//					break;
-//				case GL_INVALID_VALUE:
-//					errStr = "INVALID_VALUE";
-//					break;
-//				case GL_INVALID_OPERATION:
-//					errStr = "INVALID_OPERATION";
-//					break;
-//				case GL_INVALID_FRAMEBUFFER_OPERATION:
-//					errStr = "INVALID_FRAMEBUFFER_OPERATION";
-//					break;
-//				default:
-//					errStr = "" + err;
-//					break;
-//			}
-//
-//			log.debug("glGetError:", new Exception(errStr));
-//		}
+		if (!log.isDebugEnabled())
+		{
+			return;
+		}
+
+		for (; ; )
+		{
+			int err = glGetError();
+			if (err == GL_NO_ERROR)
+			{
+				return;
+			}
+
+			String errStr;
+			switch (err)
+			{
+				case GL_INVALID_ENUM:
+					errStr = "INVALID_ENUM";
+					break;
+				case GL_INVALID_VALUE:
+					errStr = "INVALID_VALUE";
+					break;
+				case GL_INVALID_OPERATION:
+					errStr = "INVALID_OPERATION";
+					break;
+				case GL_INVALID_FRAMEBUFFER_OPERATION:
+					errStr = "INVALID_FRAMEBUFFER_OPERATION";
+					break;
+				default:
+					errStr = "" + err;
+					break;
+			}
+
+			log.debug("glGetError:", new Exception(errStr));
+		}
+	}
+
+	public void createGlDebugCallback()
+	{
+		glDebugCallback = GLDebugMessageCallback.create((source, type, id, severity, length, message, userParam) -> {
+			String msg = getMessage(length, message);
+
+			System.err.printf(
+					"[OpenGL Debug] Source: %s, Type: %s, ID: 0x%X, Severity: %s\nMessage: %s\n\n",
+					getSource(source),
+					getType(type),
+					id,
+					getSeverity(severity),
+					msg
+			);
+		});
+
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Make callback synchronous for debugging
+
+		glDebugMessageCallback(glDebugCallback, 0);
+	}
+
+	private static String getSource(int source) {
+		switch (source) {
+			case GL_DEBUG_SOURCE_API: return "API";
+			case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW_SYSTEM";
+			case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER_COMPILER";
+			case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD_PARTY";
+			case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+			case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+			default: return "UNKNOWN";
+		}
+	}
+
+	private static String getType(int type) {
+		switch (type) {
+			case GL_DEBUG_TYPE_ERROR: return "ERROR";
+			case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+			case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+			case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+			case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+			case GL_DEBUG_TYPE_MARKER: return "MARKER";
+			case GL_DEBUG_TYPE_PUSH_GROUP: return "PUSH_GROUP";
+			case GL_DEBUG_TYPE_POP_GROUP: return "POP_GROUP";
+			case GL_DEBUG_TYPE_OTHER: return "OTHER";
+			default: return "UNKNOWN";
+		}
+	}
+
+	private static String getSeverity(int severity) {
+		switch (severity) {
+			case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
+			case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
+			case GL_DEBUG_SEVERITY_LOW: return "LOW";
+			case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
+			default: return "UNKNOWN";
+		}
 	}
 }

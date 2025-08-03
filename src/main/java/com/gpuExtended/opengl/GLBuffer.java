@@ -24,6 +24,9 @@
  */
 package com.gpuExtended.opengl;
 
+import static org.lwjgl.opengl.GL43C.GL_BUFFER;
+import static org.lwjgl.opengl.GL43C.glObjectLabel;
+
 public class GLBuffer
 {
 	public String name;
