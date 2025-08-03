@@ -83,7 +83,7 @@ float GetShadowMap(sampler2D shadowTex, vec3 fragPos, float ndl) {
         if (shadowMode == SHADOW_MODE_PCSS)
             return 1.0 - PCSSShadows(shadowTex, projCoords, fadeOut, bias);
         else
-            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.0);
+            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.001);
 
         case ENV_TYPE_UNDERGROUND:
             return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.0025);
