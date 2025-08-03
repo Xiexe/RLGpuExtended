@@ -71,6 +71,10 @@
 #define ENV_TYPE_DEFAULT 0
 #define ENV_TYPE_UNDERGROUND 1
 
+#define SHADOW_MODE_OFF 0
+#define SHADOW_MODE_PCF 1
+#define SHADOW_MODE_PCSS 2
+
 #define LIGHT_COUNT 500
 #define LIGHTS_PER_TILE 16 // 16 lights per tile maximum, buffer size is +1 for the number of lights in the tile (last index)
 #define LIGHTS_BIN_NUM_LIGHTS_INDEX LIGHTS_PER_TILE

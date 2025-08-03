@@ -1,6 +1,7 @@
 
 package com.gpuExtended;
 
+import com.gpuExtended.util.config.ShadowMode;
 import com.gpuExtended.util.config.ShadowResolution;
 import net.runelite.client.config.*;
 
@@ -101,21 +102,6 @@ public interface GpuExtendedConfig extends Config
 		default UIScalingMode uiScalingMode()
 		{
 			return UIScalingMode.LINEAR;
-		}
-
-		@Range(
-			max = MAX_FOG_DEPTH
-		)
-		@ConfigItem(
-			keyName = "fogDepth",
-			name = "Fog depth",
-			description = "Distance from the scene edge the fog starts",
-			position = 5,
-			section = generalSettings
-		)
-		default int fogDepth()
-		{
-			return 0;
 		}
 
 		@Range(
@@ -464,18 +450,21 @@ public interface GpuExtendedConfig extends Config
 		String lightSettings = "lightSettings";
 
 		@ConfigItem(
-				keyName = "skyColor",
-				name = "Sky Color",
-				description = "",
+				keyName = "shadowMode",
+				name = "Shadow Mode",
+				description = "Controls how shadows are rendered. PCF is basic shadow mapping, PCSS is a more advanced method that produces more accurate shadows based on distance from the object. Off disables shadows.",
 				position = 98,
 				section = lightSettings
 		)
-		Color skyColor();
+		default ShadowMode shadowMode()
+		{
+			return ShadowMode.MODE_PCSS;
+		}
 
 		@ConfigItem(
 				keyName = "shadowResolution",
-				name = "Shadow Resolution",
-				description = "resolution squared of the shadow map",
+				name = "Shadow Quality",
+				description = "Resolution of the shadow map. Higher resolutions cost more performance. 8k and 16k are extremely expensive.",
 				position = 99,
 				section = lightSettings
 		)
@@ -484,11 +473,27 @@ public interface GpuExtendedConfig extends Config
 			return ShadowResolution.RES_4096;
 		}
 
+		@Range(
+				min = 0,
+				max = MAX_DISTANCE
+		)
+		@ConfigItem(
+				keyName = "shadowDistance",
+				name = "Shadow Distance",
+				description = "How far to draw shadows. Distance is from the camera, in tiles. Higher values cost more to render.",
+				position = 100,
+				section = lightSettings
+		)
+		default int shadowDistance()
+		{
+			return 75;
+		}
+
 		@ConfigItem(
 				keyName = "overrideLightRotation",
 				name = "Custom Sun Rotation",
 				description = "",
-				position = 100,
+				position = 101,
 				section = lightSettings
 		)
 		default boolean customLightRotation()
@@ -500,7 +505,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "lightPitch",
 				name = "Sun Pitch",
 				description = "",
-				position = 100,
+				position = 102,
 				section = lightSettings
 		)
 		default int lightPitch()
@@ -512,7 +517,7 @@ public interface GpuExtendedConfig extends Config
 				keyName = "lightYaw",
 				name = "Sun Yaw",
 				description = "",
-				position = 100,
+				position = 103,
 				section = lightSettings
 		)
 		default int lightYaw()
@@ -529,25 +534,6 @@ public interface GpuExtendedConfig extends Config
 				closedByDefault = true
 		)
 		String experimentalSettings = "experimental";
-
-		@ConfigItem(
-				keyName = "roofFading",
-				name = "Roof Fading",
-				description = "Forces the client to render roofs, but smoothly fades them out when they are in the way, rather than snapping them on / off.\n" +
-						"Please disable the Roof Removal plugin, as they might interfere with each other.",
-				position = 1,
-				section = experimentalSettings
-		)
-		default boolean roofFading() { return false; }
-
-		@ConfigItem(
-				keyName = "roofFadingRange",
-				name = "Roof Fading Range",
-				description = "Changes the range at which roofs start to fade out.",
-				position = 2,
-				section = experimentalSettings
-		)
-		default int roofFadingRange() { return 15; }
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="Debugging Settings">
@@ -558,18 +544,6 @@ public interface GpuExtendedConfig extends Config
 				closedByDefault = true
 		)
 		String debugging = "debugging";
-
-		@ConfigItem(
-				keyName = "forceSceneReload",
-				name = "Reload Scene",
-				description = "Forces the current scene to reload when changed. On / Off means nothing.",
-				position = 0,
-				section = debugging
-		)
-		default boolean forceSceneReload()
-		{
-			return false;
-		}
 
 		@ConfigItem(
 				keyName = "showShadowMap",
@@ -595,17 +569,17 @@ public interface GpuExtendedConfig extends Config
 			return false;
 		}
 
-	@ConfigItem(
-			keyName = "showLightOverlays",
-			name = "Show Light Overlays",
-			description = "shows positions of lights and which prefabs they use",
-			position = 2,
-			section = debugging
-	)
-	default boolean showLightOverlays()
-	{
-		return false;
-	}
+		@ConfigItem(
+				keyName = "showLightOverlays",
+				name = "Show Light Overlays",
+				description = "shows positions of lights and which prefabs they use",
+				position = 2,
+				section = debugging
+		)
+		default boolean showLightOverlays()
+		{
+			return false;
+		}
 
 		@ConfigItem(
 				keyName = "showRegionOverlay",

@@ -104,7 +104,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private EventBus eventBus;
 
 	@Inject
-	private GpuExtendedConfig config;
+	public GpuExtendedConfig config;
 
 	@Getter
 	private Gson gson;
@@ -1394,8 +1394,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
 			bBufferConfigBlock.putInt(getDrawDistance());
 			bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-			bBufferConfigBlock.putInt(roofFadingEnabled && config.roofFading() ? 1 : 0);
-			bBufferConfigBlock.putInt(config.roofFadingRange());
+			bBufferConfigBlock.putInt(config.shadowMode().getValue());
+			bBufferConfigBlock.putInt(config.shadowDistance());
 
 			bBufferConfigBlock.flip();
 
@@ -1695,6 +1695,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		sceneId = nextSceneId;
 
 		environmentManager.CheckRegion();
+		environmentManager.LoadSceneLights(scene);
 		sceneUploader.PrepareScene(scene);
 
 		mainPassHandlerLegacy.OnSceneLoaded();
@@ -1702,7 +1703,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
-		environmentManager.LoadSceneLights(scene);
 
 		loadingScene = false;
 

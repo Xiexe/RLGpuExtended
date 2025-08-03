@@ -144,10 +144,6 @@ public class EnvironmentManager
         if(client.getGameState() != GameState.LOGGED_IN)
             return;
 
-        timeOfDay += (24f / 2700) * deltaTime;
-        if (timeOfDay >= 24f)
-            timeOfDay -= 24f;
-
         if(currentEnvironment.isTransitioning) {
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.5f);
         }
@@ -186,6 +182,10 @@ public class EnvironmentManager
     public void OnTick() {
         CleanupOldProjectiles();
         CheckRegion();
+
+        timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
+        if (timeOfDay >= 24f)
+            timeOfDay -= 24f;
     }
 
     public void RenderSkybox()
@@ -736,7 +736,7 @@ public class EnvironmentManager
         mainLight.plane = 0;
         mainLight.position = new Vector4(lightPitch, lightYaw, 0, 0);
         mainLight.isDynamic = false;
-        mainLight.UpdateProjectionViewMatrix(camX, camY);
+        mainLight.UpdateProjectionViewMatrix(camX, camY, plugin.config.shadowResolution().getValue(), plugin.config.shadowDistance());
 
         ambientColor = ambient;
         skyColor = sky;

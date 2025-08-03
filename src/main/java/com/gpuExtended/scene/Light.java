@@ -250,34 +250,59 @@ public class Light
         return light;
     }
 
-    public void UpdateProjectionViewMatrix(int camX, int camY)
+    public void UpdateProjectionViewMatrix(int camX, int camY, int shadowResolution, int shadowDistance)
     {
-        if(this.type != LightType.Directional)
+        if (this.type != LightType.Directional)
             return;
 
-        this.projectionMatrix = Mat4.identity();
+        // This defines the direction the light is "looking".
         this.viewMatrix = Mat4.rotateX((float) Math.PI + this.position.x);
         Mat4.mul(this.viewMatrix, Mat4.rotateY((float) Math.PI + this.position.y));
 
-        int shadowDrawDistance = 65;
+        // This defines the size of the area we want to cover with shadows.
+        int shadowDrawDistance = shadowDistance;
         int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
-        int east = Math.min(camX + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
-        int west = Math.max(camX - drawDistanceSceneUnits, 0);
-        int north = Math.min(camY + drawDistanceSceneUnits, LOCAL_TILE_SIZE * SCENE_SIZE);
-        int south = Math.max(camY - drawDistanceSceneUnits, 0);
-        int width = east - west;
-        int height = north - south;
-        int farPlane = 10000;
+        int west = camX - drawDistanceSceneUnits;
+        int east = camX + drawDistanceSceneUnits;
+        int north = camY + drawDistanceSceneUnits;
+        int south = camY - drawDistanceSceneUnits;
 
-        int maxDrawDistance = 100;
-        float maxScale = 1;//0.7f;
-        float minScale = 0f;//0.4f;
-        float scaleMultiplier = 1.0f - (shadowDrawDistance / (maxDrawDistance * maxScale));
-        float scale = Mathmatics.lerp(maxScale, minScale, scaleMultiplier);
-        Mat4.mul(this.projectionMatrix, Mat4.scale(scale, scale, scale));
-        Mat4.mul(this.projectionMatrix, Mat4.ortho(width, height, 0, farPlane));
+        // The total width and height of the shadowable area.
+        int orthoWidth = east - west;
+        int orthoHeight = north - south;
+        int farPlane = 10000; // Should be large enough to contain all scene geometry within the ortho box.
+
+        // Calculate the size of one shadow map texel in world-space units. This is our "snap" interval.
+        float worldUnitsPerTexel = (float)orthoWidth / shadowResolution; // Assuming square ortho box for simplicity
+
+        // Transform the camera's world position into the light's view space.
+        // The camera's world position is our initial, un-snapped center point.
+        float[] worldCenter = {camX, 0, camY, 1.0f};
+        float[] lightSpaceCenter = new float[4];
+        Mat4.mulVec(lightSpaceCenter, this.viewMatrix, worldCenter);
+
+        // Snap the light-space coordinates to the texel grid.
+        // We floor the coordinates in texel-space, effectively aligning them to the grid.
+        lightSpaceCenter[0] = (float)Math.floor(lightSpaceCenter[0] / worldUnitsPerTexel) * worldUnitsPerTexel;
+        lightSpaceCenter[1] = (float)Math.floor(lightSpaceCenter[1] / worldUnitsPerTexel) * worldUnitsPerTexel;
+        // We don't snap the Z coordinate, as that's the depth.
+
+        // Transform the snapped light-space center back into world space.
+        // This gives us a new, stabilized world-space center point to aim our projection at.
+        float[] invViewMatrix = Mat4.inverse(this.viewMatrix);
+        float[] snappedWorldCenter = new float[4];
+        Mat4.mulVec(snappedWorldCenter, invViewMatrix, lightSpaceCenter);
+
+        // Create the orthographic projection. It's always centered at the origin.
+        float[] lightProjection = Mat4.ortho(orthoWidth, orthoHeight, 0, farPlane);
+
+        // Create a translation matrix that moves the new, snapped world center to the origin.
+        // This effectively aims the light's "camera" at our stabilized point.
+        float[] lightTranslation = Mat4.translate(-snappedWorldCenter[0], 0, -snappedWorldCenter[2]);
+
+        this.projectionMatrix = lightProjection;
         Mat4.mul(this.projectionMatrix, this.viewMatrix);
-        Mat4.mul(this.projectionMatrix, Mat4.translate(-(width / 2f + west), 0, -(height / 2f + south)));
+        Mat4.mul(this.projectionMatrix, lightTranslation);
     }
 
     private void InitShadowMap(AWTContext awtContext)
