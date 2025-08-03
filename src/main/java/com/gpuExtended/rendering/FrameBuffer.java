@@ -92,21 +92,10 @@ public class FrameBuffer {
 
     public void blit(FrameBuffer target, int srcAttachment, int dstAttachment, int interpolation)
     {
-
         this.bind();
-        if (!isComplete())
-        {
-            this.unbind();
-            return;
-        }
         glReadBuffer(srcAttachment); // Read from source texture
 
         target.bind();
-        if (!target.isComplete())
-        {
-            target.unbind();
-            return;
-        }
         glDrawBuffer(dstAttachment); // Draw to target texture
 
 //                log.info("Blitting framebuffer {} to {}", this.settings.name, target.settings.name);
@@ -129,12 +118,6 @@ public class FrameBuffer {
     public void generateMipmaps()
     {
         bind();
-        if (!isComplete())
-        {
-            unbind();
-            return;
-        }
-
         texture.generateMipmaps();
         unbind();
     }
@@ -142,10 +125,6 @@ public class FrameBuffer {
     public void clearFramebuffer()
     {
         bind();
-        if (!isComplete()) {
-            unbind();
-            return;
-        }
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         unbind();

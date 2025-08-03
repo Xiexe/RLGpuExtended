@@ -234,10 +234,10 @@ public class MainPassLegacy {
     }
 
     public void OnSceneLoaded() {
-        plugin.streamBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
-        plugin.streamBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
-        plugin.streamBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
-        plugin.streamBuffer(computeBufferContext.staticFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.flagsBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.updateBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.updateBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.updateBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
+        plugin.updateBuffer(computeBufferContext.staticFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.flagsBuffer.getBuffer(), GL_STATIC_COPY);
 
         nextSceneVertexBufferContext.vertexBuffer = null;
         nextSceneVertexBufferContext.uvBuffer = null;
@@ -274,22 +274,22 @@ public class MainPassLegacy {
         IntBuffer modelBufferLarge = cCtx.largeModelBuffer.getBuffer();
 
         // compute sorting buffers
-        plugin.streamBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
-        plugin.streamBuffer(cCtx.tmpSmallModelBuffer, GL_ARRAY_BUFFER, modelBufferSmall, GL_DYNAMIC_DRAW);
-        plugin.streamBuffer(cCtx.tmpLargeModelBuffer, GL_ARRAY_BUFFER, modelBufferLarge, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.tmpSmallModelBuffer, GL_ARRAY_BUFFER, modelBufferSmall, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.tmpLargeModelBuffer, GL_ARRAY_BUFFER, modelBufferLarge, GL_DYNAMIC_DRAW);
 
         // dynamic model buffers
-        plugin.streamBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
-        plugin.streamBuffer(cCtx.dynamicUvInBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW);
-        plugin.streamBuffer(cCtx.dynamicNormalInBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW);
-        plugin.streamBuffer(cCtx.dynamicFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.dynamicUvInBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.dynamicNormalInBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW);
+        plugin.updateBuffer(cCtx.dynamicFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW);
 
         // Output buffers
         final int size = cCtx.totalVertices * Vector4.BYTES; // each buffer contains a Vector4 for each vertex
-        plugin.ensureBufferCapacity(cCtx.vertexOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
-        plugin.ensureBufferCapacity(cCtx.uvOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
-        plugin.ensureBufferCapacity(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
-        plugin.ensureBufferCapacity(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.updateBuffer(cCtx.vertexOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.updateBuffer(cCtx.uvOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+        plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
         DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaderHandler.unorderedComputeShader.id());
         DispatchSortingCompute(cCtx.tmpSmallModelBuffer, cCtx.numSmallModels, plugin.shaderHandler.smallOrderedComputeShader.id());
@@ -395,7 +395,7 @@ public class MainPassLegacy {
             offsetModel = model;
         }
 
-        if (offsetModel.getSceneId() == plugin.sceneUploader.sceneId)
+        if (offsetModel.getSceneId() == plugin.sceneId)
         {
             PushStaticModelToComputeBuffer(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
         }

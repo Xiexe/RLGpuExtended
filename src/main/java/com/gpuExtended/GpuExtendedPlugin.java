@@ -215,7 +215,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	private boolean lwjglInitted = false;
 
-	private int sceneId;
+	public int sceneId;
 	private int nextSceneId;
 
 	private long Time;
@@ -233,7 +233,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int[] lastPlayerPosition = new int[2];
 
 	public int[] currentViewport = new int[4];
-	HashMap<Integer, Boolean> modelRoofCache = new HashMap<>();
 
 	@Inject
 	private ShadowMapOverlay shadowMapOverlay;
@@ -694,7 +693,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private ByteBuffer initUniformBufferBlock(GLBuffer glBuffer, int blockSizeBytes)
 	{
 		ByteBuffer byteBuffer = BufferUtils.createByteBuffer(blockSizeBytes);
-		ensureBufferCapacity(glBuffer, GL_UNIFORM_BUFFER, blockSizeBytes, GL_DYNAMIC_DRAW);
+		updateBuffer(glBuffer, GL_UNIFORM_BUFFER, blockSizeBytes, GL_DYNAMIC_DRAW);
 		return byteBuffer;
 	}
 
@@ -955,12 +954,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		lastAntiAliasingMode = antiAliasingMode;
 
-//		glDpiAwareViewport(0, 0, canvasWidth, canvasHeight);
-//		glGetIntegerv(GL_VIEWPORT, currentViewport);
-
 		glClearColor(0, 0, 0, 1f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 		bloomFramebuffer.clearFramebuffer();
 		mainPassHandlerLegacy.OnPreRender();
 
@@ -1074,7 +1069,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 
 		mainPassHandlerLegacy.OnPostRender();
-
 		drawUi(overlayColor, canvasHeight, canvasWidth);
 
 		try
@@ -1435,8 +1429,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		Uniforms.ShaderVariables uniP = uniforms.GetUniforms(shaderHandler.bloomPrefilterShader.id());
 		glActiveTexture(GL_TEXTURE1);
 
-		glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());
+		glBindTexture(GL_TEXTURE_2D, mainPassHandlerLegacy.frameBuffer.getTexture().getId());
 		glUniform1i(uniP.SourceTexture, 1);
+
 		glViewport(0, 0, bloomFramebuffer.getTexture().getWidth(), bloomFramebuffer.getTexture().getHeight());
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 		// ---
@@ -1640,6 +1635,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		loadingScene = true;
 		mainPassHandlerLegacy.OnLoadScene(scene);
 		shadowPassHandler.OnSceneLoad(scene, sceneUploader.sceneId);
+
 		nextSceneId = sceneUploader.sceneId;
 	}
 
@@ -1693,40 +1689,24 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void swapScene(Scene scene)
 	{
-		SwapSceneInternal(scene);
-	}
-
-	private void SwapSceneInternal(Scene scene)
-	{
-		if (computeMode == ComputeMode.OPENCL)
-		{
-			openCLManager.uploadTileHeights(scene);
-		}
-		else
-		{
-			assert computeMode == ComputeMode.OPENGL;
-			uploadTileHeights(scene);
-		}
+		assert computeMode == ComputeMode.OPENGL;
+		uploadTileHeights(scene);
 
 		sceneId = nextSceneId;
+
+		environmentManager.CheckRegion();
+		sceneUploader.PrepareScene(scene);
 
 		mainPassHandlerLegacy.OnSceneLoaded();
 		shadowPassHandler.OnSceneUpdated();
 
-		nextSceneId = -1;
-
-		modelRoofCache.clear();
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
-		tileMarkerManager.InitializeSceneRoofMask(scene);
-
 		environmentManager.LoadSceneLights(scene);
-		environmentManager.CheckRegion();
-
-		sceneUploader.PrepareScene(scene);
 
 		loadingScene = false;
 
+		nextSceneId = -1;
 		checkGLErrors();
 	}
 
@@ -1835,49 +1815,36 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		return Ints.constrainToRange(config.drawDistance(), 0, limit);
 	}
 
-	/**
-	 * Re-allocates a buffer with new data. This is used for streaming buffers that are updated
-	 * every frame, as it orphans the old buffer and prevents CPU-GPU synchronization stalls.
-	 */
-	public void streamBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage)
+	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage)
 	{
-		glBindBuffer(target, glBuffer.glBufferId);
 		int size = data.remaining() << 2;
-		if (size > glBuffer.size)
-		{
-			glBuffer.size = Math.max(1024, nextPowerOfTwo(size));
-		}
-		glBufferData(target, glBuffer.size, usage); // Orphan the buffer
-		glBufferSubData(target, 0, data);           // Upload the new data
+		updateBuffer(glBuffer, target, size, usage);
+		glBufferSubData(target, 0, data);
 	}
 
-	/**
-	 * Re-allocates a buffer with new data. This is used for streaming buffers that are updated
-	 * every frame, as it orphans the old buffer and prevents CPU-GPU synchronization stalls.
-	 */
-	public void streamBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage)
+	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage)
 	{
-		glBindBuffer(target, glBuffer.glBufferId);
 		int size = data.remaining() << 2;
-		if (size > glBuffer.size)
-		{
-			glBuffer.size = Math.max(1024, nextPowerOfTwo(size));
-		}
-		glBufferData(target, glBuffer.size, usage); // Orphan the buffer
-		glBufferSubData(target, 0, data);           // Upload the new data
+		updateBuffer(glBuffer, target, size, usage);
+		glBufferSubData(target, 0, data);
 	}
 
-	/**
-	 * Ensures a buffer has a certain capacity, growing it if necessary.
-	 * This is used for buffers written to by the GPU, which should not be orphaned every frame.
-	 */
-	public void ensureBufferCapacity(@Nonnull GLBuffer glBuffer, int target, int size, int usage)
+	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, int size, int usage)
 	{
 		glBindBuffer(target, glBuffer.glBufferId);
+		if (glCapabilities.glInvalidateBufferData != 0L)
+		{
+			// https://www.khronos.org/opengl/wiki/Buffer_Object_Streaming suggests buffer re-specification is useful
+			// to avoid implicit synching. We always need to trash the whole buffer anyway so this can't hurt.
+			glInvalidateBufferData(glBuffer.glBufferId);
+		}
 		if (size > glBuffer.size)
 		{
-			glBuffer.size = Math.max(1024, nextPowerOfTwo(size));
-			glBufferData(target, glBuffer.size, usage);
+			int newSize = Math.max(1024, nextPowerOfTwo(size));
+			log.trace("Buffer resize: {} {} -> {}", glBuffer.name, glBuffer.size, newSize);
+
+			glBuffer.size = newSize;
+			glBufferData(target, newSize, usage);
 		}
 	}
 

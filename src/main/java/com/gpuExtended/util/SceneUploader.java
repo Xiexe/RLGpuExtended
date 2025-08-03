@@ -1012,8 +1012,6 @@ public class SceneUploader
 		Bounds currentBounds = enviornmentManager.currentBounds;
 		if(currentBounds != null)
 		{
-			//scene.setRoofRemovalMode(gpuConfig.roofFading() && currentBounds.isAllowRoofFading() ? 16 : 0);
-
 			if (scene.isInstance() || !gpuConfig.hideUnrelatedMaps()) return;
 			if(!currentBounds.isHideOtherAreas()) return;
 
@@ -1033,9 +1031,6 @@ public class SceneUploader
 					}
 				}
 			}
-		}
-		else {
-			//scene.setRoofRemovalMode(gpuConfig.roofFading() ? 16 : 0);
 		}
 	}
 
