@@ -281,7 +281,7 @@
     "type": "point",
     "color": [0.75, 0.90, 1.00],
     "offset": [0, 0, 1.2],
-    "intensity": 4,
+    "intensity": 2,
     "radius": 8,
     "animation": "pulse",
     "decorations": [
