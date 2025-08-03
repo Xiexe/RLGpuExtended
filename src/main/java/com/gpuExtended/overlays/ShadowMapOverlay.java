@@ -91,7 +91,7 @@ public class ShadowMapOverlay extends Overlay {
 
         clientThread.invoke(() -> {
             int uiShader = plugin.shaderHandler.uiShader.id();
-            if (uiShader == 0) {
+            if (uiShader == 0 && isActive) {
                 log.error("ShadowMapOverlay: glUiProgram is 0");
                 return;
             }

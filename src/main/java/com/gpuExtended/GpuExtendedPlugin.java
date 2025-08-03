@@ -170,8 +170,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int interfacePbo;
 
 	private FrameBuffer bloomFramebuffer;
-	private FrameBuffer shadowMapFramebuffer;
-	private FrameBuffer depthMapFramebuffer;
 
 	private int vaoUiHandle;
 	private int vboUiHandle;
@@ -355,9 +353,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				initBuffers();
 				initVao();
 				initInterfaceTexture();
-				initColorFramebuffer();
-				initShadowMapTexture();
-				initDepthMapTexture();
+				initBloomFramebuffer();
 
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
@@ -453,18 +449,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					bloomFramebuffer.dispose();
 					bloomFramebuffer = null;
 				}
-
-				if (shadowMapFramebuffer != null)
-				{
-					shadowMapFramebuffer.dispose();
-					shadowMapFramebuffer = null;
-				}
-
-				if (depthMapFramebuffer != null)
-				{
-					depthMapFramebuffer.dispose();
-					depthMapFramebuffer = null;
-				}
 			}
 
 			// this must shutdown after the clgl buffers are freed
@@ -486,6 +470,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			mainPassHandlerLegacy.Dispose();
 			shadowPassHandler.Dispose();
+			shadowMapOverlay.setActive(false, 0);
 
 			lastAnisotropicFilteringLevel = -1;
 
@@ -527,13 +512,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			{
 				clientThread.invokeLater(() ->
 				{
-					if (shadowMapFramebuffer.isInitialized()) {
+					// TODO:: Move resizing to ShadowPass.java
+					if (shadowPassHandler.GetFramebuffer().isInitialized() && shadowPassHandler.GetDynamicFramebuffer().isInitialized()) {
 						int res = config.shadowResolution().getValue();
-
 						if (config.shadowResolution() == ShadowResolution.RES_OFF) {
-							shadowMapFramebuffer.resize(1, 1);
+							shadowPassHandler.GetFramebuffer().resize(1, 1);
+							shadowPassHandler.GetDynamicFramebuffer().resize(1, 1);
 						} else {
-							shadowMapFramebuffer.resize(res, res);
+							shadowPassHandler.GetFramebuffer().resize(res, res);
+							shadowPassHandler.GetDynamicFramebuffer().resize(res, res);
 						}
 					}
 				});
@@ -752,49 +739,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	private void initShadowMapTexture()
-	{
-		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
-		fboSettings.name = "shadow";
-		fboSettings.width = config.shadowResolution().getValue();
-		fboSettings.height = config.shadowResolution().getValue();
-		fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
-		fboSettings.awtContext = awtContext;
-
-		Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
-		textureSettings.internalFormat = GL_DEPTH_COMPONENT24;
-		textureSettings.format = GL_DEPTH_COMPONENT;
-		textureSettings.type = GL_FLOAT;
-		textureSettings.minFilter = GL_NEAREST;
-		textureSettings.magFilter = GL_NEAREST;
-		textureSettings.wrapS = GL_CLAMP_TO_EDGE;
-		textureSettings.wrapT = GL_CLAMP_TO_EDGE;
-
-		shadowMapFramebuffer = new FrameBuffer(fboSettings, textureSettings);
-	}
-
-	private void initDepthMapTexture()
-	{
-		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
-		fboSettings.name = "depth";
-		fboSettings.width = 64;
-		fboSettings.height = 64;
-		fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
-		fboSettings.awtContext = awtContext;
-
-		Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
-		textureSettings.internalFormat = GL_DEPTH_COMPONENT24;
-		textureSettings.format = GL_DEPTH_COMPONENT;
-		textureSettings.type = GL_FLOAT;
-		textureSettings.minFilter = GL_NEAREST;
-		textureSettings.magFilter = GL_NEAREST;
-		textureSettings.wrapS = GL_CLAMP_TO_EDGE;
-		textureSettings.wrapT = GL_CLAMP_TO_EDGE;
-
-		depthMapFramebuffer = new FrameBuffer(fboSettings, textureSettings);
-	}
-
-	private void initColorFramebuffer()
+	private void initBloomFramebuffer()
 	{
 		// Bloom
 		FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
@@ -896,29 +841,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	{
 		mainPassHandlerLegacy.OnPostDrawScene();
 	}
-
-//	public void dispatchModelSortingComputeShader(int computeShader, int models, GLBuffer modelBuffer)
-//	{
-//		glUseProgram(computeShader);
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelBuffer.glBufferId); // modelbuffer_in
-//
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_OUT_BINDING_ID, vertexOutBuffer.glBufferId); // vertex out
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_OUT_BINDING_ID, uvOutBuffer.glBufferId); // uv out
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, NORMAL_BUFFER_OUT_BINDING_ID, normalOutBuffer.glBufferId); // normal_out
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, FLAGS_BUFFER_OUT_BINDING_ID, flagsOutBuffer.glBufferId); // flags out
-//
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_IN_BINDING_ID, staticModelVertexInBuffer.glBufferId); // vertexbuffer_in
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_IN_BINDING_ID, staticModelUvInBuffer.glBufferId); // texturebuffer_in
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, NORMAL_BUFFER_IN_BINDING_ID, staticModelNormalInBuffer.glBufferId); // normalbuffer_in
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, FLAGS_BUFFER_IN_BINDING_ID, staticModelFlagsInBuffer.glBufferId); // flagsbuffer_in
-//
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_VERTEX_BUFFER_IN_BINDING_ID, dynModelVertexInBuffer.glBufferId); // tempvertexbuffer_in
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_TEXTURE_BUFFER_IN_BINDING_ID, dynModelUvBuffer.glBufferId); // temptexturebuffer_in
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_NORMAL_BUFFER_IN_BINDING_ID, dynModelNormalBuffer.glBufferId); // tempnormalbuffer_in
-//		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_FLAGS_BUFFER_IN_BINDING_ID, dynModelFlagsBuffer.glBufferId); // tempflagsbuffer_in
-//
-//		glDispatchCompute(models, 1, 1);
-//	}
 
 	private void prepareInterfaceTexture(int canvasWidth, int canvasHeight)
 	{
