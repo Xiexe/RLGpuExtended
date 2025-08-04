@@ -12,20 +12,11 @@ layout(std430, binding = PRIORITY_DATA_BUFFER_IN_BINDING_ID) writeonly buffer pr
 };
 layout(local_size_x = WORK_GROUP_SIZE_X, local_size_y = WORK_GROUP_SIZE_Y, local_size_z = WORK_GROUP_SIZE_Z) in;
 void main() {
-    /*
-      if (localId == 0) {
-        min10 = 6000;
-        for (int i = 0; i < 12; ++i) {
-          totalNum[i] = 0;
-          totalDistance[i] = 0;
-        }
-      }
-    */
     uint modelIndex = gl_GlobalInvocationID.x; // 0 to model count
     if (modelIndex < priorityData.length()) {
         PriorityData myPriorityData;
         myPriorityData.min10 = 6000;
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 6; i++) {
             myPriorityData.totalNum[i] = 0;
             myPriorityData.totalDistance[i] = 0;
         }

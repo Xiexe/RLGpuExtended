@@ -16,16 +16,17 @@ void main() {
     uint modelIndex = gl_GlobalInvocationID.x;
     if (modelIndex < priorityData.length()) {
         PriorityData myPriorityData = priorityData[modelIndex];
-        if (myPriorityData.totalNum[1] > 0 || myPriorityData.totalNum[2] > 0) {
-            myPriorityData.avg1 = (myPriorityData.totalDistance[1] + myPriorityData.totalDistance[2]) / (myPriorityData.totalNum[1] + myPriorityData.totalNum[2]);
+
+        if (myPriorityData.totalNum[0] > 0 || myPriorityData.totalNum[1] > 0) {
+            myPriorityData.avg1 = (myPriorityData.totalDistance[0] + myPriorityData.totalDistance[1]) / (myPriorityData.totalNum[0] + myPriorityData.totalNum[1]);
         }
 
-        if (myPriorityData.totalNum[3] > 0 || myPriorityData.totalNum[4] > 0) {
-            myPriorityData.avg2 = (myPriorityData.totalDistance[3] + myPriorityData.totalDistance[4]) / (myPriorityData.totalNum[3] + myPriorityData.totalNum[4]);
+        if (myPriorityData.totalNum[2] > 0 || myPriorityData.totalNum[3] > 0) {
+            myPriorityData.avg2 = (myPriorityData.totalDistance[2] + myPriorityData.totalDistance[3]) / (myPriorityData.totalNum[2] + myPriorityData.totalNum[3]);
         }
 
-        if (myPriorityData.totalNum[6] > 0 || myPriorityData.totalNum[8] > 0) {
-            myPriorityData.avg3 = (myPriorityData.totalDistance[6] + myPriorityData.totalDistance[8]) / (myPriorityData.totalNum[6] + myPriorityData.totalNum[8]);
+        if (myPriorityData.totalNum[4] > 0 || myPriorityData.totalNum[5] > 0) {
+            myPriorityData.avg3 = (myPriorityData.totalDistance[4] + myPriorityData.totalDistance[5]) / (myPriorityData.totalNum[4] + myPriorityData.totalNum[5]);
         }
 
         priorityData[modelIndex] = myPriorityData;

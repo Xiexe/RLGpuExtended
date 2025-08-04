@@ -276,7 +276,7 @@ public class MainPassLegacy {
 
         {   // Clear priority data intermediate values (min10, avg1/2/3)
             // NOTE: Must call this before calling the DispatchPositionVertexComputeShader if you are planning to have it priority sorted
-            int sizeOfPriorityDataStruct = (112 * Byte.BYTES);
+            int sizeOfPriorityDataStruct = (64 * Byte.BYTES);
             int bufferRequiredSize = cCtx.numLargeModels * sizeOfPriorityDataStruct;
 
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, cCtx.gl_modelPriorityDataBuffer);

@@ -16,8 +16,8 @@ struct Vertex {
 };
 
 struct PriorityData {
-    int totalNum[12];        // number of faces with a given priority
-    int totalDistance[12];   // sum of distances to faces of a given priority
+    int totalNum[6];        // number of faces with a given priority
+    int totalDistance[6];   // sum of distances to faces of a given priority
     int min10;               // minimum distance to a face of priority 10
     int avg1;
     int avg2;

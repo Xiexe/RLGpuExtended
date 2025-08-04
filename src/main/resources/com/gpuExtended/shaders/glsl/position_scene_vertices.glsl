@@ -169,9 +169,12 @@ void main() {
 
         bool isUnordered = bool(myModelInfo.exFlags.y & 1); // Currently this is also isTerrain
         if (!isUnordered && face_visible(vertA.pos, vertB.pos, vertC.pos, ivec4(modelPosition, 0))) {
-            atomicAdd(priorityData[modelIndex].totalNum[thisPriority], 1);
-            atomicAdd(priorityData[modelIndex].totalDistance[thisPriority], thisDistance);
-            if (thisPriority == 10) {
+            int mapped_priority = map_priority_to_sums_index(thisPriority);
+            if (mapped_priority < MAX_MAPPED_PRIORITY) {
+                atomicAdd(priorityData[modelIndex].totalNum[mapped_priority], 1);
+                atomicAdd(priorityData[modelIndex].totalDistance[mapped_priority], thisDistance);
+            }
+            if (thisPriority == 10 && thisDistance != 6000) { // NOTE: Intentionally left unmapped as 10 priority, since this is min10
                 atomicMin(priorityData[modelIndex].min10, thisDistance);
             }
         }
