@@ -156,6 +156,26 @@
     ]
   },
   {
+    "name": "ENTRANA",
+    "environment": "DEFAULT",
+    "bounds": [
+      {
+        "start": [2799, 3326, -1],
+        "end": [2877, 3394, -1]
+      }
+    ]
+  },
+  {
+    "name": "KELDAGRIM",
+    "bounds": [
+      {
+        "start": [2817, 10113, -1],
+        "end": [2941, 10239, -1],
+        "hideOtherAreas": true
+      }
+    ]
+  },
+  {
     "name": "WIZARDS_TOWER",
     "bounds": [
       {
