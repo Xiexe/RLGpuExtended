@@ -7,7 +7,6 @@ import com.google.inject.Provides;
 import com.gpuExtended.config.AntiAliasingMode;
 import com.gpuExtended.config.UIScalingMode;
 import com.gpuExtended.opengl.GLBuffer;
-import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.overlays.*;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
@@ -93,9 +92,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	@Inject
 	public ClientUI clientUI;
-
-	@Inject
-	private OpenCLManager openCLManager;
 
 	@Inject
 	public ClientThread clientThread;
@@ -456,9 +452,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				}
 			}
 
-			// this must shutdown after the clgl buffers are freed
-			openCLManager.cleanup();
-
 			if (awtContext != null)
 			{
 				awtContext.destroy();
@@ -724,12 +717,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			glBuffer.glBufferId = -1;
 		}
 		glBuffer.size = -1;
-
-		if (glBuffer.clBuffer != -1)
-		{
-			CL12.clReleaseMemObject(glBuffer.clBuffer);
-			glBuffer.clBuffer = -1;
-		}
 	}
 
 	private void initInterfaceTexture()
@@ -1858,25 +1845,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		return v;
 	}
 
-	private void recreateCLBuffer(GLBuffer glBuffer, long clFlags)
-	{
-		if (computeMode == ComputeMode.OPENCL)
-		{
-			if (glBuffer.clBuffer != -1)
-			{
-				CL10.clReleaseMemObject(glBuffer.clBuffer);
-			}
-			if (glBuffer.size == 0)
-			{
-				glBuffer.clBuffer = -1;
-			}
-			else
-			{
-				glBuffer.clBuffer = CL10GL.clCreateFromGLBuffer(openCLManager.context, clFlags, glBuffer.glBufferId, (int[]) null);
-			}
-		}
-	}
-
 	public void checkGLErrors()
 	{
 		if (!log.isDebugEnabled())
@@ -1930,6 +1898,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					msg
 			);
 		});
+
+		//	GLDebugMessageHandler: GLDebugEvent[ id 0x20052
+		//		type Warning: implementation dependent performance
+		//		severity Medium: Severe performance/deprecation/other warnings
+		//		source GL API
+		//		msg Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
+		glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE,
+				GL_DONT_CARE, 0x20052, false);
 
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Make callback synchronous for debugging

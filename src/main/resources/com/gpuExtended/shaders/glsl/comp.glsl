@@ -11,6 +11,7 @@ shared int min10;                                         // minimum distance to
 shared int renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face id
 
 #include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/comp_structs.glsl"
 #include "shaders/glsl/comp_common.glsl"
 
 layout(local_size_x = THREAD_COUNT) in;
@@ -21,7 +22,7 @@ layout(local_size_x = THREAD_COUNT) in;
 void main() {
   uint groupId = gl_WorkGroupID.x;
   uint localId = gl_LocalInvocationID.x * FACES_PER_THREAD;
-  modelinfo minfo = ol[groupId];
+  modelinfo minfo = modelInfos[groupId];
   ivec4 pos = ivec4(minfo.x, minfo.y, minfo.z, 0);
 
   if (localId == 0) {

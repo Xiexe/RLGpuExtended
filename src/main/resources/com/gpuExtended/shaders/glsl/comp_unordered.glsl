@@ -1,6 +1,7 @@
 #include "VERSION_HEADER"
 
 #include "shaders/glsl/constants.glsl"
+#include "shaders/glsl/comp_structs.glsl"
 #include "shaders/glsl/comp_common.glsl"
 
 layout(local_size_x = 6) in;
@@ -8,7 +9,7 @@ layout(local_size_x = 6) in;
 void main() {
   uint groupId = gl_WorkGroupID.x;
   uint localId = gl_LocalInvocationID.x;
-  modelinfo minfo = ol[groupId];
+  modelinfo minfo = modelInfos[groupId];
 
   int offset = minfo.offset;
   int size = minfo.size;
@@ -31,38 +32,39 @@ void main() {
   ivec4 texPos = ivec4(0, pos);
 
   // Grab triangle vertices and normals from the correct buffer
-  if (flags < 0) {
-    thisA = vb[offset + ssboOffset * 3];
-    thisB = vb[offset + ssboOffset * 3 + 1];
-    thisC = vb[offset + ssboOffset * 3 + 2];
+  bool isStatic = flags < 0;
+  if (isStatic) {
+    thisA = staticVertexBufferIn[offset + ssboOffset * 3];
+    thisB = staticVertexBufferIn[offset + ssboOffset * 3 + 1];
+    thisC = staticVertexBufferIn[offset + ssboOffset * 3 + 2];
 
-    normA = normal[offset + ssboOffset * 3];
-    normB = normal[offset + ssboOffset * 3 + 1];
-    normC = normal[offset + ssboOffset * 3 + 2];
+    normA = staticNormalBufferIn[offset + ssboOffset * 3];
+    normB = staticNormalBufferIn[offset + ssboOffset * 3 + 1];
+    normC = staticNormalBufferIn[offset + ssboOffset * 3 + 2];
 
-    texA = texPos + texb[toffset + localId * 3];
-    texB = texPos + texb[toffset + localId * 3 + 1];
-    texC = texPos + texb[toffset + localId * 3 + 2];
+    texA = texPos + statixUvBufferIn[toffset + localId * 3];
+    texB = texPos + statixUvBufferIn[toffset + localId * 3 + 1];
+    texC = texPos + statixUvBufferIn[toffset + localId * 3 + 2];
 
-    flagsA = flagsin[toffset + localId * 3];
-    flagsB = flagsin[toffset + localId * 3 + 1];
-    flagsC = flagsin[toffset + localId * 3 + 2];
+    flagsA = staticFlagsIn[toffset + localId * 3];
+    flagsB = staticFlagsIn[toffset + localId * 3 + 1];
+    flagsC = staticFlagsIn[toffset + localId * 3 + 2];
   } else {
-    thisA = tempvb[offset + ssboOffset * 3];
-    thisB = tempvb[offset + ssboOffset * 3 + 1];
-    thisC = tempvb[offset + ssboOffset * 3 + 2];
+    thisA = dynamicVertexBufferIn[offset + ssboOffset * 3];
+    thisB = dynamicVertexBufferIn[offset + ssboOffset * 3 + 1];
+    thisC = dynamicVertexBufferIn[offset + ssboOffset * 3 + 2];
 
-    normA = tempnormal[offset + ssboOffset * 3];
-    normB = tempnormal[offset + ssboOffset * 3 + 1];
-    normC = tempnormal[offset + ssboOffset * 3 + 2];
+    normA = dynamicNormalBufferIn[offset + ssboOffset * 3];
+    normB = dynamicNormalBufferIn[offset + ssboOffset * 3 + 1];
+    normC = dynamicNormalBufferIn[offset + ssboOffset * 3 + 2];
 
-    texA = texPos + temptexb[toffset + localId * 3];
-    texB = texPos + temptexb[toffset + localId * 3 + 1];
-    texC = texPos + temptexb[toffset + localId * 3 + 2];
+    texA = texPos + dynamicUvBufferIn[toffset + localId * 3];
+    texB = texPos + dynamicUvBufferIn[toffset + localId * 3 + 1];
+    texC = texPos + dynamicUvBufferIn[toffset + localId * 3 + 2];
 
-    flagsA = tempflags[toffset + localId * 3];
-    flagsB = tempflags[toffset + localId * 3 + 1];
-    flagsC = tempflags[toffset + localId * 3 + 2];
+    flagsA = tempFlagsIn[toffset + localId * 3];
+    flagsB = tempFlagsIn[toffset + localId * 3 + 1];
+    flagsC = tempFlagsIn[toffset + localId * 3 + 2];
   }
 
   vec3 vertA = thisA.pos + pos;
@@ -70,17 +72,17 @@ void main() {
   vec3 vertC = thisC.pos + pos;
 
   // position vertices in scene and write to out buffer
-  vout[outOffset + myOffset * 3]          = Vertex(vertA, thisA.ahsl);
-  vout[outOffset + myOffset * 3 + 1]      = Vertex(vertB, thisB.ahsl);
-  vout[outOffset + myOffset * 3 + 2]      = Vertex(vertC, thisC.ahsl);
+  vertexBufferOut[outOffset + myOffset * 3]          = Vertex(vertA, thisA.ahsl);
+  vertexBufferOut[outOffset + myOffset * 3 + 1]      = Vertex(vertB, thisB.ahsl);
+  vertexBufferOut[outOffset + myOffset * 3 + 2]      = Vertex(vertC, thisC.ahsl);
 
-  normalout[outOffset + myOffset * 3]     = normA;
-  normalout[outOffset + myOffset * 3 + 1] = normB;
-  normalout[outOffset + myOffset * 3 + 2] = normC;
+  normalBufferOut[outOffset + myOffset * 3]     = normA;
+  normalBufferOut[outOffset + myOffset * 3 + 1] = normB;
+  normalBufferOut[outOffset + myOffset * 3 + 2] = normC;
 
-  flagsout[outOffset + myOffset * 3]     = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsA.w);
-  flagsout[outOffset + myOffset * 3 + 1] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsB.w);
-  flagsout[outOffset + myOffset * 3 + 2] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsC.w);
+  flagsOut[outOffset + myOffset * 3]     = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsA.w);
+  flagsOut[outOffset + myOffset * 3 + 1] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsB.w);
+  flagsOut[outOffset + myOffset * 3 + 2] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsC.w);
 
   if(toffset < 0)
   {
@@ -89,7 +91,7 @@ void main() {
     texC = vec4(0);
   }
 
-  uvout[outOffset + myOffset * 3]       = texA;
-  uvout[outOffset + myOffset * 3 + 1]   = texB;
-  uvout[outOffset + myOffset * 3 + 2]   = texC;
+  uvBufferOut[outOffset + myOffset * 3]       = texA;
+  uvBufferOut[outOffset + myOffset * 3 + 1]   = texB;
+  uvBufferOut[outOffset + myOffset * 3 + 2]   = texC;
 }

@@ -1,7 +1,6 @@
 package com.gpuExtended.shader;
 
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.shader.template.Template;
 import com.gpuExtended.util.Props;
 import com.gpuExtended.util.ResourcePath;
@@ -85,8 +84,6 @@ public class ShaderHandler {
     private GpuExtendedPlugin plugin;
     @Inject
     private ClientThread clientThread;
-    @Inject
-    private OpenCLManager openCLManager;
 
     public void Initialize()
     {
@@ -130,9 +127,6 @@ public class ShaderHandler {
     }
 
     private void waitUntilIdle() {
-        if (plugin.computeMode == GpuExtendedPlugin.ComputeMode.OPENCL)
-            openCLManager.finish();
-
         glFinish();
     }
 
@@ -164,18 +158,10 @@ public class ShaderHandler {
         bloomPrefilterShader.compile(template, compiledShaders);
 
         GpuExtendedPlugin.ComputeMode computeMode = plugin.computeMode;
-        switch (computeMode)
-        {
-            case OPENGL:
-                largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
-                smallOrderedComputeShader.compile(createTemplate(512, 1), compiledShaders);
-                unorderedComputeShader.compile(template, compiledShaders);
-                lightBinningComputeShader.compile(template, compiledShaders);
-                break;
-            case OPENCL:
-                openCLManager.init(plugin.awtContext);
-                break;
-        }
+        largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
+        smallOrderedComputeShader.compile(createTemplate(512, 1), compiledShaders);
+        unorderedComputeShader.compile(template, compiledShaders);
+        lightBinningComputeShader.compile(template, compiledShaders);
 
         plugin.uniforms.ClearUniforms();
         for(Shader shader : compiledShaders)
@@ -188,11 +174,6 @@ public class ShaderHandler {
         for(Shader shader : compiledShaders)
         {
             shader.destroy();
-        }
-
-        if (plugin.computeMode == GpuExtendedPlugin.ComputeMode.OPENCL)
-        {
-            openCLManager.destroyPrograms();
         }
 
         compiledShaders.clear();

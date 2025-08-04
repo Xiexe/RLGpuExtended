@@ -1,20 +1,3 @@
-struct modelinfo {
-  int offset;   // offset into vertex buffer
-  int toffset;  // offset into texture buffer
-  int size;     // length in faces
-  int idx;      // write idx in target buffer
-  int flags;    // buffer, hillskew, plane, radius, orientation
-  int x;        // scene position x
-  int y;        // scene position y
-  int z;        // scene position z
-  ivec4 exFlags; //
-};
-
-struct Vertex {
-  vec3 pos;
-  int ahsl;
-};
-
 layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform CameraBlock {
   mat4 cameraProjectionMatrix;        // 64 bytes
   vec4 cameraPosition;                // 16 bytes
@@ -24,60 +7,60 @@ layout(std140, binding = CAMERA_BUFFER_BINDING_ID) uniform CameraBlock {
   int zoom;                           // 4 bytes
   int centerX;                        // 4 bytes
   int centerY;                        // 4 bytes
-};                                     // 128 bytes
+};                                    // 128 bytes
 
 layout(std430, binding = MODEL_BUFFER_IN_BINDING_ID) readonly buffer modelbuffer_in {
-  modelinfo ol[];
+  modelinfo modelInfos[];
 };
 
 // position data
 layout(std430, binding = VERTEX_BUFFER_OUT_BINDING_ID) writeonly buffer vertex_out {
-  Vertex vout[];
+  Vertex vertexBufferOut[];
 };
 
 layout(std430, binding = VERTEX_BUFFER_IN_BINDING_ID) readonly buffer vertexbuffer_in {
-  Vertex vb[];
+  Vertex staticVertexBufferIn[];
 };
 
 layout(std430, binding = TEMP_VERTEX_BUFFER_IN_BINDING_ID) readonly buffer tempvertexbuffer_in {
-  Vertex tempvb[];
+  Vertex dynamicVertexBufferIn[];
 };
 
 // uv data
 layout(std430, binding = TEXTURE_BUFFER_OUT_BINDING_ID) writeonly buffer uv_out {
-  vec4 uvout[];
+  vec4 uvBufferOut[];
 };
 
 layout(std430, binding = TEXTURE_BUFFER_IN_BINDING_ID) readonly buffer texturebuffer_in {
-  vec4 texb[];
+  vec4 statixUvBufferIn[];
 };
 
 layout(std430, binding = TEMP_TEXTURE_BUFFER_IN_BINDING_ID) readonly buffer temptexturebuffer_in {
-  vec4 temptexb[];
+  vec4 dynamicUvBufferIn[];
 };
 
 // normal data
 layout(std430, binding = NORMAL_BUFFER_OUT_BINDING_ID) writeonly buffer normal_out {
-  vec4 normalout[];
+  vec4 normalBufferOut[];
 };
 
 layout(std430, binding = NORMAL_BUFFER_IN_BINDING_ID) readonly buffer normalbuffer_in {
-  vec4 normal[];
+  vec4 staticNormalBufferIn[];
 };
 
 layout(std430, binding = TEMP_NORMAL_BUFFER_IN_BINDING_ID) readonly buffer tempnormalbuffer_in {
-  vec4 tempnormal[];
+  vec4 dynamicNormalBufferIn[];
 };
 
 // flags data
 layout(std430, binding = FLAGS_BUFFER_OUT_BINDING_ID) writeonly buffer flags_out {
-  ivec4 flagsout[];
+  ivec4 flagsOut[];
 };
 
 layout(std430, binding = FLAGS_BUFFER_IN_BINDING_ID) readonly buffer flagsbuffer_in {
-  ivec4 flagsin[];
+  ivec4 staticFlagsIn[];
 };
 
 layout(std430, binding = TEMP_FLAGS_BUFFER_IN_BINDING_ID) readonly buffer tempflagsbuffer_in {
-  ivec4 tempflags[];
+  ivec4 tempFlagsIn[];
 };

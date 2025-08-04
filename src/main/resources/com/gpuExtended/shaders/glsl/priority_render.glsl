@@ -85,14 +85,15 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
   Vertex thisC;
 
   // Grab triangle vertices from the correct buffer
-  if (flags < 0) {
-    thisA = vb[offset + ssboOffset * 3];
-    thisB = vb[offset + ssboOffset * 3 + 1];
-    thisC = vb[offset + ssboOffset * 3 + 2];
+  bool isStatic = flags < 0;
+  if (isStatic) {
+    thisA = staticVertexBufferIn[offset + ssboOffset * 3];
+    thisB = staticVertexBufferIn[offset + ssboOffset * 3 + 1];
+    thisC = staticVertexBufferIn[offset + ssboOffset * 3 + 2];
   } else {
-    thisA = tempvb[offset + ssboOffset * 3];
-    thisB = tempvb[offset + ssboOffset * 3 + 1];
-    thisC = tempvb[offset + ssboOffset * 3 + 2];
+    thisA = dynamicVertexBufferIn[offset + ssboOffset * 3];
+    thisB = dynamicVertexBufferIn[offset + ssboOffset * 3 + 1];
+    thisC = dynamicVertexBufferIn[offset + ssboOffset * 3 + 2];
   }
 
   if (localId < size) {
@@ -272,25 +273,26 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vec4 normA, normB, normC;
     ivec4 flagsA, flagsB, flagsC;
 
-    if (flags < 0)
+    bool isStatic = flags < 0;
+    if (isStatic)
     {
-        normA = normal[offset + localId * 3    ];
-        normB = normal[offset + localId * 3 + 1];
-        normC = normal[offset + localId * 3 + 2];
+        normA = staticNormalBufferIn[offset + localId * 3    ];
+        normB = staticNormalBufferIn[offset + localId * 3 + 1];
+        normC = staticNormalBufferIn[offset + localId * 3 + 2];
 
-        flagsA = flagsin[offset + localId * 3    ];
-        flagsB = flagsin[offset + localId * 3 + 1];
-        flagsC = flagsin[offset + localId * 3 + 2];
+        flagsA = staticFlagsIn[offset + localId * 3    ];
+        flagsB = staticFlagsIn[offset + localId * 3 + 1];
+        flagsC = staticFlagsIn[offset + localId * 3 + 2];
     }
     else
     {
-        normA = tempnormal[offset + localId * 3    ];
-        normB = tempnormal[offset + localId * 3 + 1];
-        normC = tempnormal[offset + localId * 3 + 2];
+        normA = dynamicNormalBufferIn[offset + localId * 3    ];
+        normB = dynamicNormalBufferIn[offset + localId * 3 + 1];
+        normC = dynamicNormalBufferIn[offset + localId * 3 + 2];
 
-        flagsA = tempflags[offset + localId * 3    ];
-        flagsB = tempflags[offset + localId * 3 + 1];
-        flagsC = tempflags[offset + localId * 3 + 2];
+        flagsA = tempFlagsIn[offset + localId * 3    ];
+        flagsB = tempFlagsIn[offset + localId * 3 + 1];
+        flagsC = tempFlagsIn[offset + localId * 3 + 2];
     }
 
     normA = rotate_vertex(normA, orientation);
@@ -306,37 +308,37 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
     normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
 
-    normalout[outOffset + myOffset * 3]     = normA;
-    normalout[outOffset + myOffset * 3 + 1] = normB;
-    normalout[outOffset + myOffset * 3 + 2] = normC;
+    normalBufferOut[outOffset + myOffset * 3]     = normA;
+    normalBufferOut[outOffset + myOffset * 3 + 1] = normB;
+    normalBufferOut[outOffset + myOffset * 3 + 2] = normC;
 
-    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
+    flagsOut[outOffset + myOffset * 3]     = minfo.exFlags;
+    flagsOut[outOffset + myOffset * 3 + 1] = minfo.exFlags;
+    flagsOut[outOffset + myOffset * 3 + 2] = minfo.exFlags;
 
     // write to out buffer
-    vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
-    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
-    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
+    vertexBufferOut[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
+    vertexBufferOut[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
+    vertexBufferOut[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
 
     if (toffset < 0)
     {
-      uvout[outOffset + myOffset * 3] = vec4(0);
-      uvout[outOffset + myOffset * 3 + 1] = vec4(0);
-      uvout[outOffset + myOffset * 3 + 2] = vec4(0);
+      uvBufferOut[outOffset + myOffset * 3] = vec4(0);
+      uvBufferOut[outOffset + myOffset * 3 + 1] = vec4(0);
+      uvBufferOut[outOffset + myOffset * 3 + 2] = vec4(0);
     }
     else
     {
       vec4 texA, texB, texC;
 
-      if (flags >= 0) {
-        texA = temptexb[toffset + localId * 3];
-        texB = temptexb[toffset + localId * 3 + 1];
-        texC = temptexb[toffset + localId * 3 + 2];
+      if (isStatic) {
+        texA = statixUvBufferIn[toffset + localId * 3];
+        texB = statixUvBufferIn[toffset + localId * 3 + 1];
+        texC = statixUvBufferIn[toffset + localId * 3 + 2];
       } else {
-        texA = texb[toffset + localId * 3];
-        texB = texb[toffset + localId * 3 + 1];
-        texC = texb[toffset + localId * 3 + 2];
+        texA = dynamicUvBufferIn[toffset + localId * 3];
+        texB = dynamicUvBufferIn[toffset + localId * 3 + 1];
+        texC = dynamicUvBufferIn[toffset + localId * 3 + 2];
       }
 
       // swizzle from (tex,x,y,z) to (x,y,z,tex) for rotate and hillskew
@@ -355,9 +357,9 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       texA = hillskew_vertexf(texA, hillskew, minfo.y, plane);
       texB = hillskew_vertexf(texB, hillskew, minfo.y, plane);
       texC = hillskew_vertexf(texC, hillskew, minfo.y, plane);
-      uvout[outOffset + myOffset * 3] = texA.wxyz;
-      uvout[outOffset + myOffset * 3 + 1] = texB.wxyz;
-      uvout[outOffset + myOffset * 3 + 2] = texC.wxyz;
+      uvBufferOut[outOffset + myOffset * 3] = texA.wxyz;
+      uvBufferOut[outOffset + myOffset * 3 + 1] = texB.wxyz;
+      uvBufferOut[outOffset + myOffset * 3 + 2] = texC.wxyz;
     }
   }
 }

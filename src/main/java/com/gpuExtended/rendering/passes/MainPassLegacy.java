@@ -323,16 +323,25 @@ public class MainPassLegacy {
 
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
-            buffer.put(paint.getBufferOffset());
-            buffer.put(paint.getUvBufferOffset());
-            buffer.put(2);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(FLAG_SCENE_BUFFER);
-            buffer.put(localX).put(localY).put(localZ);
-            buffer.put(flags);
-            buffer.put(-1);
-            buffer.put(-1);
-            buffer.put(-1);
+            buffer.put(paint.getBufferOffset()); // offset into vertex buffer
+            buffer.put(paint.getUvBufferOffset());// offset into texture buffer
+            buffer.put(2); // length in faces
+            buffer.put(computeBufferContext.totalVertices); // idx
+            buffer.put(FLAG_SCENE_BUFFER); // flags
+
+            buffer.put(localX); // scene x
+            buffer.put(localY); // scene y
+            buffer.put(localZ); // scene z
+
+            buffer.put(flags); // exFlags.x
+            buffer.put(-1); // exFlags.y
+            buffer.put(-1); // exFlags.z
+            buffer.put(-1); // exflags.w
+
+            buffer.put(0); // min10
+            buffer.put(0); // avg1
+            buffer.put(0); // avg2
+            buffer.put(0); // avg3
 
             computeBufferContext.totalVertices += 2 * 3;
         }
@@ -359,16 +368,25 @@ public class MainPassLegacy {
 
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
-            buffer.put(model.getBufferOffset());
-            buffer.put(model.getUvBufferOffset());
-            buffer.put(faceCount);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(FLAG_SCENE_BUFFER);
-            buffer.put(localX).put(localY).put(localZ);
-            buffer.put(flags);
-            buffer.put(-1);
-            buffer.put(-1);
-            buffer.put(-1);
+            buffer.put(model.getBufferOffset()); // offset into vertex buffer
+            buffer.put(model.getUvBufferOffset()); // offset into texture buffer
+            buffer.put(faceCount); // length in faces
+            buffer.put(computeBufferContext.totalVertices); // idx
+            buffer.put(FLAG_SCENE_BUFFER); // flags
+
+            buffer.put(localX); // scene x
+            buffer.put(localY); // scene y
+            buffer.put(localZ); // scene z
+
+            buffer.put(flags); // exFlags.x
+            buffer.put(-1); // exFlags.y
+            buffer.put(-1); // exFlags.z
+            buffer.put(-1); // exflags.w
+
+            buffer.put(0); // min10
+            buffer.put(0); // avg1
+            buffer.put(0); // avg2
+            buffer.put(0); // avg3
 
             computeBufferContext.totalVertices += faceCount * 3;
         }
@@ -422,16 +440,25 @@ public class MainPassLegacy {
 
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
-            buffer.put(offsetModel.getBufferOffset());
-            buffer.put(uvOffset);
-            buffer.put(faceCount);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(FLAG_SCENE_BUFFER | flags);
-            buffer.put(x).put(y).put(z);
-            buffer.put(exFlags);
-            buffer.put(-1);
-            buffer.put(-1);
-            buffer.put(GetModelConfig(hash, tileX, tileY, z));
+            buffer.put(offsetModel.getBufferOffset());// offset into vertex buffer
+            buffer.put(uvOffset);// offset into texture buffer
+            buffer.put(faceCount);// length in faces
+            buffer.put(computeBufferContext.totalVertices);// idx
+            buffer.put(FLAG_SCENE_BUFFER | flags);// flags
+
+            buffer.put(x);// scene x
+            buffer.put(y);// scene y
+            buffer.put(z);// scene z
+
+            buffer.put(exFlags);// exFlags.x
+            buffer.put(-1);// exFlags.y
+            buffer.put(-1);// exFlags.z
+            buffer.put(GetModelConfig(hash, tileX, tileY, z));// exflags.w
+
+            buffer.put(0); // min10
+            buffer.put(0); // avg1
+            buffer.put(0); // avg2
+            buffer.put(0); // avg3
 
             computeBufferContext.totalVertices += faceCount * 3;
         }
@@ -461,16 +488,25 @@ public class MainPassLegacy {
             GpuIntBuffer b = GetCorrectModelBufferForTriangleCount(vertexCount / 3);
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
-            buffer.put(computeBufferContext.totalDynamicVertices);
-            buffer.put(hasUv ? computeBufferContext.totalDynamicUvs : -1);
-            buffer.put(vertexCount / 3);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(flags);
-            buffer.put(x).put(y).put(z);
-            buffer.put(exFlags);
-            buffer.put(-1);
-            buffer.put(-1);
-            buffer.put(GetModelConfig(hash, x, y, z));
+            buffer.put(computeBufferContext.totalDynamicVertices);// offset into vertex buffer
+            buffer.put(hasUv ? computeBufferContext.totalDynamicUvs : -1);// offset into texture buffer
+            buffer.put(vertexCount / 3);// length in faces
+            buffer.put(computeBufferContext.totalVertices);// idx
+            buffer.put(flags);// flags
+
+            buffer.put(x);// scene x
+            buffer.put(y);// scene y
+            buffer.put(z);// scene z
+
+            buffer.put(exFlags);// exFlags.x
+            buffer.put(-1);// exFlags.y
+            buffer.put(-1);// exFlags.z
+            buffer.put(GetModelConfig(hash, x, y, z));// exflags.w
+
+            buffer.put(0); // min10
+            buffer.put(0); // avg1
+            buffer.put(0); // avg2
+            buffer.put(0); // avg3
 
             computeBufferContext.totalDynamicVertices += vertexCount;
             computeBufferContext.totalVertices += vertexCount;

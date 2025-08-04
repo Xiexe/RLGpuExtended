@@ -32,7 +32,6 @@ public class GLBuffer
 	public String name;
 	public int glBufferId = -1;
 	public int size = -1;
-	public long clBuffer = -1;
 
 	public GLBuffer(String name)
 	{

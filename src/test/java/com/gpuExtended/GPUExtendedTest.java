@@ -7,13 +7,24 @@ import net.runelite.client.externalplugins.ExternalPluginManager;
 
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.jar.Manifest;
 
 public class GPUExtendedTest
 {
 	public static void main(String[] args) throws Exception
 	{
 		Props.DEVELOPMENT = true;
-		Props.set("resource-path", "src/main/resources");
+		try (InputStream manifestStream = GPUExtendedTest.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF")) {
+			if (manifestStream != null) {
+				Manifest manifest = new Manifest(manifestStream);
+				String value = manifest.getMainAttributes().getValue("Built-By-Shadow");
+				boolean builtByShadow = "true".equalsIgnoreCase(value);
+				System.out.println("Built-By-Shadow=" + value);
+				if (!builtByShadow){
+					Props.set("resource-path", "src/main/resources");
+				}
+			}
+		}
 		ClassLoader.getSystemClassLoader().setDefaultAssertionStatus(true);
 		useLatestPluginHub();
 		ExternalPluginManager.loadBuiltin(GpuExtendedPlugin.class);

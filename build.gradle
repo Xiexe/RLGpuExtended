@@ -39,6 +39,9 @@ shadowJar {
 	from sourceSets.test.output
 	configurations = [project.configurations.testRuntimeClasspath]
 	manifest {
-		attributes "Main-Class": "com.gpuExtended.GPUExtendedTest"
+		attributes(
+				"Main-Class": "com.gpuExtended.GPUExtendedTest",
+				"Built-By-Shadow": "true"
+		)
 	}
 }
