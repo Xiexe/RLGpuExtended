@@ -7,6 +7,7 @@ import com.gpuExtended.overlays.PerformanceOverlay;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
@@ -200,7 +201,6 @@ public class MainPassLegacy {
         vertexBufferContext.normalBuffer.clear();
 
         computeBufferContext.largeModelBuffer.clear();
-        computeBufferContext.unsortedModelBuffer.clear();
 
         computeBufferContext.numLargeModels = 0;
         computeBufferContext.numUnsortedModels = 0;
@@ -226,6 +226,7 @@ public class MainPassLegacy {
     }
 
     public void OnSceneLoaded() {
+        computeBufferContext.totalStaticVertices = 0;
         plugin.updateBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
         plugin.updateBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
         plugin.updateBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
@@ -250,32 +251,15 @@ public class MainPassLegacy {
         ComputeBufferContext cCtx = computeBufferContext;
 
         vCtx.FlipBuffers();
-        cCtx.unsortedModelBuffer.flip();
         cCtx.largeModelBuffer.flip();
-
-        /*{
-            // computeBufferContext.totalVertices
-			int PRIORITY_DATA_BINDING_ID = 0;
-            int sizeOfPriorityDataStruct = (100 * Byte.BYTES);
-            int bufferRequiredSize = cCtx.numLargeModels * sizeOfPriorityDataStruct;
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, cCtx.gl_modelPriorityDataBuffer);
-            glBufferData(GL_SHADER_STORAGE_BUFFER, bufferRequiredSize, GL_DYNAMIC_COPY);
-            glUseProgram(plugin.shaderHandler.priorityPrepassShader.id());
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BINDING_ID, cCtx.gl_modelPriorityDataBuffer);
-            glDispatchCompute(cCtx.numLargeModels, 1, 1);
-            glUseProgram(0);
-        }*/
 
         IntBuffer vertexBuffer = vCtx.vertexBuffer.getBuffer();
         FloatBuffer uvBuffer = vCtx.uvBuffer.getBuffer();
         FloatBuffer normalBuffer = vCtx.normalBuffer.getBuffer();
 
-        IntBuffer modelBufferUnordered = cCtx.unsortedModelBuffer.getBuffer();
         IntBuffer modelBufferLarge = cCtx.largeModelBuffer.getBuffer();
 
         // compute sorting buffers
-        plugin.updateBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
         plugin.updateBuffer(cCtx.tmpLargeModelBuffer, GL_ARRAY_BUFFER, modelBufferLarge, GL_DYNAMIC_DRAW);
 
         // dynamic model buffers
@@ -290,8 +274,21 @@ public class MainPassLegacy {
         plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
         plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
-        DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaderHandler.unorderedComputeShader.id());
-        DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.numLargeModels, plugin.shaderHandler.largeOrderedComputeShader.id());
+        DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.totalVertices, plugin.shaderHandler.positionSceneVerticesShader);
+
+        /*{
+            // computeBufferContext.totalVertices
+			int PRIORITY_DATA_BINDING_ID = 0;
+            int sizeOfPriorityDataStruct = (100 * Byte.BYTES);
+            int bufferRequiredSize = cCtx.numLargeModels * sizeOfPriorityDataStruct;
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, cCtx.gl_modelPriorityDataBuffer);
+            glBufferData(GL_SHADER_STORAGE_BUFFER, bufferRequiredSize, GL_DYNAMIC_COPY);
+            glUseProgram(plugin.shaderHandler.priorityPrepassShader.id());
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BINDING_ID, cCtx.gl_modelPriorityDataBuffer);
+            glDispatchCompute(cCtx.numLargeModels, 1, 1);
+            glUseProgram(0);
+        }*/
     }
 
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {
@@ -316,8 +313,8 @@ public class MainPassLegacy {
             int renderLevel = (faceCount >> 3) & 3;
             int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 
-            GpuIntBuffer b = computeBufferContext.unsortedModelBuffer;
-            computeBufferContext.numUnsortedModels++;
+            GpuIntBuffer b = computeBufferContext.largeModelBuffer;
+            computeBufferContext.numLargeModels++;
 
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
@@ -339,6 +336,7 @@ public class MainPassLegacy {
             buffer.put(-1); // exflags.w
 
             computeBufferContext.totalVertices += 2 * 3;
+            computeBufferContext.totalStaticVertices +=  2 * 3;
         }
     }
 
@@ -358,8 +356,8 @@ public class MainPassLegacy {
 
             int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);;
 
-            GpuIntBuffer b = computeBufferContext.unsortedModelBuffer;
-            computeBufferContext.numUnsortedModels++;
+            GpuIntBuffer b = computeBufferContext.largeModelBuffer;
+            computeBufferContext.numLargeModels++;
 
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
@@ -373,7 +371,7 @@ public class MainPassLegacy {
             buffer.put(localY); // scene y
             buffer.put(localZ); // scene z
 
-            int isTerrainFlag = 0;
+            int isTerrainFlag = 1;
 
             buffer.put(flags); // exFlags.x
             buffer.put(isTerrainFlag); // exFlags.y
@@ -381,6 +379,7 @@ public class MainPassLegacy {
             buffer.put(-1); // exflags.w
 
             computeBufferContext.totalVertices += faceCount * 3;
+            computeBufferContext.totalStaticVertices += faceCount * 3;
         }
     }
 
@@ -450,6 +449,7 @@ public class MainPassLegacy {
             buffer.put(GetModelConfig(hash, tileX, tileY, z));// exflags.w
 
             computeBufferContext.totalVertices += faceCount * 3;
+            computeBufferContext.totalStaticVertices += faceCount * 3;
         }
 
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
@@ -560,7 +560,37 @@ public class MainPassLegacy {
         return computeBufferContext.largeModelBuffer;
     }
 
-    private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, int computeShader) {
+    private void DispatchSortingCompute(GLBuffer modelBuffer, int totalNumVertices, Shader computeShader) {
+        Uniforms uniforms = plugin.uniforms;
+        ShaderHandler shaders = plugin.shaderHandler;
+
+        // Bind uniforms for compute shaders | TODO:: this may not need to be done every frame. Also, move uniform buffers to uniform wrapper or something
+        glUniformBlockBinding(computeShader.id(), uniforms.GetUniforms(computeShader.id()).BlockLarge, CAMERA_BUFFER_BINDING_ID);
+        glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, plugin.glCameraUniformBuffer.glBufferId);
+
+        glUseProgram(computeShader.id());
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelBuffer.glBufferId); // modelbuffer_in
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_OUT_BINDING_ID, computeBufferContext.vertexOutBuffer.glBufferId); // vertex out
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_OUT_BINDING_ID, computeBufferContext.uvOutBuffer.glBufferId); // uv out
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, NORMAL_BUFFER_OUT_BINDING_ID, computeBufferContext.normalOutBuffer.glBufferId); // normal_out
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, FLAGS_BUFFER_OUT_BINDING_ID, computeBufferContext.flagsOutBuffer.glBufferId); // flags out
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_IN_BINDING_ID, computeBufferContext.staticVertexInBuffer.glBufferId); // vertexbuffer_in
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_IN_BINDING_ID, computeBufferContext.staticUvInBuffer.glBufferId); // texturebuffer_in
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, NORMAL_BUFFER_IN_BINDING_ID, computeBufferContext.staticNormalInBuffer.glBufferId); // normalbuffer_in
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_VERTEX_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicVertexInBuffer.glBufferId); // tempvertexbuffer_in
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_TEXTURE_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicUvInBuffer.glBufferId); // temptexturebuffer_in
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_NORMAL_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicNormalInBuffer.glBufferId); // tempnormalbuffer_in
+
+        final int computeShaderThreadCountX = 64;
+        int numGroupsX = (totalNumVertices + computeShaderThreadCountX - 1) / computeShaderThreadCountX;
+        glDispatchCompute(numGroupsX, 1, 1);
+    }
+
+    /*private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, int computeShader) {
         Uniforms uniforms = plugin.uniforms;
         ShaderHandler shaders = plugin.shaderHandler;
 
@@ -586,7 +616,7 @@ public class MainPassLegacy {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_NORMAL_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicNormalInBuffer.glBufferId); // tempnormalbuffer_in
 
         glDispatchCompute(numModels, 1, 1);
-    }
+    }*/
 
     private boolean CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash) {
         if (projection == null) return false;

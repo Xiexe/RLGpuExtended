@@ -29,10 +29,8 @@ public class ComputeBufferContext {
     public GLBuffer dynamicNormalInBuffer = new GLBuffer("dynamic model normal buffer");
 
     // Buffers used for model sorting
-    public GLBuffer tmpUnsortedModelBuffer;
     public GLBuffer tmpLargeModelBuffer;
 
-    public GpuIntBuffer unsortedModelBuffer;
     public GpuIntBuffer largeModelBuffer;
     public int gl_modelPriorityDataBuffer;
 
@@ -40,12 +38,11 @@ public class ComputeBufferContext {
     public int numLargeModels;
 
     public int totalVertices;
+    public int totalStaticVertices;
     public int totalDynamicVertices;
     public int totalDynamicUvs;
 
     public ComputeBufferContext() {
-
-        this.unsortedModelBuffer = new GpuIntBuffer();
         this.largeModelBuffer = new GpuIntBuffer();
 
         // Output
@@ -66,7 +63,6 @@ public class ComputeBufferContext {
         this.gl_modelPriorityDataBuffer = glGenBuffers();
 
         // Model Sorting buffers
-        this.tmpUnsortedModelBuffer = new GLBuffer("unsorted model buffer");
         this.tmpLargeModelBuffer = new GLBuffer("large model buffer");
 
         InitGLBuffer(this.vertexOutBuffer);
@@ -82,7 +78,6 @@ public class ComputeBufferContext {
         InitGLBuffer(this.dynamicUvInBuffer);
         InitGLBuffer(this.dynamicNormalInBuffer);
 
-        InitGLBuffer(this.tmpUnsortedModelBuffer);
         InitGLBuffer(this.tmpLargeModelBuffer);
     }
 
@@ -112,13 +107,11 @@ public class ComputeBufferContext {
         this.dynamicUvInBuffer = null;
         this.dynamicNormalInBuffer = null;
 
-        this.tmpUnsortedModelBuffer = null;
         this.tmpLargeModelBuffer = null;
 
         // TODO: shouldn't we delete all of these?
         glDeleteBuffers(this.gl_modelPriorityDataBuffer);
 
-        this.unsortedModelBuffer = null;
         this.largeModelBuffer = null;
 
         this.numUnsortedModels = 0;

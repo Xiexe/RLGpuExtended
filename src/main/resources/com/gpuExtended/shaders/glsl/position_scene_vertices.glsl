@@ -8,9 +8,29 @@
 #include "shaders/glsl/comp_structs.glsl"
 #include "shaders/glsl/comp_common.glsl"
 
-layout(local_size_x = WORK_GROUP_SIZE_X, local_size_y = WORK_GROUP_SIZE_Y, local_size_z = WORK_GROUP_SIZE_Z) in;
-
 #include "shaders/glsl/common.glsl"
+
+layout(binding = 2) uniform isampler3D tileHeightSampler;
+
+int tile_height(int z, int x, int y) {
+    #define ESCENE_OFFSET 40 // (184-104)/2
+  return texelFetch(tileHeightSampler, ivec3(x + ESCENE_OFFSET, y + ESCENE_OFFSET, z), 0).r << 3;
+}
+
+vec4 hillskew_vertexf(vec4 v, int hillskew, int y, int plane) {
+    if (hillskew == 1) {
+        float fx = v.x / 128;
+        float fz = v.z / 128;
+        int sx = int(floor(fx));
+        int sz = int(floor(fz));
+        float h1 = mix(tile_height(plane, sx, sz), tile_height(plane, sx + 1, sz), fract(fx));
+        float h2 = mix(tile_height(plane, sx, sz + 1), tile_height(plane, sx + 1, sz + 1), fract(fx));
+        float h3 = mix(h1, h2, fract(fz));
+        return vec4(v.x, v.y + h3 - y, v.z, v.w);
+    } else {
+        return v;
+    }
+}
 
 #define OUT_OF_BOUNDS 0xFFFFFFFF
 // Returns 0xFFFFFFFF for globalThreadIndex which are out of bounds
@@ -37,6 +57,7 @@ uint binary_search_for_model_index(uint globalThreadIndex) {
     return OUT_OF_BOUNDS;
 }
 
+layout(local_size_x = WORK_GROUP_SIZE_X, local_size_y = WORK_GROUP_SIZE_Y, local_size_z = WORK_GROUP_SIZE_Z) in;
 void main() {
     uint modelIndex = binary_search_for_model_index(gl_GlobalInvocationID.x);
     if (modelIndex < modelInfos.length()) {
@@ -49,40 +70,49 @@ void main() {
         Vertex vertA, vertB, vertC;
         vec4 normA, normB, normC;
         ivec4 flagsA, flagsB, flagsC;
+        vec4 texA, texB, texC;
 
         if (isStatic) {
-            vertA = staticVertexBufferIn[myModelInfo.offset + localFaceIndex * 3];
+            vertA = staticVertexBufferIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             vertB = staticVertexBufferIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             vertC = staticVertexBufferIn[myModelInfo.offset + localFaceIndex * 3 + 2];
 
-            normA = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3    ];
+            normA = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             normB = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             normC = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 2];
 
-            flagsA = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3    ];
+            flagsA = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             flagsB = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             flagsC = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 2];
+
+            texA = statixUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 0];
+            texB = statixUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 1];
+            texC = statixUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 2];
         } else {
-            vertA = dynamicVertexBufferIn[myModelInfo.offset + localFaceIndex * 3];
+            vertA = dynamicVertexBufferIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             vertB = dynamicVertexBufferIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             vertC = dynamicVertexBufferIn[myModelInfo.offset + localFaceIndex * 3 + 2];
 
-            normA = dynamicNormalBufferIn[myModelInfo.offset + localFaceIndex * 3    ];
+            normA = dynamicNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             normB = dynamicNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             normC = dynamicNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 2];
 
-            flagsA = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3    ];
+            flagsA = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             flagsB = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             flagsC = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 2];
+
+            texA = dynamicUvBufferIn[myModelInfo.toffset + localFaceIndex * 3];
+            texB = dynamicUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 1];
+            texC = dynamicUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 2];
         }
 
         int orientation = myModelInfo.flags & 0x7ff;
         int plane = (myModelInfo.flags >> BIT_ZHEIGHT) & 3;
         int hillskew = (myModelInfo.flags >> BIT_HILLSKEW) & 1;
 
-        vertA.pos = rotate_vertex(vec4(vertA.pos, 0), orientation);
-        vertB.pos = rotate_vertex(vec4(vertB.pos, 0), orientation);
-        vertC.pos = rotate_vertex(vec4(vertC.pos, 0), orientation);
+        vertA.pos = rotate_vertex(vec4(vertA.pos, 0), orientation).xyz;
+        vertB.pos = rotate_vertex(vec4(vertB.pos, 0), orientation).xyz;
+        vertC.pos = rotate_vertex(vec4(vertC.pos, 0), orientation).xyz;
 
         normA = rotate_vertex(normA, orientation);
         normB = rotate_vertex(normB, orientation);
@@ -92,20 +122,47 @@ void main() {
         vertB.pos += modelPosition.xyz;
         vertC.pos += modelPosition.xyz;
 
-        vertA.pos = hillskew_vertexf(vertA, hillskew, minfo.y, plane).xyz;
-        vertB.pos = hillskew_vertexf(vertB, hillskew, minfo.y, plane).xyz;
-        vertC.pos = hillskew_vertexf(vertC, hillskew, minfo.y, plane).xyz;
+        vertA.pos = hillskew_vertexf(vec4(vertA.pos, 0), hillskew, myModelInfo.y, plane).xyz;
+        vertB.pos = hillskew_vertexf(vec4(vertB.pos, 0), hillskew, myModelInfo.y, plane).xyz;
+        vertC.pos = hillskew_vertexf(vec4(vertC.pos, 0), hillskew, myModelInfo.y, plane).xyz;
 
-        normA = hillskew_vertexf(normA, hillskew, minfo.y, plane);
-        normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
-        normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
+        normA = hillskew_vertexf(normA, hillskew, myModelInfo.y, plane);
+        normB = hillskew_vertexf(normB, hillskew, myModelInfo.y, plane);
+        normC = hillskew_vertexf(normC, hillskew, myModelInfo.y, plane);
 
-        vertexBufferOut[outOffset + localFaceIndex * 3]     = vertA;
+        vertexBufferOut[outOffset + localFaceIndex * 3 + 0] = vertA;
         vertexBufferOut[outOffset + localFaceIndex * 3 + 1] = vertB;
         vertexBufferOut[outOffset + localFaceIndex * 3 + 2] = vertC;
 
-        normalBufferOut[outOffset + localFaceIndex * 3]     = normA;
+        normalBufferOut[outOffset + localFaceIndex * 3 + 0] = normA;
         normalBufferOut[outOffset + localFaceIndex * 3 + 1] = normB;
         normalBufferOut[outOffset + localFaceIndex * 3 + 2] = normC;
+
+        // swizzle from (tex,x,y,z) to (x,y,z,tex) for rotate and hillskew
+        texA = texA.yzwx;
+        texB = texB.yzwx;
+        texC = texC.yzwx;
+        // rotate
+        texA = rotate_vertex(texA, orientation);
+        texB = rotate_vertex(texB, orientation);
+        texC = rotate_vertex(texC, orientation);
+        // position
+        texA += ivec4(modelPosition.xyz, 0);
+        texB += ivec4(modelPosition.xyz, 0);
+        texC += ivec4(modelPosition.xyz, 0);
+        // hillskew
+        texA = hillskew_vertexf(texA, hillskew, myModelInfo.y, plane);
+        texB = hillskew_vertexf(texB, hillskew, myModelInfo.y, plane);
+        texC = hillskew_vertexf(texC, hillskew, myModelInfo.y, plane);
+
+        if (myModelInfo.toffset < 0) {
+            uvBufferOut[outOffset + localFaceIndex * 3 + 0] = vec4(0);
+            uvBufferOut[outOffset + localFaceIndex * 3 + 1] = vec4(0);
+            uvBufferOut[outOffset + localFaceIndex * 3 + 2] = vec4(0);
+        } else {
+            uvBufferOut[outOffset + localFaceIndex * 3 + 0] = texA.wxyz;
+            uvBufferOut[outOffset + localFaceIndex * 3 + 1] = texB.wxyz;
+            uvBufferOut[outOffset + localFaceIndex * 3 + 2] = texC.wxyz;
+        }
     }
 }

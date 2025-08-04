@@ -174,8 +174,8 @@ public class ShaderHandler {
         bloomPrefilterShader.compile(template, compiledShaders);
 
         GpuExtendedPlugin.ComputeMode computeMode = plugin.computeMode;
-        //positionSceneVerticesShader.compile(createGenericComputeTemplate(64, 1, 1), compiledShaders);
-        priorityPrepassShader.compile(createGenericComputeTemplate(1, 12, 1), compiledShaders);
+        positionSceneVerticesShader.compile(createGenericComputeTemplate(64, 1, 1), compiledShaders);
+        //priorityPrepassShader.compile(createGenericComputeTemplate(1, 12, 1), compiledShaders);
         //calculatePriorityStuff.compile(createGenericComputeTemplate(64,1,1), compiledShaders);
         largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
         unorderedComputeShader.compile(template, compiledShaders);
