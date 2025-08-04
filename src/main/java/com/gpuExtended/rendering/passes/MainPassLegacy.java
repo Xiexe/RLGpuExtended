@@ -274,21 +274,37 @@ public class MainPassLegacy {
         plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
         plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
-        DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.totalVertices, plugin.shaderHandler.positionSceneVerticesShader);
-
-        /*{
-            // computeBufferContext.totalVertices
-			int PRIORITY_DATA_BINDING_ID = 0;
-            int sizeOfPriorityDataStruct = (100 * Byte.BYTES);
+        {   // Clear priority data intermediate values (min10, avg1/2/3)
+            // NOTE: Must call this before calling the DispatchPositionVertexComputeShader if you are planning to have it priority sorted
+            int sizeOfPriorityDataStruct = (112 * Byte.BYTES);
             int bufferRequiredSize = cCtx.numLargeModels * sizeOfPriorityDataStruct;
 
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, cCtx.gl_modelPriorityDataBuffer);
             glBufferData(GL_SHADER_STORAGE_BUFFER, bufferRequiredSize, GL_DYNAMIC_COPY);
+
             glUseProgram(plugin.shaderHandler.priorityPrepassShader.id());
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BINDING_ID, cCtx.gl_modelPriorityDataBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BUFFER_IN_BINDING_ID, cCtx.gl_modelPriorityDataBuffer);
             glDispatchCompute(cCtx.numLargeModels, 1, 1);
             glUseProgram(0);
-        }*/
+        }
+
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        DispatchPositionVertexComputeShader(cCtx.tmpLargeModelBuffer, cCtx.totalVertices, plugin.shaderHandler.positionSceneVerticesShader);
+
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        {
+            // calculatePriorityAverages
+            glUseProgram(plugin.shaderHandler.calculatePriorityAverages.id());
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BUFFER_IN_BINDING_ID, cCtx.gl_modelPriorityDataBuffer);
+            int priorityAveragesWorkGroupSize = 64;
+            int numWorkGroupsX = (cCtx.numLargeModels + priorityAveragesWorkGroupSize - 1) / priorityAveragesWorkGroupSize;
+            glDispatchCompute(numWorkGroupsX, 1, 1);
+            glUseProgram(0);
+        }
+
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     }
 
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {
@@ -560,7 +576,7 @@ public class MainPassLegacy {
         return computeBufferContext.largeModelBuffer;
     }
 
-    private void DispatchSortingCompute(GLBuffer modelBuffer, int totalNumVertices, Shader computeShader) {
+    private void DispatchPositionVertexComputeShader(GLBuffer modelBuffer, int totalNumVertices, Shader computeShader) {
         Uniforms uniforms = plugin.uniforms;
         ShaderHandler shaders = plugin.shaderHandler;
 
@@ -584,6 +600,8 @@ public class MainPassLegacy {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_VERTEX_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicVertexInBuffer.glBufferId); // tempvertexbuffer_in
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_TEXTURE_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicUvInBuffer.glBufferId); // temptexturebuffer_in
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_NORMAL_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicNormalInBuffer.glBufferId); // tempnormalbuffer_in
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BUFFER_IN_BINDING_ID, computeBufferContext.gl_modelPriorityDataBuffer); // priorityData
 
         final int computeShaderThreadCountX = 64;
         int numGroupsX = (totalNumVertices + computeShaderThreadCountX - 1) / computeShaderThreadCountX;

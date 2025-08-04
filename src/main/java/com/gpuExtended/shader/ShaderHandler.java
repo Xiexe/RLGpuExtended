@@ -72,8 +72,8 @@ public class ShaderHandler {
     public Shader priorityPrepassShader = new Shader()
             .add(GL_COMPUTE_SHADER, "radix/setupPriorityData.glsl");
 
-    public Shader calculatePriorityStuffShader = new Shader()
-            .add(GL_COMPUTE_SHADER, "radix/calculatePriorityStuff.glsl");
+    public Shader calculatePriorityAverages = new Shader()
+            .add(GL_COMPUTE_SHADER, "radix/calculatePriorityAverages.glsl");
     public Shader largeOrderedComputeShader = new Shader()
             .add(GL_COMPUTE_SHADER, "comp.glsl");
 
@@ -175,8 +175,8 @@ public class ShaderHandler {
 
         GpuExtendedPlugin.ComputeMode computeMode = plugin.computeMode;
         positionSceneVerticesShader.compile(createGenericComputeTemplate(64, 1, 1), compiledShaders);
-        //priorityPrepassShader.compile(createGenericComputeTemplate(1, 12, 1), compiledShaders);
-        //calculatePriorityStuff.compile(createGenericComputeTemplate(64,1,1), compiledShaders);
+        priorityPrepassShader.compile(createGenericComputeTemplate(1, 1, 1), compiledShaders);
+        calculatePriorityAverages.compile(createGenericComputeTemplate(64,1,1), compiledShaders);
         largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
         unorderedComputeShader.compile(template, compiledShaders);
         lightBinningComputeShader.compile(template, compiledShaders);

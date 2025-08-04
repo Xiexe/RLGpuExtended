@@ -57,10 +57,10 @@ layout(std430, binding = FLAGS_BUFFER_OUT_BINDING_ID) writeonly buffer flags_out
   ivec4 flagsOut[];
 };
 
-layout(std430, binding = FLAGS_BUFFER_IN_BINDING_ID) readonly buffer flagsbuffer_in {
+/*layout(std430, binding = FLAGS_BUFFER_IN_BINDING_ID) readonly buffer flagsbuffer_in {
   ivec4 staticFlagsIn[];
 };
 
 layout(std430, binding = TEMP_FLAGS_BUFFER_IN_BINDING_ID) readonly buffer tempflagsbuffer_in {
   ivec4 dynamicFlagsIn[];
-};
+};*/

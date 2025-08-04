@@ -4,12 +4,12 @@
 #include "WORK_GROUP_SIZE_Y"
 #include "WORK_GROUP_SIZE_Z"
 
+#include "shaders/glsl/constants.glsl"
 #include "shaders/glsl/comp_structs.glsl"
 
-layout(std430, binding = 0) writeonly buffer modelbuffer_in {
+layout(std430, binding = PRIORITY_DATA_BUFFER_IN_BINDING_ID) writeonly buffer prioity_buffer_out {
     PriorityData priorityData[];
 };
-
 layout(local_size_x = WORK_GROUP_SIZE_X, local_size_y = WORK_GROUP_SIZE_Y, local_size_z = WORK_GROUP_SIZE_Z) in;
 void main() {
     /*
@@ -22,16 +22,16 @@ void main() {
       }
     */
     uint modelIndex = gl_GlobalInvocationID.x; // 0 to model count
-    uint loopIndex = gl_GlobalInvocationID.y; // 0 to 18
     if (modelIndex < priorityData.length()) {
         PriorityData myPriorityData;
-
-        if (loopIndex == 0)
-            myPriorityData.min10 = 6000;
-        if (loopIndex < 12)
-            myPriorityData.totalNum[loopIndex] = 0;
-        if (loopIndex < 12)
-            myPriorityData.totalDistance[loopIndex] = 0;
+        myPriorityData.min10 = 6000;
+        for (int i = 0; i < 12; i++) {
+            myPriorityData.totalNum[i] = 0;
+            myPriorityData.totalDistance[i] = 0;
+        }
+        myPriorityData.avg1 = 0;
+        myPriorityData.avg2 = 0;
+        myPriorityData.avg3 = 0;
         priorityData[modelIndex] = myPriorityData;
     }
 }

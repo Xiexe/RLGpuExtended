@@ -29,6 +29,7 @@ vec4 rotate2(vec4 vertex, int orientation) {
 /*
  * Calculate the distance to a vertex given the camera angle
  */
+// NOTE: These are negative distances for verts in front of the camera!
 float distance(vec3 vertex, float cameraYaw, float cameraPitch) {
   float yawSin = sin(cameraYaw);
   float yawCos = cos(cameraYaw);
@@ -42,6 +43,7 @@ float distance(vec3 vertex, float cameraYaw, float cameraPitch) {
 /*
  * Calculate the distance to a face
  */
+// NOTE: These are negative distances for verts in front of the camera!
 int face_distance(vec3 vA, vec3 vB, vec3 vC, float cameraYaw, float cameraPitch) {
   float dvA = distance(vA, cameraYaw, cameraPitch);
   float dvB = distance(vB, cameraYaw, cameraPitch);

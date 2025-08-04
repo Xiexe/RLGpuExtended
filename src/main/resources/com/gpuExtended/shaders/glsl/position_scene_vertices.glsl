@@ -57,6 +57,10 @@ uint binary_search_for_model_index(uint globalThreadIndex) {
     return OUT_OF_BOUNDS;
 }
 
+layout(std430, binding = PRIORITY_DATA_BUFFER_IN_BINDING_ID) buffer prioity_buffer {
+    PriorityData priorityData[];
+};
+
 layout(local_size_x = WORK_GROUP_SIZE_X, local_size_y = WORK_GROUP_SIZE_Y, local_size_z = WORK_GROUP_SIZE_Z) in;
 void main() {
     uint modelIndex = binary_search_for_model_index(gl_GlobalInvocationID.x);
@@ -69,7 +73,6 @@ void main() {
 
         Vertex vertA, vertB, vertC;
         vec4 normA, normB, normC;
-        ivec4 flagsA, flagsB, flagsC;
         vec4 texA, texB, texC;
 
         if (isStatic) {
@@ -80,10 +83,6 @@ void main() {
             normA = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 0];
             normB = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             normC = staticNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 2];
-
-            flagsA = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 0];
-            flagsB = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 1];
-            flagsC = staticFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 2];
 
             texA = statixUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 0];
             texB = statixUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 1];
@@ -97,10 +96,6 @@ void main() {
             normB = dynamicNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 1];
             normC = dynamicNormalBufferIn[myModelInfo.offset + localFaceIndex * 3 + 2];
 
-            flagsA = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 0];
-            flagsB = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 1];
-            flagsC = dynamicFlagsIn[myModelInfo.offset + localFaceIndex * 3 + 2];
-
             texA = dynamicUvBufferIn[myModelInfo.toffset + localFaceIndex * 3];
             texB = dynamicUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 1];
             texC = dynamicUvBufferIn[myModelInfo.toffset + localFaceIndex * 3 + 2];
@@ -109,6 +104,7 @@ void main() {
         int orientation = myModelInfo.flags & 0x7ff;
         int plane = (myModelInfo.flags >> BIT_ZHEIGHT) & 3;
         int hillskew = (myModelInfo.flags >> BIT_HILLSKEW) & 1;
+        int thisPriority = (vertA.ahsl >> 16) & 0xff; // all vertices on the face have the same priority
 
         vertA.pos = rotate_vertex(vec4(vertA.pos, 0), orientation).xyz;
         vertB.pos = rotate_vertex(vec4(vertB.pos, 0), orientation).xyz;
@@ -163,6 +159,21 @@ void main() {
             uvBufferOut[outOffset + localFaceIndex * 3 + 0] = texA.wxyz;
             uvBufferOut[outOffset + localFaceIndex * 3 + 1] = texB.wxyz;
             uvBufferOut[outOffset + localFaceIndex * 3 + 2] = texC.wxyz;
+        }
+
+        flagsOut[outOffset + localFaceIndex * 3 + 0] = myModelInfo.exFlags;
+        flagsOut[outOffset + localFaceIndex * 3 + 1] = myModelInfo.exFlags;
+        flagsOut[outOffset + localFaceIndex * 3 + 2] = myModelInfo.exFlags;
+
+        int thisDistance = face_distance(vertA.pos, vertB.pos, vertC.pos, cameraYaw, cameraPitch);
+
+        bool isUnordered = bool(myModelInfo.exFlags.y & 1); // Currently this is also isTerrain
+        if (!isUnordered && face_visible(vertA.pos, vertB.pos, vertC.pos, ivec4(modelPosition, 0))) {
+            atomicAdd(priorityData[modelIndex].totalNum[thisPriority], 1);
+            atomicAdd(priorityData[modelIndex].totalDistance[thisPriority], thisDistance);
+            if (thisPriority == 10) {
+                atomicMin(priorityData[modelIndex].min10, thisDistance);
+            }
         }
     }
 }
