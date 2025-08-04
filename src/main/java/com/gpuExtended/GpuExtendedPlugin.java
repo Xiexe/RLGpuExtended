@@ -1136,9 +1136,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferCameraBlock.flip();
 
-			glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glCameraUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferCameraBlock);
+			updateBuffer(glCameraUniformBuffer, GL_UNIFORM_BUFFER, bBufferCameraBlock, GL_DYNAMIC_DRAW);
+			//glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
+			//glBufferData(GL_UNIFORM_BUFFER, glCameraUniformBuffer.size, GL_DYNAMIC_DRAW);
+			//glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferCameraBlock);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Player Buffer Block">
@@ -1152,9 +1153,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putInt(client.getScene().getBaseY());
 			bBufferPlayerBlock.flip();
 
-			glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferPlayerBlock);
+			updateBuffer(glPlayerUniformBuffer, GL_UNIFORM_BUFFER, bBufferPlayerBlock, GL_DYNAMIC_DRAW);
+			//glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
+			//glBufferData(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.size, GL_DYNAMIC_DRAW);
+			//glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferPlayerBlock);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Environment Buffer Block">
@@ -1165,18 +1167,21 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
+			// 4 floats
 
 			// Sky Color
 			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getRed() / 255f);
 			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0);
+			// 4 floats
 
 			// Fog
 			bBufferEnvironmentBlock.putInt(env.Type); // Pad
 			bBufferEnvironmentBlock.putFloat(env.FogDepth);
 			bBufferEnvironmentBlock.putInt(0);
 			bBufferEnvironmentBlock.putInt(0);
+			// 3 ints 1 float
 
 
 			// Pack Main Light
@@ -1187,28 +1192,33 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferEnvironmentBlock.putFloat(-mainLight.viewMatrix[6]);
 			bBufferEnvironmentBlock.putFloat(mainLight.viewMatrix[10]);
 			bBufferEnvironmentBlock.putFloat(client.getPlane()); // light type / directional
+		    // 4 floats
 
 			// Offset
 			bBufferEnvironmentBlock.putFloat(0);
 			bBufferEnvironmentBlock.putFloat(0);
 			bBufferEnvironmentBlock.putFloat(0);
 			bBufferEnvironmentBlock.putFloat(0); // pad
+		    // 4 floats
 
 			// Color
 			bBufferEnvironmentBlock.putFloat(mainLight.color.getRed() / 255f);
 			bBufferEnvironmentBlock.putFloat(mainLight.color.getGreen() / 255f);
 			bBufferEnvironmentBlock.putFloat(mainLight.color.getBlue() / 255f);
 			bBufferEnvironmentBlock.putFloat(0); // pad
+		    // 4 floats
 
 			bBufferEnvironmentBlock.putFloat(0); // light intensity
 			bBufferEnvironmentBlock.putFloat(0); // light radius
 			bBufferEnvironmentBlock.putInt(0); // light animation
 			bBufferEnvironmentBlock.putFloat(0); // pad
+		    // 1 int 3 floats
 
 			for(int i = 0; i < mainLight.projectionMatrix.length; i++)
 			{
 				bBufferEnvironmentBlock.putFloat(mainLight.projectionMatrix[i]);
 			}
+			// 16 floats
 
 			// Pack Lights
 			//environmentManager.DetermineRenderedLights();
@@ -1222,30 +1232,36 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					bBufferEnvironmentBlock.putFloat(light.position.y);
 					bBufferEnvironmentBlock.putFloat(light.position.z);
 					bBufferEnvironmentBlock.putFloat(light.plane);
+					// 4 floats
 
 					bBufferEnvironmentBlock.putFloat(light.offset.x);
 					bBufferEnvironmentBlock.putFloat(light.offset.y);
 					bBufferEnvironmentBlock.putFloat(light.offset.z);
 					bBufferEnvironmentBlock.putFloat(light.hash);
+					// 4 floats
 
 					bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
 					bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
 					bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
 					bBufferEnvironmentBlock.putFloat(0);
+					// 4 floats
 
 					bBufferEnvironmentBlock.putFloat(light.intensity);
 					bBufferEnvironmentBlock.putFloat(light.radius);
 					bBufferEnvironmentBlock.putInt(light.animation.ordinal());
 					bBufferEnvironmentBlock.putInt(light.type.ordinal());
+					// 2 floats 2 ints
 				}
 			}
 
 			bBufferEnvironmentBlock.flip();
 
 			glBindBuffer(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.glBufferId);
-			glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
-			glBufferData(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
+			glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0}); // TODO: this clear can go away if you pass the number of lights to the shader
+
+			updateBuffer(glEnvironmentUniformBuffer, GL_UNIFORM_BUFFER, bBufferEnvironmentBlock, GL_DYNAMIC_DRAW);
+			//glBufferData(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.size, GL_DYNAMIC_DRAW);
+			//glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Tile Marker Buffer Block">
@@ -1350,9 +1366,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferTileMarkerBlock.flip();
 
-			glBindBuffer(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferTileMarkerBlock);
+			updateBuffer(glTileMarkerUniformBuffer, GL_UNIFORM_BUFFER, bBufferTileMarkerBlock, GL_DYNAMIC_DRAW);
+			//glBindBuffer(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.glBufferId);
+			//glBufferData(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.size, GL_DYNAMIC_DRAW);
+			//glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferTileMarkerBlock);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate System Info Block">
@@ -1366,9 +1383,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferSystemInfoBlock.flip();
 
-			glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
+			updateBuffer(glSystemInfoUniformBuffer, GL_UNIFORM_BUFFER, bBufferSystemInfoBlock, GL_DYNAMIC_DRAW);
+			//glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
+			//glBufferData(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.size, GL_DYNAMIC_DRAW);
+			//glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
 		// </editor-fold>
 
 		// <editor-fold defaultstate="collapsed" desc="Populate Config Block">
@@ -1384,9 +1402,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			bBufferConfigBlock.flip();
 
-			glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glConfigUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
+			updateBuffer(glConfigUniformBuffer, GL_UNIFORM_BUFFER, bBufferConfigBlock, GL_DYNAMIC_DRAW);
+			//glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
+			//glBufferData(GL_UNIFORM_BUFFER, glConfigUniformBuffer.size, GL_DYNAMIC_DRAW);
+			//glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
 		// </editor-fold>
 
 		int[] lightClearValue = new int[]{-1};
@@ -1800,24 +1819,28 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		return Ints.constrainToRange(config.drawDistance(), 0, limit);
 	}
 
+	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull ByteBuffer data, int usage)
+	{
+		updateBuffer(glBuffer, target, data.remaining() * Byte.BYTES, usage);
+		glBufferSubData(target, 0, data);
+	}
+
 	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull IntBuffer data, int usage)
 	{
-		int size = data.remaining() << 2;
-		updateBuffer(glBuffer, target, size, usage);
+		updateBuffer(glBuffer, target, data.remaining() * Integer.BYTES, usage);
 		glBufferSubData(target, 0, data);
 	}
 
 	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, @Nonnull FloatBuffer data, int usage)
 	{
-		int size = data.remaining() << 2;
-		updateBuffer(glBuffer, target, size, usage);
+		updateBuffer(glBuffer, target, data.remaining() * Float.BYTES, usage);
 		glBufferSubData(target, 0, data);
 	}
 
 	public void updateBuffer(@Nonnull GLBuffer glBuffer, int target, int size, int usage)
 	{
 		glBindBuffer(target, glBuffer.glBufferId);
-		if (glCapabilities.glInvalidateBufferData != 0L)
+		/*if (glCapabilities.glInvalidateBufferData != 0L)
 		{
 			// https://www.khronos.org/opengl/wiki/Buffer_Object_Streaming suggests buffer re-specification is useful
 			// to avoid implicit synching. We always need to trash the whole buffer anyway so this can't hurt.
@@ -1830,7 +1853,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			glBuffer.size = newSize;
 			glBufferData(target, newSize, usage);
-		}
+		}*/
+		glBufferData(target, size, usage);
 	}
 
 	public static int nextPowerOfTwo(int v)
@@ -1847,6 +1871,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	public void checkGLErrors()
 	{
+		if (true) return; // TODO: Why do we do this with a callback?
+
 		if (!log.isDebugEnabled())
 		{
 			return;
@@ -1897,6 +1923,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					getSeverity(severity),
 					msg
 			);
+			if (type == GL_DEBUG_TYPE_ERROR) {
+				System.err.println("Stack trace:");
+				for (StackTraceElement element : new Throwable().getStackTrace()) {
+					System.err.println("\t" + element.toString());
+				}
+			}
 		});
 
 		//	GLDebugMessageHandler: GLDebugEvent[ id 0x20052

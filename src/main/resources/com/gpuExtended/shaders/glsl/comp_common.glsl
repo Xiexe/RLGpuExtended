@@ -62,5 +62,5 @@ layout(std430, binding = FLAGS_BUFFER_IN_BINDING_ID) readonly buffer flagsbuffer
 };
 
 layout(std430, binding = TEMP_FLAGS_BUFFER_IN_BINDING_ID) readonly buffer tempflagsbuffer_in {
-  ivec4 tempFlagsIn[];
+  ivec4 dynamicFlagsIn[];
 };

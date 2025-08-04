@@ -271,7 +271,6 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     vec4 vertB = vec4(thisrvB.pos, 0) + pos;
     vec4 vertC = vec4(thisrvC.pos, 0) + pos;
     vec4 normA, normB, normC;
-    ivec4 flagsA, flagsB, flagsC;
 
     bool isStatic = flags < 0;
     if (isStatic)
@@ -279,20 +278,12 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
         normA = staticNormalBufferIn[offset + localId * 3    ];
         normB = staticNormalBufferIn[offset + localId * 3 + 1];
         normC = staticNormalBufferIn[offset + localId * 3 + 2];
-
-        flagsA = staticFlagsIn[offset + localId * 3    ];
-        flagsB = staticFlagsIn[offset + localId * 3 + 1];
-        flagsC = staticFlagsIn[offset + localId * 3 + 2];
     }
     else
     {
         normA = dynamicNormalBufferIn[offset + localId * 3    ];
         normB = dynamicNormalBufferIn[offset + localId * 3 + 1];
         normC = dynamicNormalBufferIn[offset + localId * 3 + 2];
-
-        flagsA = tempFlagsIn[offset + localId * 3    ];
-        flagsB = tempFlagsIn[offset + localId * 3 + 1];
-        flagsC = tempFlagsIn[offset + localId * 3 + 2];
     }
 
     normA = rotate_vertex(normA, orientation);

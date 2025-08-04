@@ -45,10 +45,6 @@ void main() {
     texA = texPos + statixUvBufferIn[toffset + localId * 3];
     texB = texPos + statixUvBufferIn[toffset + localId * 3 + 1];
     texC = texPos + statixUvBufferIn[toffset + localId * 3 + 2];
-
-    flagsA = staticFlagsIn[toffset + localId * 3];
-    flagsB = staticFlagsIn[toffset + localId * 3 + 1];
-    flagsC = staticFlagsIn[toffset + localId * 3 + 2];
   } else {
     thisA = dynamicVertexBufferIn[offset + ssboOffset * 3];
     thisB = dynamicVertexBufferIn[offset + ssboOffset * 3 + 1];
@@ -61,10 +57,6 @@ void main() {
     texA = texPos + dynamicUvBufferIn[toffset + localId * 3];
     texB = texPos + dynamicUvBufferIn[toffset + localId * 3 + 1];
     texC = texPos + dynamicUvBufferIn[toffset + localId * 3 + 2];
-
-    flagsA = tempFlagsIn[toffset + localId * 3];
-    flagsB = tempFlagsIn[toffset + localId * 3 + 1];
-    flagsC = tempFlagsIn[toffset + localId * 3 + 2];
   }
 
   vec3 vertA = thisA.pos + pos;
@@ -80,9 +72,9 @@ void main() {
   normalBufferOut[outOffset + myOffset * 3 + 1] = normB;
   normalBufferOut[outOffset + myOffset * 3 + 2] = normC;
 
-  flagsOut[outOffset + myOffset * 3]     = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsA.w);
-  flagsOut[outOffset + myOffset * 3 + 1] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsB.w);
-  flagsOut[outOffset + myOffset * 3 + 2] = ivec4(minfo.exFlags.x, minfo.exFlags.y, minfo.exFlags.z, flagsC.w);
+  flagsOut[outOffset + myOffset * 3]     = minfo.exFlags;
+  flagsOut[outOffset + myOffset * 3 + 1] = minfo.exFlags;
+  flagsOut[outOffset + myOffset * 3 + 2] = minfo.exFlags;
 
   if(toffset < 0)
   {

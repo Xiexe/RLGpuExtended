@@ -8,16 +8,15 @@
     int y;        // scene position y
     int z;        // scene position z
     ivec4 exFlags; //
-
-    // Info required for mapping priority [0..11] to [0..17]
-    // NOTE: This is set to 0 by CPU and filled out later in a compute pass
-    int min10;
-    int avg1;
-    int avg2;
-    int avg3;
 };
 
 struct Vertex {
     vec3 pos;
     int ahsl;
+};
+
+struct PriorityData {
+    int totalNum[12];        // number of faces with a given priority
+    int totalDistance[12];   // sum of distances to faces of a given priority
+    int min10;               // minimum distance to a face of priority 10
 };

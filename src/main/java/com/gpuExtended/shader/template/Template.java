@@ -130,6 +130,7 @@ public class Template
 				sb.append(line).append('\n');
 			}
 		}
+
 		return sb.toString();
 	}
 

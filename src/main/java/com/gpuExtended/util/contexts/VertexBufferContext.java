@@ -13,7 +13,6 @@ public class VertexBufferContext {
     public GpuIntBuffer vertexBuffer;
     public GpuFloatBuffer uvBuffer;
     public GpuFloatBuffer normalBuffer;
-    public GpuIntBuffer flagsBuffer;
 
     public VertexBufferContext() {
         this.vertexArrayObjectId = -1; // Default to -1 to indicate uninitialized
@@ -21,7 +20,6 @@ public class VertexBufferContext {
         this.vertexBuffer = new GpuIntBuffer();
         this.uvBuffer = new GpuFloatBuffer();
         this.normalBuffer = new GpuFloatBuffer();
-        this.flagsBuffer = new GpuIntBuffer();
     }
 
     public void PrepareBufferArray() {
@@ -33,7 +31,6 @@ public class VertexBufferContext {
         this.vertexBuffer.flip();
         this.uvBuffer.flip();
         this.normalBuffer.flip();
-        this.flagsBuffer.flip();
     }
 
     public void Dispose() {
@@ -45,6 +42,5 @@ public class VertexBufferContext {
         this.vertexBuffer = null;
         this.uvBuffer = null;
         this.normalBuffer = null;
-        this.flagsBuffer = null;
     }
 }

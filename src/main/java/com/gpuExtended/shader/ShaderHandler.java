@@ -66,10 +66,15 @@ public class ShaderHandler {
             .add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
             .add(GL_FRAGMENT_SHADER, "bloom_prefilter.glsl");
 
-    public Shader largeOrderedComputeShader = new Shader()
-            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader positionSceneVerticesShader = new Shader()
+            .add(GL_COMPUTE_SHADER, "position_scene_vertices.glsl");
 
-    public Shader smallOrderedComputeShader = new Shader()
+    public Shader priorityPrepassShader = new Shader()
+            .add(GL_COMPUTE_SHADER, "radix/setupPriorityData.glsl");
+
+    public Shader calculatePriorityStuffShader = new Shader()
+            .add(GL_COMPUTE_SHADER, "radix/calculatePriorityStuff.glsl");
+    public Shader largeOrderedComputeShader = new Shader()
             .add(GL_COMPUTE_SHADER, "comp.glsl");
 
     public Shader unorderedComputeShader = new Shader()
@@ -145,6 +150,17 @@ public class ShaderHandler {
         return template;
     }
 
+    private Template createGenericComputeTemplate(int workGroupSizeX, int workGroupSizeY, int workGroupSizeZ) {
+        String versionHeader = OSType.getOSType() == OSType.Linux ? LINUX_VERSION_HEADER : WINDOWS_VERSION_HEADER;
+        Template template = new Template()
+                .addInclude("VERSION_HEADER", versionHeader)
+                .define("WORK_GROUP_SIZE_X", workGroupSizeX)
+                .define("WORK_GROUP_SIZE_Y", workGroupSizeY)
+                .define("WORK_GROUP_SIZE_Z", workGroupSizeZ)
+                .addIncludePath(SHADER_PATH);
+        return template;
+    }
+
     private void compileShaders() throws ShaderException
     {
         Template template = createTemplate(-1, -1);
@@ -158,8 +174,10 @@ public class ShaderHandler {
         bloomPrefilterShader.compile(template, compiledShaders);
 
         GpuExtendedPlugin.ComputeMode computeMode = plugin.computeMode;
+        //positionSceneVerticesShader.compile(createGenericComputeTemplate(64, 1, 1), compiledShaders);
+        priorityPrepassShader.compile(createGenericComputeTemplate(1, 12, 1), compiledShaders);
+        //calculatePriorityStuff.compile(createGenericComputeTemplate(64,1,1), compiledShaders);
         largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
-        smallOrderedComputeShader.compile(createTemplate(512, 1), compiledShaders);
         unorderedComputeShader.compile(template, compiledShaders);
         lightBinningComputeShader.compile(template, compiledShaders);
 

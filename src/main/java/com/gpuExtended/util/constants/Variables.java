@@ -51,12 +51,12 @@ public class Variables {
     public static final int VERTEX_BUFFER_IN_BINDING_ID = 2;
     public static final int TEXTURE_BUFFER_IN_BINDING_ID = 3;
     public static final int NORMAL_BUFFER_IN_BINDING_ID = 4;
-    public static final int FLAGS_BUFFER_IN_BINDING_ID = 5;
+    //public static final int FLAGS_BUFFER_IN_BINDING_ID = 5;
 
     public static final int TEMP_VERTEX_BUFFER_IN_BINDING_ID = 6;
     public static final int TEMP_TEXTURE_BUFFER_IN_BINDING_ID = 7;
     public static final int TEMP_NORMAL_BUFFER_IN_BINDING_ID = 8;
-    public static final int TEMP_FLAGS_BUFFER_IN_BINDING_ID = 9;
+    //public static final int TEMP_FLAGS_BUFFER_IN_BINDING_ID = 9;
 
     public static final int VERTEX_BUFFER_OUT_BINDING_ID = 10;
     public static final int TEXTURE_BUFFER_OUT_BINDING_ID = 11;

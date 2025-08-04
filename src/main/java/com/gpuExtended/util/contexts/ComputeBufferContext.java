@@ -5,6 +5,7 @@ import com.gpuExtended.util.GpuIntBuffer;
 import lombok.extern.slf4j.Slf4j;
 import org.lwjgl.opengl.GL;
 
+import static org.lwjgl.opengl.GL15C.glDeleteBuffers;
 import static org.lwjgl.opengl.GL15C.glGenBuffers;
 import static org.lwjgl.opengl.GL43C.GL_BUFFER;
 import static org.lwjgl.opengl.GL43C.glObjectLabel;
@@ -21,25 +22,21 @@ public class ComputeBufferContext {
     public GLBuffer staticVertexInBuffer;
     public GLBuffer staticUvInBuffer;
     public GLBuffer staticNormalInBuffer;
-    public GLBuffer staticFlagsInBuffer;
 
     // Buffers used for dynamic models
     public GLBuffer dynamicVertexInBuffer = new GLBuffer("dynamic model vertex buffer");
     public GLBuffer dynamicUvInBuffer = new GLBuffer("dynamic model uv buffer");
     public GLBuffer dynamicNormalInBuffer = new GLBuffer("dynamic model normal buffer");
-    public GLBuffer dynamicFlagsBuffer = new GLBuffer("dynamic model flags buffer");
 
     // Buffers used for model sorting
     public GLBuffer tmpUnsortedModelBuffer;
-    public GLBuffer tmpSmallModelBuffer;
     public GLBuffer tmpLargeModelBuffer;
 
     public GpuIntBuffer unsortedModelBuffer;
-    public GpuIntBuffer smallModelBuffer;
     public GpuIntBuffer largeModelBuffer;
+    public int gl_modelPriorityDataBuffer;
 
     public int numUnsortedModels;
-    public int numSmallModels;
     public int numLargeModels;
 
     public int totalVertices;
@@ -49,7 +46,6 @@ public class ComputeBufferContext {
     public ComputeBufferContext() {
 
         this.unsortedModelBuffer = new GpuIntBuffer();
-        this.smallModelBuffer = new GpuIntBuffer();
         this.largeModelBuffer = new GpuIntBuffer();
 
         // Output
@@ -62,17 +58,15 @@ public class ComputeBufferContext {
         this.staticVertexInBuffer = new GLBuffer("static model vertex in buffer");
         this.staticUvInBuffer = new GLBuffer("static model uv in buffer");
         this.staticNormalInBuffer = new GLBuffer("static model normal in buffer");
-        this.staticFlagsInBuffer = new GLBuffer("static model flags in buffer");
 
         // Dynamic input
         this.dynamicVertexInBuffer = new GLBuffer("dynamic model vertex buffer");
         this.dynamicUvInBuffer = new GLBuffer("dynamic model uv buffer");
         this.dynamicNormalInBuffer = new GLBuffer("dynamic model normal buffer");
-        this.dynamicFlagsBuffer = new GLBuffer("dynamic model flags buffer");
+        this.gl_modelPriorityDataBuffer = glGenBuffers();
 
         // Model Sorting buffers
         this.tmpUnsortedModelBuffer = new GLBuffer("unsorted model buffer");
-        this.tmpSmallModelBuffer = new GLBuffer("small model buffer");
         this.tmpLargeModelBuffer = new GLBuffer("large model buffer");
 
         InitGLBuffer(this.vertexOutBuffer);
@@ -83,15 +77,12 @@ public class ComputeBufferContext {
         InitGLBuffer(this.staticVertexInBuffer);
         InitGLBuffer(this.staticUvInBuffer);
         InitGLBuffer(this.staticNormalInBuffer);
-        InitGLBuffer(this.staticFlagsInBuffer);
 
         InitGLBuffer(this.dynamicVertexInBuffer);
         InitGLBuffer(this.dynamicUvInBuffer);
         InitGLBuffer(this.dynamicNormalInBuffer);
-        InitGLBuffer(this.dynamicFlagsBuffer);
 
         InitGLBuffer(this.tmpUnsortedModelBuffer);
-        InitGLBuffer(this.tmpSmallModelBuffer);
         InitGLBuffer(this.tmpLargeModelBuffer);
     }
 
@@ -102,7 +93,6 @@ public class ComputeBufferContext {
 
     public void Clear() {
         this.numUnsortedModels = 0;
-        this.numSmallModels = 0;
         this.numLargeModels = 0;
 
         this.totalVertices = 0;
@@ -117,23 +107,21 @@ public class ComputeBufferContext {
         this.staticVertexInBuffer = null;
         this.staticUvInBuffer = null;
         this.staticNormalInBuffer = null;
-        this.staticFlagsInBuffer = null;
 
         this.dynamicVertexInBuffer = null;
         this.dynamicUvInBuffer = null;
         this.dynamicNormalInBuffer = null;
-        this.dynamicFlagsBuffer = null;
 
         this.tmpUnsortedModelBuffer = null;
-        this.tmpSmallModelBuffer = null;
         this.tmpLargeModelBuffer = null;
 
+        // TODO: shouldn't we delete all of these?
+        glDeleteBuffers(this.gl_modelPriorityDataBuffer);
+
         this.unsortedModelBuffer = null;
-        this.smallModelBuffer = null;
         this.largeModelBuffer = null;
 
         this.numUnsortedModels = 0;
-        this.numSmallModels = 0;
         this.numLargeModels = 0;
 
         this.totalVertices = 0;
