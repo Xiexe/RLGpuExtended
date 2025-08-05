@@ -32,6 +32,7 @@
       3474,
       4500,
       4501,
+      4691,
       4694,
       5208,
       7432,
@@ -249,7 +250,46 @@
     "radius": 8,
     "animation": "flicker",
     "gameObjects": [
+      6202,
       11468
+    ]
+  },
+  {
+    "name": "FIRE_WHITE",
+    "type": "point",
+    "color": [1.00, 1.0, 1.0],
+    "offset": [0, 0, 1],
+    "intensity": 4,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      10433
+    ]
+  },
+  {
+    "name": "SWAMPY_LAMP",
+    "type": "point",
+    "color": [1.00, 1.0, 1.0],
+    "offset": [0, 0, 1],
+    "intensity": 3,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      29991
+    ]
+  },
+  {
+    "name": "ROPE_TO_SURFACE_LIGHT",
+    "type": "point",
+    "color": [1.00, 0.52, 0.2],
+    "offset": [0, 0, 1],
+    "intensity": 3,
+    "radius": 5,
+    "gameObjects": [
+      46327,
+      46330,
+      46333,
+      46336
     ]
   },
   {
@@ -1098,6 +1138,17 @@
     ]
   },
   {
+    "name": "LAVA_BUBBLE",
+    "type": "point",
+    "color": [1.00, 1.00, 0.00],
+    "offset": [0, 0, 3],
+    "intensity": 3,
+    "radius": 4,
+    "gameObjects" : [
+      731
+    ]
+  },
+  {
     "name": "TZHAAR_WALL_FAKE_LIGHTS",
     "type": "point",
     "color": [1.00, 0.00, 0.00],
@@ -1142,6 +1193,7 @@
     "animation": "flicker",
     "gameObjects" : [
       25155,
+      29920,
       51906
     ]
   },
@@ -1218,6 +1270,18 @@
       [3184, 3443, 1],
       [3184, 3438, 0],
       [3184, 3438, 1]
+    ]
+  },
+  {
+    "name": "VARROCK_GYPSY_LIGHT",
+    "type": "point",
+    "color": [1, 1, 0.0],
+    "offset": [0, 0, 2],
+    "intensity": 4,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects": [
+      2492
     ]
   },
   {

@@ -3,7 +3,6 @@ package com.gpuExtended.overlays;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.ShaderException;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -25,7 +24,7 @@ import static org.lwjgl.opengl.GL20C.glUniform4i;
 
 @Slf4j
 @Singleton
-public class ShadowMapOverlay extends Overlay {
+public class RenderTargetsOverlay extends Overlay {
     @Inject
     private Client client;
 
@@ -43,7 +42,7 @@ public class ShadowMapOverlay extends Overlay {
 
     private boolean isActive;
 
-    public ShadowMapOverlay() {
+    public RenderTargetsOverlay() {
         setLayer(OverlayLayer.ABOVE_WIDGETS);
         setPosition(OverlayPosition.DYNAMIC);
         setResizable(true);

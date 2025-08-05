@@ -3,6 +3,7 @@ package com.gpuExtended.rendering.passes;
 import com.google.common.base.Stopwatch;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.overlays.PerformanceOverlay;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.FrameBuffer;
@@ -14,7 +15,7 @@ import com.gpuExtended.util.contexts.TileContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.rlawt.AWTContext;
+import net.runelite.api.events.GameStateChanged;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -38,7 +39,7 @@ import static org.lwjgl.opengl.GL41C.glClearDepthf;
 
 @Slf4j
 @Singleton
-public class ShadowPass {
+public class ShadowPass implements IPassBase {
     @Inject
     public GpuExtendedPlugin plugin;
 
@@ -61,13 +62,14 @@ public class ShadowPass {
 
     private boolean loadingScene = false;
 
-    public void Init(int resolution, AWTContext awtContext) {
+    @Override
+    public void Init() {
         FrameBuffer.FrameBufferSettings fboSettings = new FrameBuffer.FrameBufferSettings();
         fboSettings.name = "shadow_pass";
-        fboSettings.width = resolution;//config.shadowResolution().getValue();
-        fboSettings.height = resolution;//config.shadowResolution().getValue();
+        fboSettings.width = plugin.config.shadowResolution().getValue();
+        fboSettings.height = plugin.config.shadowResolution().getValue();
         fboSettings.glAttachment = GL_DEPTH_ATTACHMENT;
-        fboSettings.awtContext = awtContext;
+        fboSettings.awtContext = plugin.awtContext;
 
         Texture2D.TextureSettings textureSettings = new Texture2D.TextureSettings();
         textureSettings.internalFormat = GL_DEPTH_COMPONENT24;
@@ -101,27 +103,6 @@ public class ShadowPass {
         GL30.glBindVertexArray(0);
         glEnableVertexAttribArray(0);
         log.info("[Shadow Pass] Initialized Shadow Render Pass");
-    }
-
-    /** Called from {@link com.gpuExtended.GpuExtendedPlugin#loadScene(Scene)}, since that happens on another thread. */
-    public void OnSceneLoad(Scene scene, int sceneId) {
-        Stopwatch sw = Stopwatch.createStarted();
-
-        workingShadowVertexBuffer = new GpuFloatBuffer(); // Reset the buffer for the new scene.
-        workingShadowUvBuffer = new GpuFloatBuffer();
-        numStaticModels = 0;
-
-        GatherSceneGeometry(scene, sceneId); // Populate the scene buffer
-
-        workingShadowVertexBuffer.flip(); // get the buffer ready for reading.
-        workingShadowUvBuffer.flip(); // get the uv buffer ready for reading.
-
-        sw.stop();
-        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} time={}ms", sceneId, numStaticModels, sw.elapsed(TimeUnit.MILLISECONDS));
-    }
-
-    public void OnSceneLoadAsync(Scene scene, int sceneId) {
-        // not used for now. causes issues with flashing the shadowmap.
     }
 
     private void GatherSceneGeometry(Scene scene, int sceneId) {
@@ -266,8 +247,29 @@ public class ShadowPass {
         newNumStaticSceneVertices = vertexCount;
     }
 
+    @Override
+    public void OnPreLoadScene(Scene scene) {}
+
+    @Override
+    public void OnSceneLoadStart(Scene scene) {
+        Stopwatch sw = Stopwatch.createStarted();
+
+        workingShadowVertexBuffer = new GpuFloatBuffer(); // Reset the buffer for the new scene.
+        workingShadowUvBuffer = new GpuFloatBuffer();
+        numStaticModels = 0;
+
+        GatherSceneGeometry(scene, plugin.sceneUploader.sceneId); // Populate the scene buffer
+
+        workingShadowVertexBuffer.flip(); // get the buffer ready for reading.
+        workingShadowUvBuffer.flip(); // get the uv buffer ready for reading.
+
+        sw.stop();
+        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} time={}ms", plugin.sceneUploader.sceneId, numStaticModels, sw.elapsed(TimeUnit.MILLISECONDS));
+    }
+
     /** Called from {@link com.gpuExtended.GpuExtendedPlugin#swapScene(Scene)}*/
-    public void OnSceneUpdated() {
+    @Override
+    public void OnSceneLoadFinished(Scene scene) {
         numStaticVertices = newNumStaticSceneVertices;
         currentShadowVertexBuffer = workingShadowVertexBuffer; // Copy the working buffer, so we can use it to render. Cannot use the working buffer directly, as it's populated on another thread.
         currentShadowUvBuffer = workingShadowUvBuffer;
@@ -281,6 +283,37 @@ public class ShadowPass {
         currentShadowUvBuffer = null;
         workingShadowUvBuffer = null;
     }
+
+    @Override
+    public void OnPreRenderFrame() {
+        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
+    }
+
+    @Override
+    public void OnRenderFrame() {
+        OnRenderStaticShadowMap();
+        OnRenderDynamicShadowMap();
+    }
+
+    @Override
+    public void OnPostRenderFrame() {
+        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
+    }
+
+    @Override
+    public void OnPreDrawScene() {}
+    @Override
+    public void OnDrawScene() {}
+    @Override
+    public void OnPostDrawScene() {}
+    @Override
+    public void OnDrawSceneTile(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY) {}
+    @Override
+    public void OnDrawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY) {}
+    @Override
+    public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {}
+    @Override
+    public void OnGameStateChanged(GameStateChanged gameStateChanged) {}
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
     public void OnRenderStaticShadowMap() {
@@ -361,9 +394,9 @@ public class ShadowPass {
         glEnable(GL_DEPTH_TEST);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        GL30.glBindVertexArray(plugin.mainPassHandlerLegacy.vertexBufferContext.vertexArrayObjectId);
+        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
 
-        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassHandlerLegacy.computeBufferContext.totalVertices);
+        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
         glDisable(GL_CULL_FACE);

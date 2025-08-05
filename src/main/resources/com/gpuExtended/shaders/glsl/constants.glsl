@@ -45,12 +45,14 @@
 
 #define FIRE_CAPE 41
 #define INFERNAL_CAPE 60
+#define CONCRETE 12
 #define WATER 2
 #define WATER_SWAMP 26
 #define LAVA 32
 #define TREE_WILLOW 31
 #define TREE_BOTTOM 9
 #define TREE_TOP 61
+#define TREE_MAPLE 34
 
 #define MAX_Z_HEIGHT 4 // 4 tiles high
 #define BIT_ZHEIGHT 24

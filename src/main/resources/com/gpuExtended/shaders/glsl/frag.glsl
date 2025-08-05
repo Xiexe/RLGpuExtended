@@ -26,9 +26,8 @@ out vec4 FragColor;
 
 void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
 {
-    float fogHeight = 3;
+    float fogHeight = 4;
     float distanceFogHeightFalloff = smoothstep(10.0, 0.0, (1-fragPos.y) / (TILE_SIZE * fogHeight));
-//    float heightFogFalloff = smoothstep(30.0, 0.0, ((1-(fragPos.y - (2.5 * TILE_SIZE))) / (TILE_SIZE * fogHeight * 0.05)));
 
     float normalizedFogDistance = (fogDepth / drawDistance);
     float maxDistance = drawDistance * TILE_SIZE;
@@ -39,7 +38,7 @@ void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
 
     float fog = mix(0, max(distanceFog, fFogAmount), distanceFogHeightFalloff);
 
-    float fogSpeed = time * 0.0005;
+    float fogSpeed = time / 1000;
     float noise0 = 0.5 * snoise(vec4(fragPos / (TILE_SIZE), fogSpeed), 1 * 0.25);
     float noise1 = 0.25 * snoise(vec4(fragPos / (TILE_SIZE), -fogSpeed), 2 * 0.25);
     float noise2 = 0.125 * snoise(vec4(fragPos / (TILE_SIZE), fogSpeed), 4 * 0.25);
@@ -50,9 +49,7 @@ void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
         noise = round(noise * 15) / 15;
     }
 
-    float dyanmicInterpolator = clamp((1 - pow(fog, 2)), 0, 1);
-//
-//    image = mix(image, vec3(0.1), heightFogFalloff * noise);
+    float dyanmicInterpolator = clamp(1 - fog, 0, 1);
     image = mix(image, skyColor.rgb, fog * mix(1, noise, dyanmicInterpolator));
 }
 
@@ -94,4 +91,6 @@ void main() {
 
     FragColor = vec4(finalColor.rgb, s.albedo.a);
 //    FragColor = vec4(vec3(shadowMap * ndl), s.albedo.a);
+//    FragColor = vec4(vec3(flags.isTerrain), s.albedo.a);
+//    FragColor = vec4(vec3(fTextureId == TREE_MAPLE), 1);
 }

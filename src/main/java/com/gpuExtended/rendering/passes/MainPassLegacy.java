@@ -35,7 +35,7 @@ import static org.lwjgl.opengl.GL43C.*;
 // Main pass, where sorting is done with compute shaders / priority renderer.
 @Slf4j
 @Singleton
-public class MainPassLegacy {
+public class MainPassLegacy implements IPassBase {
     @Inject
     public GpuExtendedPlugin plugin;
 
@@ -44,6 +44,7 @@ public class MainPassLegacy {
     VertexBufferContext nextSceneVertexBufferContext;
     ComputeBufferContext computeBufferContext;
 
+    @Override
     public void Init() {
         InitFramebuffer();
         InitBuffers();
@@ -105,17 +106,21 @@ public class MainPassLegacy {
         glBindVertexArray(0);
     }
 
+    @Override
     public void Dispose() {
         vertexBufferContext.Dispose();
         computeBufferContext.Dispose();
         frameBuffer.dispose();
     }
 
-    public void OnPreRender() {
+    @Override
+    public void OnPreRenderFrame() {
+        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
         frameBuffer.clearFramebuffer();
     }
 
-    public void OnRender() {
+    @Override
+    public void OnRenderFrame() {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
@@ -132,11 +137,11 @@ public class MainPassLegacy {
         Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(plugin.shaderHandler.mainPassShader.id());
 
         glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPassHandler.GetFramebuffer().getTexture().getId());
+        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
         glUniform1i(uni.ShadowMap, 2);
 
         glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPassHandler.GetDynamicFramebuffer().getTexture().getId());
+        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetDynamicFramebuffer().getTexture().getId());
         glUniform1i(uni.DynamicShadowMap, 3);
 
         glActiveTexture(GL_TEXTURE4);
@@ -195,7 +200,8 @@ public class MainPassLegacy {
         glUseProgram(0);
     }
 
-    public void OnPostRender() {
+    @Override
+    public void OnPostRenderFrame() {
         vertexBufferContext.vertexBuffer.clear();
         vertexBufferContext.uvBuffer.clear();
         vertexBufferContext.normalBuffer.clear();
@@ -207,9 +213,17 @@ public class MainPassLegacy {
 
         computeBufferContext.totalDynamicVertices = 0;
         computeBufferContext.totalDynamicUvs = 0;
+
+        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
 
-    public void OnLoadScene(Scene scene) {
+    @Override
+    public void OnPreLoadScene(Scene scene) {
+        // Nothing needed here for now.
+    }
+
+    @Override
+    public void OnSceneLoadStart(Scene scene) {
         GpuIntBuffer newVertexBuffer = new GpuIntBuffer();
         GpuFloatBuffer newUvBuffer = new GpuFloatBuffer();
         GpuFloatBuffer newNormalBuffer = new GpuFloatBuffer();
@@ -225,8 +239,8 @@ public class MainPassLegacy {
         nextSceneVertexBufferContext.normalBuffer = newNormalBuffer;
     }
 
-    public void OnSceneLoaded() {
-        computeBufferContext.totalStaticVertices = 0;
+    @Override
+    public void OnSceneLoadFinished(Scene scene) {
         plugin.updateBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
         plugin.updateBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
         plugin.updateBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
@@ -234,10 +248,13 @@ public class MainPassLegacy {
         nextSceneVertexBufferContext.vertexBuffer = null;
         nextSceneVertexBufferContext.uvBuffer = null;
         nextSceneVertexBufferContext.normalBuffer = null;
+        computeBufferContext.totalStaticVertices = 0;
     }
 
+    @Override
     public void OnPreDrawScene() {}
 
+    @Override
     public void OnDrawScene() {
         // Only reset the target buffer offset right before drawing the scene. That way if there are frames
         // after this that don't involve a scene draw, like during LOADING/HOPPING/CONNECTION_LOST, we can
@@ -246,6 +263,7 @@ public class MainPassLegacy {
         computeBufferContext.totalVertices = 0;
     }
 
+    @Override
     public void OnPostDrawScene() {
         VertexBufferContext vCtx = vertexBufferContext;
         ComputeBufferContext cCtx = computeBufferContext;
@@ -307,6 +325,7 @@ public class MainPassLegacy {
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     }
 
+    @Override
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
         {
@@ -315,6 +334,7 @@ public class MainPassLegacy {
         }
     }
 
+    @Override
     // Draw call for simple tiles. 6 vertices, 2 triangles.
     public void OnDrawSceneTile(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY) {
         if (paint.getBufferLen() > 0)
@@ -356,6 +376,7 @@ public class MainPassLegacy {
         }
     }
 
+    @Override
     // Draw call for complex tiles, could have many vertices and triangles. (like those with paths on them)
     public void OnDrawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY) {
         if (model.getBufferLen() > 0)
@@ -399,6 +420,7 @@ public class MainPassLegacy {
         }
     }
 
+    @Override
     public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {
         Model model, offsetModel;
         if (renderable instanceof Model)
@@ -639,14 +661,8 @@ public class MainPassLegacy {
     private boolean CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash) {
         if (projection == null) return false;
 
-        if (projection instanceof IntProjection)
-        {
-            IntProjection p = (IntProjection) projection;
-            if (!isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ()))
-            {
-                return false;
-            }
-        }
+        if (!CheckModelIsVisible(model, projection, x, y, z))
+            return false;
 
         plugin.client.checkClickbox(projection, model, orientation, x, y, z, hash);
         return true;
@@ -655,18 +671,25 @@ public class MainPassLegacy {
     private boolean CheckModelIsVisible(Model model, Projection projection, int x, int y, int z) {
         if (projection instanceof IntProjection) {
             IntProjection p = (IntProjection) projection;
-            return isVisible(model, p.getPitchSin(), p.getPitchCos(), p.getYawSin(), p.getYawCos(), x - p.getCameraX(), y - p.getCameraY(), z - p.getCameraZ());
+
+            return isVisible(model,
+                    p.getPitchSin(),
+                    p.getPitchCos(),
+                    p.getYawSin(),
+                    p.getYawCos(),
+                    x - p.getCameraX(),
+                    y - p.getCameraY(),
+                    z - p.getCameraZ()
+            ); // For some reason java is getting mad now that these weren't casted to int manually? Wasn't an issue before...
         }
         return true;
     }
 
-    private boolean isVisible(Model model, int pitchSin, int pitchCos, int yawSin, int yawCos, int x, int y, int z)
+    private boolean isVisible(Model model, float pitchSin, float pitchCos, float yawSin, float yawCos, int x, int y, int z)
     {
-        model.calculateBoundsCylinder();
-
         final int xzMag = model.getXYZMag();
         final int bottomY = model.getBottomY();
-        final int zoom = plugin.client.get3dZoom() / 2;
+        final int zoom = plugin.client.get3dZoom();
         final int modelHeight = model.getModelHeight();
 
         int Rasterizer3D_clipMidX2 = plugin.client.getRasterizer3D_clipMidX2(); // width / 2
@@ -674,27 +697,27 @@ public class MainPassLegacy {
         int Rasterizer3D_clipNegativeMidY = plugin.client.getRasterizer3D_clipNegativeMidY(); // -height / 2
         int Rasterizer3D_clipMidY2 = plugin.client.getRasterizer3D_clipMidY2(); // height / 2
 
-        int var11 = yawCos * z - yawSin * x >> 16;
-        int var12 = pitchSin * y + pitchCos * var11 >> 16;
-        int var13 = pitchCos * xzMag >> 16;
-        int depth = var12 + var13;
+        float var11 = yawCos * z - yawSin * x;
+        float var12 = pitchSin * y + pitchCos * var11;
+        float var13 = pitchCos * xzMag;
+        float depth = var12 + var13;
         if (depth > 50)
         {
-            int rx = z * yawSin + yawCos * x >> 16;
-            int var16 = (rx - xzMag) * zoom;
+            float rx = z * yawSin + yawCos * x;
+            float var16 = (rx - xzMag) * zoom;
             if (var16 / depth < Rasterizer3D_clipMidX2)
             {
-                int var17 = (rx + xzMag) * zoom;
+                float var17 = (rx + xzMag) * zoom;
                 if (var17 / depth > Rasterizer3D_clipNegativeMidX)
                 {
-                    int ry = pitchCos * y - var11 * pitchSin >> 16;
-                    int yheight = pitchSin * xzMag >> 16;
-                    int ybottom = (pitchCos * bottomY >> 16) + yheight; // use bottom height instead of y pos for height
-                    int var20 = (ry + ybottom) * zoom;
+                    float ry = pitchCos * y - var11 * pitchSin;
+                    float yheight = pitchSin * xzMag;
+                    float ybottom = (pitchCos * bottomY) + yheight; // use bottom height instead of y pos for height
+                    float var20 = (ry + ybottom) * zoom;
                     if (var20 / depth > Rasterizer3D_clipNegativeMidY)
                     {
-                        int ytop = (pitchCos * modelHeight >> 16) + yheight;
-                        int var22 = (ry - ytop) * zoom;
+                        float ytop = (pitchCos * modelHeight) + yheight;
+                        float var22 = (ry - ytop) * zoom;
                         return var22 / depth < Rasterizer3D_clipMidY2;
                     }
                 }
