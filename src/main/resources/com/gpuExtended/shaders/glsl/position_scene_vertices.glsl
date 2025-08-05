@@ -61,6 +61,20 @@ layout(std430, binding = PRIORITY_DATA_BUFFER_IN_BINDING_ID) buffer prioity_buff
     PriorityData priorityData[];
 };
 
+#define MAX_MAPPED_PRIORITY 6
+int map_priority_to_sums_index(int priority) {
+    // The avg1/2/3 sums only care about priority [1],[2], [3],[4], and [6],[8]
+    switch (priority) {
+        case 1: return 0;
+        case 2: return 1;
+        case 3: return 2;
+        case 4: return 3;
+        case 6: return 4;
+        case 8: return 5;
+        default: return 0xFFFFFFFF;
+    }
+}
+
 layout(local_size_x = WORK_GROUP_SIZE_X, local_size_y = WORK_GROUP_SIZE_Y, local_size_z = WORK_GROUP_SIZE_Z) in;
 void main() {
     uint modelIndex = binary_search_for_model_index(gl_GlobalInvocationID.x);
