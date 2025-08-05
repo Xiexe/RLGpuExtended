@@ -69,14 +69,12 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.nio.*;
-import java.util.HashMap;
 
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.constants.Variables.*;
 import static java.lang.Character.getType;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 import static net.runelite.api.Constants.MAX_Z;
-import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
 import static org.lwjgl.opengl.GL43C.*;
 import static org.lwjgl.opengl.GLDebugMessageCallback.getMessage;
 
@@ -339,8 +337,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				createGlDebugCallback();
 
 				// Initialize Render Pass Handlers
+				shadowPassHandler.Init();
 				mainPassHandlerLegacy.Init();
-				shadowPassHandler.Init(config.shadowResolution().getValue(), awtContext);
 				// --
 
 				setupSyncMode();
@@ -955,7 +953,9 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glClearColor(0, 0, 0, 1f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		bloomFramebuffer.clearFramebuffer();
-		mainPassHandlerLegacy.OnPreRender();
+
+		shadowPassHandler.OnPreRenderFrame();
+		mainPassHandlerLegacy.OnPreRenderFrame();
 
 		if (gameState.getState() >= GameState.LOADING.getState()
 				&& viewportHeight > 0
@@ -1025,9 +1025,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			environmentManager.Update(DeltaTime);
 
 			updateUniformBlocks();
-			shadowPassHandler.OnRenderStaticShadowMap();
-			shadowPassHandler.OnRenderDynamicShadowMap();
-			mainPassHandlerLegacy.OnRender();
+			shadowPassHandler.OnRenderFrame();
+			mainPassHandlerLegacy.OnRenderFrame();
 			drawBloomPass();
 
 			lastPlayerPosition[0] = client.getLocalPlayer().getLocalLocation().getX();
@@ -1065,8 +1064,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		// Clear buffers
 
-
-		mainPassHandlerLegacy.OnPostRender();
+	    shadowPassHandler.OnPostRenderFrame();
+		mainPassHandlerLegacy.OnPostRenderFrame();
 		drawUi(overlayColor, canvasHeight, canvasWidth);
 
 		try
@@ -1631,8 +1630,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void loadScene(Scene scene)
 	{
 		loadingScene = true;
-		mainPassHandlerLegacy.OnLoadScene(scene);
-		shadowPassHandler.OnSceneLoad(scene, sceneUploader.sceneId);
+		mainPassHandlerLegacy.OnSceneLoadStart(scene);
+		shadowPassHandler.OnSceneLoadStart(scene);
 
 		nextSceneId = sceneUploader.sceneId;
 	}
@@ -1695,8 +1694,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		environmentManager.CheckRegion();
 		sceneUploader.PrepareScene(scene);
 
-		mainPassHandlerLegacy.OnSceneLoaded();
-		shadowPassHandler.OnSceneUpdated();
+		mainPassHandlerLegacy.OnSceneLoadFinished(scene);
+		shadowPassHandler.OnSceneLoadFinished(scene);
 
 		tileMarkerManager.Reset();
 		tileMarkerManager.LoadTileMarkers();
@@ -1707,60 +1706,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneId = -1;
 		checkGLErrors();
 	}
-
-	@Override
-	public boolean tileInFrustum(Scene scene, int pitchSin, int pitchCos, int yawSin, int yawCos, int cameraX, int cameraY, int cameraZ, int plane, int msx, int msy) {
-		// Get the tile heights from the scene
-		int[][][] tileHeights = scene.getTileHeights();
-
-		// Calculate the relative x and z coordinates of the tile from the camera's perspective
-		int x = ((msx - SCENE_OFFSET) << Perspective.LOCAL_COORD_BITS) + 64 - cameraX;
-		int z = ((msy - SCENE_OFFSET) << Perspective.LOCAL_COORD_BITS) + 64 - cameraZ;
-
-		// Determine the highest point on the tile
-		int y = Math.max(
-				Math.max(tileHeights[plane][msx][msy], tileHeights[plane][msx][msy + 1]),
-				Math.max(tileHeights[plane][msx + 1][msy], tileHeights[plane][msx + 1][msy + 1])
-		) + GROUND_MIN_Y - cameraY;
-
-		// Radius for frustum culling
-		int radius = 96; // ~ 64 * sqrt(2)
-
-		// Get the necessary rendering parameters from the client
-		int zoom = client.get3dZoom();
-		int clipMaxX = client.getRasterizer3D_clipMidX2();
-		int clipMinX = client.getRasterizer3D_clipNegativeMidX();
-		int clipCeilY = client.getRasterizer3D_clipNegativeMidY();
-
-		// Transform the coordinates using yaw
-		int transformedX = yawCos * z - yawSin * x >> 16;
-		int transformedY = pitchSin * y + pitchCos * transformedX >> 16;
-		int transformedRadius = pitchCos * radius >> 16;
-		int depth = transformedY + transformedRadius;
-
-		// Check if the depth is within the view frustum
-		if (depth > 50) {
-			int rotatedX = z * yawSin + yawCos * x >> 16;
-			int minX = (rotatedX - radius) * zoom;
-			int maxX = (rotatedX + radius) * zoom;
-
-			// Check if the tile is within the left and right bounds of the view frustum
-			if (minX < clipMaxX * depth && maxX > clipMinX * depth) {
-				int rotatedY = pitchCos * y - transformedX * pitchSin >> 16;
-				int minY = pitchSin * radius >> 16;
-				int maxY = (rotatedY + minY) * zoom;
-
-				// Check if the tile is within the top bound of the view frustum
-				if (maxY > clipCeilY * depth) {
-					// We don't test the bottom bound to avoid calculating the height of all models on the tile
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
 
 	/**
 	 * Draw a renderable in the scene
@@ -1781,6 +1726,50 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void drawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY)
 	{
 		mainPassHandlerLegacy.OnDrawSceneTileModel(scene, model, tileX, tileY);
+	}
+
+	@Override
+	public boolean tileInFrustum(Scene scene, float pitchSin, float pitchCos, float yawSin, float yawCos, int cameraX, int cameraY, int cameraZ, int plane, int msx, int msy)
+	{
+		int[][][] tileHeights = scene.getTileHeights();
+		int x = ((msx - SCENE_OFFSET) << Perspective.LOCAL_COORD_BITS) + 64 - cameraX;
+		int z = ((msy - SCENE_OFFSET) << Perspective.LOCAL_COORD_BITS) + 64 - cameraZ;
+		int y = Math.max(
+				Math.max(tileHeights[plane][msx][msy], tileHeights[plane][msx][msy + 1]),
+				Math.max(tileHeights[plane][msx + 1][msy], tileHeights[plane][msx + 1][msy + 1])
+		) + GROUND_MIN_Y - cameraY;
+
+		int radius = 96; // ~ 64 * sqrt(2)
+
+		int zoom = client.get3dZoom();
+		int Rasterizer3D_clipMidX2 = client.getRasterizer3D_clipMidX2();
+		int Rasterizer3D_clipNegativeMidX = client.getRasterizer3D_clipNegativeMidX();
+		int Rasterizer3D_clipNegativeMidY = client.getRasterizer3D_clipNegativeMidY();
+
+		float var11 = yawCos * z - yawSin * x;
+		float var12 = pitchSin * y + pitchCos * var11;
+		float var13 = pitchCos * radius;
+		float depth = var12 + var13;
+		if (depth > 50)
+		{
+			float rx = z * yawSin + yawCos * x;
+			float var16 = (rx - radius) * zoom;
+			float var17 = (rx + radius) * zoom;
+			// left && right
+			if (var16 < Rasterizer3D_clipMidX2 * depth && var17 > Rasterizer3D_clipNegativeMidX * depth)
+			{
+				float ry = pitchCos * y - var11 * pitchSin;
+				float ybottom = pitchSin * radius;
+				float var20 = (ry + ybottom) * zoom;
+				// top
+				if (var20 > Rasterizer3D_clipNegativeMidY * depth)
+				{
+					// we don't test the bottom so we don't have to find the height of all the models on the tile
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private int getScaledValue(final double scale, final int value)
