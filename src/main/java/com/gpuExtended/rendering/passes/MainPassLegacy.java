@@ -114,7 +114,7 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnPreRenderFrame() {
-        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+//        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
         frameBuffer.clearFramebuffer();
     }
 
@@ -154,6 +154,10 @@ public class MainPassLegacy implements IPassBase {
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileSettingsTexture.getId());
         glUniform1i(uni.TileMarkerSettingsMap, 6);
+
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
+        glUniform1i(uni.TileHeightMap, 7);
 
         glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
         glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
@@ -217,7 +221,7 @@ public class MainPassLegacy implements IPassBase {
         computeBufferContext.totalDynamicVertices = 0;
         computeBufferContext.totalDynamicUvs = 0;
 
-        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+//        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
 
     @Override
@@ -268,6 +272,7 @@ public class MainPassLegacy implements IPassBase {
         // still redraw the previous frame's scene to emulate the client behavior of not painting over the
         // viewport buffer.
         computeBufferContext.totalVertices = 0;
+        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
 
     @Override
@@ -310,6 +315,8 @@ public class MainPassLegacy implements IPassBase {
         DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaderHandler.unorderedComputeShader.id());
         DispatchSortingCompute(cCtx.tmpSmallModelBuffer, cCtx.numSmallModels, plugin.shaderHandler.smallOrderedComputeShader.id());
         DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.numLargeModels, plugin.shaderHandler.largeOrderedComputeShader.id());
+
+        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
 
     @Override
@@ -348,7 +355,7 @@ public class MainPassLegacy implements IPassBase {
             buffer.put(FLAG_SCENE_BUFFER);
             buffer.put(localX).put(localY).put(localZ);
             buffer.put(flags);
-            buffer.put(-1);
+            buffer.put(OBJECT_TYPE.TYPE_TERRAIN.ordinal());
             buffer.put(-1);
             buffer.put(-1);
 
@@ -385,7 +392,7 @@ public class MainPassLegacy implements IPassBase {
             buffer.put(FLAG_SCENE_BUFFER);
             buffer.put(localX).put(localY).put(localZ);
             buffer.put(flags);
-            buffer.put(-1);
+            buffer.put(OBJECT_TYPE.TYPE_TERRAIN.ordinal());
             buffer.put(-1);
             buffer.put(-1);
 
@@ -449,7 +456,7 @@ public class MainPassLegacy implements IPassBase {
             buffer.put(FLAG_SCENE_BUFFER | flags);
             buffer.put(x).put(y).put(z);
             buffer.put(exFlags);
-            buffer.put(-1);
+            buffer.put(GetObjectType(model, false).ordinal());
             buffer.put(-1);
             buffer.put(GetModelConfig(hash, tileX, tileY, z));
 
@@ -488,7 +495,7 @@ public class MainPassLegacy implements IPassBase {
             buffer.put(flags);
             buffer.put(x).put(y).put(z);
             buffer.put(exFlags);
-            buffer.put(-1);
+            buffer.put(GetObjectType(model, true).ordinal());
             buffer.put(-1);
             buffer.put(GetModelConfig(hash, x, y, z));
 
@@ -500,6 +507,32 @@ public class MainPassLegacy implements IPassBase {
         }
 
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
+    }
+
+    private OBJECT_TYPE GetObjectType(Model m, boolean isDynamicModel) {
+        if (m instanceof WallObject)
+            return OBJECT_TYPE.TYPE_WALL;
+
+        if (m instanceof DecorativeObject)
+            return OBJECT_TYPE.TYPE_DECORATION;
+
+        if (m instanceof GameObject)
+            return OBJECT_TYPE.TYPE_GAMEOBJECT;
+
+        if (m instanceof GroundObject)
+            return OBJECT_TYPE.TYPE_GROUND_OBJECT;
+
+        if (m instanceof GraphicsObject)
+            return OBJECT_TYPE.TYPE_GRAPHICS_OBJECT;
+
+        if (m instanceof Model) {
+            if (isDynamicModel)
+                return OBJECT_TYPE.TYPE_DYNAMICMODEL;
+            else
+                return OBJECT_TYPE.TYPE_STATICMODEL;
+        }
+
+       return OBJECT_TYPE.TYPE_UNKNOWN;
     }
 
     private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation) {

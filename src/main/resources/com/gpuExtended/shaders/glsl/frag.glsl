@@ -81,16 +81,23 @@ void main() {
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
     ApplyFog(finalColor, fPosition, distanceToCamera);
 
-    if(!flags.isDynamicModel && flags.isTerrain)
+    vec2 tilePos = (fPosition.xz + (TILE_SIZE * SCENE_OFFSET)) / (EXTENDED_SCENE_SIZE * TILE_SIZE);
+    float height = GetTileHeight(vec3(tilePos, flags.plane));
+    bool withinMarkerThreshold = (fPosition.y >= height - 16);
+    if(!flags.isDynamicModel && withinMarkerThreshold)
     {
+//        float height = GetTileHeight(vec3(fPosition.x + sceneOffsetX, fPosition.z + sceneOffsetZ, flags.plane));
         DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
         DrawTileMarker(finalColor, flags, fPosition, vec4(targetTile.xy, flags.plane, targetTile.w), targetTileFillColor, targetTileOutlineColor, targetTile.z, distanceToPlayer);
         DrawTileMarker(finalColor, flags, fPosition, vec4(hoveredTile.xy, flags.plane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer);
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
     }
 
+
     FragColor = vec4(finalColor.rgb, s.albedo.a);
+//    FragColor = vec4(vec3(withinMarkerThreshold), 1);
+//    FragColor = vec4(vec3((-fPosition.y / 1000)), 1);
 //    FragColor = vec4(vec3(shadowMap * ndl), s.albedo.a);
 //    FragColor = vec4(vec3(flags.isTerrain), s.albedo.a);
-//    FragColor = vec4(vec3(fTextureId == TREE_MAPLE), 1);
+//    FragColor = vec4(vec3(flags.objectType / 8f), 1);
 }

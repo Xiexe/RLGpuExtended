@@ -604,5 +604,17 @@ public interface GpuExtendedConfig extends Config
 		{
 			return false;
 		}
+
+	@ConfigItem(
+			keyName = "showTileInspector",
+			name = "Show Tile Inspector Overlay",
+			description = "",
+			position = 4,
+			section = debugging
+	)
+	default boolean showTileInspectorOverlay()
+	{
+		return false;
+	}
 	// </editor-fold>
 }

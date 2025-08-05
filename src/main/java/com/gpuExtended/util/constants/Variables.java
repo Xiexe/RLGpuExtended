@@ -5,6 +5,18 @@ import net.runelite.api.Constants;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 
 public class Variables {
+    public enum OBJECT_TYPE {
+        TYPE_UNKNOWN,
+        TYPE_TERRAIN,
+        TYPE_DYNAMICMODEL,
+        TYPE_STATICMODEL,
+        TYPE_GAMEOBJECT,
+        TYPE_DECORATION,
+        TYPE_GROUND_OBJECT,
+        TYPE_GRAPHICS_OBJECT,
+        TYPE_WALL
+    }
+
     public static final int BIT_ZHEIGHT = 24;
     public static final int BIT_HILLSKEW = 26;
 
