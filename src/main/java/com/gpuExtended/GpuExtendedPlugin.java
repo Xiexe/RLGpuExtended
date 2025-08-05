@@ -171,7 +171,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public final GLBuffer lightBinsBuffer = new GLBuffer("light bins buffer");
 
 	public int textureArrayId;
-	private int tileHeightTex;
+	public int tileHeightTex;
 
 	public final GLBuffer glCameraUniformBuffer = new GLBuffer("camera uniform buffer");
 	private final GLBuffer glPlayerUniformBuffer = new GLBuffer("player uniform buffer");
@@ -985,8 +985,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			bBufferPlayerBlock.putFloat((float) playerPlane);
 			bBufferPlayerBlock.putFloat(0); // pad
 
-			bBufferEnvironmentBlock.putInt(client.getScene().getBaseX());
-			bBufferEnvironmentBlock.putInt(client.getScene().getBaseY());
+			bBufferPlayerBlock.putInt(client.getScene().getBaseX());
+			bBufferPlayerBlock.putInt(client.getScene().getBaseY());
 			bBufferPlayerBlock.flip();
 
 			updateBuffer(glPlayerUniformBuffer, GL_UNIFORM_BUFFER, bBufferPlayerBlock, GL_DYNAMIC_DRAW);

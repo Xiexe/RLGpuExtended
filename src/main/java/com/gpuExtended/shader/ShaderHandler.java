@@ -66,6 +66,7 @@ public class ShaderHandler {
             .add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
             .add(GL_FRAGMENT_SHADER, "bloom_prefilter.glsl");
 
+    public static final int positionSceneVerticesWorkGroupSizeX = 64;
     public Shader positionSceneVerticesShader = new Shader()
             .add(GL_COMPUTE_SHADER, "position_scene_vertices.glsl");
 

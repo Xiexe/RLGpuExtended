@@ -211,9 +211,6 @@ public class MainPassLegacy implements IPassBase {
         computeBufferContext.numLargeModels = 0;
         computeBufferContext.numUnsortedModels = 0;
 
-        computeBufferContext.totalDynamicVertices = 0;
-        computeBufferContext.totalDynamicUvs = 0;
-
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
 
@@ -248,7 +245,6 @@ public class MainPassLegacy implements IPassBase {
         nextSceneVertexBufferContext.vertexBuffer = null;
         nextSceneVertexBufferContext.uvBuffer = null;
         nextSceneVertexBufferContext.normalBuffer = null;
-        computeBufferContext.totalStaticVertices = 0;
     }
 
     @Override
@@ -261,6 +257,10 @@ public class MainPassLegacy implements IPassBase {
         // still redraw the previous frame's scene to emulate the client behavior of not painting over the
         // viewport buffer.
         computeBufferContext.totalVertices = 0;
+        computeBufferContext.totalStaticVertices = 0;
+        computeBufferContext.totalDynamicVertices = 0;
+        computeBufferContext.totalDynamicVertices = 0;
+        computeBufferContext.totalDynamicUvs = 0;
     }
 
     @Override
@@ -308,11 +308,12 @@ public class MainPassLegacy implements IPassBase {
 
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-        DispatchPositionVertexComputeShader(cCtx.tmpLargeModelBuffer, cCtx.totalVertices, plugin.shaderHandler.positionSceneVerticesShader);
+        DispatchPositionVertexComputeShader(cCtx.tmpLargeModelBuffer, plugin.shaderHandler.positionSceneVerticesShader);
 
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
         {
+
             // calculatePriorityAverages
             glUseProgram(plugin.shaderHandler.calculatePriorityAverages.id());
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BUFFER_IN_BINDING_ID, cCtx.gl_modelPriorityDataBuffer);
@@ -461,6 +462,7 @@ public class MainPassLegacy implements IPassBase {
             int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
             int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
+            if (faceCount <= 0) return;
             int uvOffset = offsetModel.getUvBufferOffset();
             int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
             int exFlags = GetExFlags(hash, tileX, tileY, z, false);
@@ -505,6 +507,7 @@ public class MainPassLegacy implements IPassBase {
         int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
         if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+            if (model.getFaceCount() <= 0) return;
             int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
             int exFlags = GetExFlags(hash, tileX, tileY, z, true);
             boolean hasUv = model.getFaceTextures() != null;
@@ -598,7 +601,25 @@ public class MainPassLegacy implements IPassBase {
         return computeBufferContext.largeModelBuffer;
     }
 
-    private void DispatchPositionVertexComputeShader(GLBuffer modelBuffer, int totalNumVertices, Shader computeShader) {
+    static long computeTimeSum = 0;
+    static long computeTimeNum = 0;
+
+    private void DispatchPositionVertexComputeShader(GLBuffer modelBuffer, Shader computeShader) {
+        int[] queries = new int[2];
+        glGenQueries(queries);
+        glQueryCounter(queries[0], GL_TIMESTAMP);
+
+        int sizeOfKeyValuePair = (3 * Integer.BYTES);
+        int numFaces = computeBufferContext.totalVertices/3;
+        int bufferRequiredSize = numFaces * sizeOfKeyValuePair;
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, computeBufferContext.gl_radixKeyValueBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, bufferRequiredSize, GL_DYNAMIC_COPY);
+
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
+        glActiveTexture(GL_TEXTURE0);
+
         Uniforms uniforms = plugin.uniforms;
         ShaderHandler shaders = plugin.shaderHandler;
 
@@ -623,11 +644,32 @@ public class MainPassLegacy implements IPassBase {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_TEXTURE_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicUvInBuffer.glBufferId); // temptexturebuffer_in
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_NORMAL_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicNormalInBuffer.glBufferId); // tempnormalbuffer_in
 
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, RADIX_KEY_VALUE_BUFFER_ID, computeBufferContext.gl_radixKeyValueBuffer); // Radix key/value buffer
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, PRIORITY_DATA_BUFFER_IN_BINDING_ID, computeBufferContext.gl_modelPriorityDataBuffer); // priorityData
 
-        final int computeShaderThreadCountX = 64;
-        int numGroupsX = (totalNumVertices + computeShaderThreadCountX - 1) / computeShaderThreadCountX;
+        final int computeShaderThreadCountX = ShaderHandler.positionSceneVerticesWorkGroupSizeX;
+        int numGroupsX = (numFaces + computeShaderThreadCountX - 1) / computeShaderThreadCountX;
         glDispatchCompute(numGroupsX, 1, 1);
+
+        glQueryCounter(queries[1], GL_TIMESTAMP);
+
+        long[] startTime = new long[1];
+        long[] endTime = new long[1];
+        glGetQueryObjectui64v(queries[0], GL_QUERY_RESULT, startTime);
+        glGetQueryObjectui64v(queries[1], GL_QUERY_RESULT, endTime);
+
+        long elapsed = endTime[0] - startTime[0];
+        computeTimeNum ++;
+        computeTimeSum += elapsed;
+
+        if (computeTimeNum > 50) {
+            double ms = (double)computeTimeSum / computeTimeNum;
+            ms /= 1_000_000.0;
+            System.out.println("Compute shader GPU time: " + (ms) + " ms");
+            computeTimeNum = 0;
+            computeTimeSum = 0;
+        }
+        glDeleteQueries(queries);
     }
 
     /*private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, int computeShader) {

@@ -33,8 +33,8 @@ uint binary_search_for_model_index(uint globalThreadIndex) {
         uint mid = low + (high - low) / 2;
 
         modelinfo info = modelInfos[mid];
-        uint triangleStartIndex = info.idx;
-        uint triangleEndIndex = info.idx + info.size;
+        uint triangleStartIndex = uint(info.idx)/3;
+        uint triangleEndIndex = uint(info.idx)/3 + info.size;
 
         if (globalThreadIndex >= triangleStartIndex && globalThreadIndex < triangleEndIndex) {
             return mid;
@@ -51,6 +51,15 @@ uint binary_search_for_model_index(uint globalThreadIndex) {
 
 layout(std430, binding = PRIORITY_DATA_BUFFER_IN_BINDING_ID) buffer prioity_buffer {
     PriorityData priorityData[];
+};
+
+struct KeyValue {
+    uint keyHigh;
+    uint keyLow;
+    uint value;
+};
+layout(std430, binding = RADIX_KEY_VALUE_BUFFER_ID) buffer radix_key_value_buffer {
+    KeyValue keyValues[];
 };
 
 #define MAX_MAPPED_PRIORITY 6
@@ -74,7 +83,7 @@ void main() {
         modelinfo myModelInfo = modelInfos[modelIndex];
         ivec3 modelPosition = ivec3(myModelInfo.x, myModelInfo.y, myModelInfo.z);
         bool isStatic = myModelInfo.flags < 0;
-        uint localFaceIndex = gl_GlobalInvocationID.x - myModelInfo.idx;
+        uint localFaceIndex = gl_GlobalInvocationID.x - uint(myModelInfo.idx)/3;
         uint outOffset = uint(myModelInfo.idx);
 
         Vertex vertA, vertB, vertC;
@@ -184,5 +193,43 @@ void main() {
                 atomicMin(priorityData[modelIndex].min10, thisDistance);
             }
         }
+
+        KeyValue keyValue;
+
+
+        #define MASK_BITS(n) ((1u << (n)) - 1u)
+        #define MODEL_ID_BITS 20
+        #define PRIORITY_BITS 5
+        #define DISTANCE_BITS 16
+        #define FACE_ID_BITS  13
+
+        /*
+        NSight structured view
+        struct KeyValue {
+            uint thisPriorityHigh:2;
+            uint modelId: 20;
+            hide uint pad:10;
+            uint localFaceId:13;
+            uint mappedDistance:16;
+            uint thisPriorityLow:3;
+            uint value;
+        };
+        */
+
+        // We XOR with 0x8000u (which is 2^15) to flip the sign bit.
+        // This maps [-32768, 32767] to a sortable [0, 65535] uint range.
+        uint mappedDistance = (uint(thisDistance) & MASK_BITS(DISTANCE_BITS)) ^ 0x8000u;
+
+        // 13 bits for faceId, then 16 bits for distnace, then 3 bits of priority
+        keyValue.keyLow = (localFaceIndex & MASK_BITS(FACE_ID_BITS)) |
+        ((mappedDistance & MASK_BITS(DISTANCE_BITS)) << FACE_ID_BITS) |
+        ((thisPriority & MASK_BITS(3)) << (FACE_ID_BITS + DISTANCE_BITS));
+
+        // 2 bits of priority, then 20 bits of modelId
+        keyValue.keyHigh = ((thisPriority >> 3) & MASK_BITS(2)) |
+        ((modelIndex & MASK_BITS(MODEL_ID_BITS)) << 2);
+        keyValue.value = gl_GlobalInvocationID.x;
+
+        keyValues[gl_GlobalInvocationID.x] = keyValue;
     }
 }

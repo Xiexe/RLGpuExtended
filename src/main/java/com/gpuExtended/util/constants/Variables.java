@@ -51,6 +51,7 @@ public class Variables {
     public static final int VERTEX_BUFFER_IN_BINDING_ID = 2;
     public static final int TEXTURE_BUFFER_IN_BINDING_ID = 3;
     public static final int NORMAL_BUFFER_IN_BINDING_ID = 4;
+    public static final int RADIX_KEY_VALUE_BUFFER_ID = 5;
 
     public static final int TEMP_VERTEX_BUFFER_IN_BINDING_ID = 6;
     public static final int TEMP_TEXTURE_BUFFER_IN_BINDING_ID = 7;

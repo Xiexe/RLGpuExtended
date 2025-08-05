@@ -33,6 +33,7 @@ public class ComputeBufferContext {
 
     public GpuIntBuffer largeModelBuffer;
     public int gl_modelPriorityDataBuffer;
+    public int gl_radixKeyValueBuffer;
 
     public int numUnsortedModels;
     public int numLargeModels;
@@ -61,6 +62,7 @@ public class ComputeBufferContext {
         this.dynamicUvInBuffer = new GLBuffer("dynamic model uv buffer");
         this.dynamicNormalInBuffer = new GLBuffer("dynamic model normal buffer");
         this.gl_modelPriorityDataBuffer = glGenBuffers();
+        this.gl_radixKeyValueBuffer = glGenBuffers();
 
         // Model Sorting buffers
         this.tmpLargeModelBuffer = new GLBuffer("large model buffer");
@@ -111,6 +113,7 @@ public class ComputeBufferContext {
 
         // TODO: shouldn't we delete all of these?
         glDeleteBuffers(this.gl_modelPriorityDataBuffer);
+        glDeleteBuffers(this.gl_radixKeyValueBuffer);
 
         this.largeModelBuffer = null;
 
