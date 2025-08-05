@@ -25,7 +25,6 @@ import java.nio.IntBuffer;
 import static com.gpuExtended.util.constants.Variables.*;
 import static com.gpuExtended.util.constants.Variables.VFLAGS_BINDING_ID;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
-import static net.runelite.api.Perspective.SCENE_SIZE;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL11C.GL_LINEAR;
 import static org.lwjgl.opengl.GL12C.GL_CLAMP_TO_EDGE;
@@ -136,11 +135,11 @@ public class MainPassLegacy implements IPassBase {
         Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(plugin.shaderHandler.mainPassShader.id());
 
         glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPassHandler.GetFramebuffer().getTexture().getId());
+        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
         glUniform1i(uni.ShadowMap, 2);
 
         glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPassHandler.GetDynamicFramebuffer().getTexture().getId());
+        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetDynamicFramebuffer().getTexture().getId());
         glUniform1i(uni.DynamicShadowMap, 3);
 
         glActiveTexture(GL_TEXTURE4);

@@ -209,6 +209,16 @@
     ]
   },
   {
+    "name": "TITHE_FARM",
+    "environment": "DEFAULT",
+    "bounds": [
+      {
+        "start": [1796, 3481, -1],
+        "end": [1840, 3516, -1]
+      }
+    ]
+  },
+  {
     "name": "GUARDIANS_OF_THE_RIFT",
     "bounds": [
       {

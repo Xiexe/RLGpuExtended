@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.rlawt.AWTContext;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -390,9 +389,9 @@ public class ShadowPass implements IPassBase {
         glEnable(GL_DEPTH_TEST);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        GL30.glBindVertexArray(plugin.mainPassHandlerLegacy.vertexBufferContext.vertexArrayObjectId);
+        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
 
-        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassHandlerLegacy.computeBufferContext.totalVertices);
+        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
         glDisable(GL_CULL_FACE);
