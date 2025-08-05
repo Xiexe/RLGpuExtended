@@ -28,8 +28,8 @@ public class PostProcessingPass implements IPassBase {
 
     public FrameBuffer bloomFramebuffer;
 
-    private int fullscreenQuadVertexArrayObjectHandle;
-    private int fullscreenQuadVertexBufferObjectHandle;
+    private int vertexArrayObject;
+    private int vertexBufferObject;
 
     @Override
     public void Init() {
@@ -63,8 +63,10 @@ public class PostProcessingPass implements IPassBase {
             bloomFramebuffer = null;
         }
 
-        fullscreenQuadVertexArrayObjectHandle = -1;
-        fullscreenQuadVertexBufferObjectHandle = -1;
+        glDeleteVertexArrays(vertexArrayObject);
+        glDeleteBuffers(vertexBufferObject);
+        vertexArrayObject = -1;
+        vertexBufferObject = -1;
     }
 
     @Override
@@ -82,7 +84,7 @@ public class PostProcessingPass implements IPassBase {
         primaryFramebuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
 
         bloomFramebuffer.bind();
-        glBindVertexArray(fullscreenQuadVertexArrayObjectHandle);
+        glBindVertexArray(vertexArrayObject);
 
         // Prefilter
         glUseProgram(plugin.shaderHandler.bloomPrefilterShader.id());
@@ -151,9 +153,9 @@ public class PostProcessingPass implements IPassBase {
     // Create a full screen quad.
     private void InitVAO()
     {
-        fullscreenQuadVertexArrayObjectHandle = glGenVertexArrays();
-        fullscreenQuadVertexBufferObjectHandle = glGenBuffers();
-        glBindVertexArray(fullscreenQuadVertexArrayObjectHandle);
+        vertexArrayObject = glGenVertexArrays();
+        vertexBufferObject = glGenBuffers();
+        glBindVertexArray(vertexArrayObject);
 
         FloatBuffer vboUiBuf = GpuFloatBuffer.allocateDirect(5 * 4);
         vboUiBuf.put(new float[]{
@@ -164,7 +166,7 @@ public class PostProcessingPass implements IPassBase {
                 -1f, 1f, 0.0f, 0.0f, 0f  // top left
         });
         vboUiBuf.rewind();
-        glBindBuffer(GL_ARRAY_BUFFER, fullscreenQuadVertexBufferObjectHandle);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
         glBufferData(GL_ARRAY_BUFFER, vboUiBuf, GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * Float.BYTES, 0);

@@ -172,12 +172,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public boolean showPerformanceOverlay = false;
 	public boolean showLightOverlay = false;
 
-	private int interfaceTexture;
-	private int interfacePbo;
-
-	private int vaoUiHandle;
-	private int vboUiHandle;
-
 	private int fboSceneHandle;
 	private int rboSceneHandle;
 
@@ -200,8 +194,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private ByteBuffer bBufferSystemInfoBlock;
 	private ByteBuffer bBufferConfigBlock;
 
-	private int lastCanvasWidth;
-	private int lastCanvasHeight;
 	private int lastStretchedCanvasWidth;
 	private int lastStretchedCanvasHeight;
 	private AntiAliasingMode lastAntiAliasingMode;
@@ -354,8 +346,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				eventBus.register(tileMarkerManager);
 
 				initBuffers();
-				initVao();
-				initInterfaceTexture();
 
 				client.setDrawCallbacks(this);
 				client.setGpuFlags(DrawCallbacks.GPU | DrawCallbacks.HILLSKEW | DrawCallbacks.NORMALS);
@@ -364,7 +354,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				// force rebuild of main buffer provider to enable alpha channel
 				client.resizeCanvas();
 
-				lastCanvasWidth = lastCanvasHeight = -1;
 				lastStretchedCanvasWidth = lastStretchedCanvasHeight = -1;
 				lastAntiAliasingMode = null;
 
@@ -442,9 +431,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 					tileHeightTex = 0;
 				}
 
-				shutdownInterfaceTexture();
 				shutdownProgram();
-				shutdownVao();
 				shutdownBuffers();
 				shutdownAAFbo();
 
@@ -601,49 +588,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	    shaderHandler.cleanup();
 	}
 
-	private void initVao()
-	{
-		// Create UI VAO
-		vaoUiHandle = glGenVertexArrays();
-		// Create UI buffer
-		vboUiHandle = glGenBuffers();
-		glBindVertexArray(vaoUiHandle);
-
-		FloatBuffer vboUiBuf = GpuFloatBuffer.allocateDirect(5 * 4);
-		vboUiBuf.put(new float[]{
-			// positions     // texture coords
-			1f, 1f, 0.0f, 1.0f, 0f, // top right
-			1f, -1f, 0.0f, 1.0f, 1f, // bottom right
-			-1f, -1f, 0.0f, 0.0f, 1f, // bottom left
-			-1f, 1f, 0.0f, 0.0f, 0f  // top left
-		});
-		vboUiBuf.rewind();
-		glBindBuffer(GL_ARRAY_BUFFER, vboUiHandle);
-		glBufferData(GL_ARRAY_BUFFER, vboUiBuf, GL_STATIC_DRAW);
-
-		// position attribute
-		glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * Float.BYTES, 0);
-		glEnableVertexAttribArray(0);
-
-		// uv attribute
-		glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * Float.BYTES, 3 * Float.BYTES);
-		glEnableVertexAttribArray(1);
-
-		// ui does not need normals
-
-		// unbind VBO
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	}
-
-	private void shutdownVao()
-	{
-		glDeleteBuffers(vboUiHandle);
-		vboUiHandle = -1;
-
-		glDeleteVertexArrays(vaoUiHandle);
-		vaoUiHandle = -1;
-	}
-
 	private void initBuffers()
 	{
 		initGlBuffer(lightBinsBuffer);
@@ -730,26 +674,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 	}
 
-	private void initInterfaceTexture()
-	{
-		interfacePbo = glGenBuffers();
-
-		interfaceTexture = glGenTextures();
-		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
-
-	private void shutdownInterfaceTexture()
-	{
-		glDeleteBuffers(interfacePbo);
-		glDeleteTextures(interfaceTexture);
-		interfaceTexture = -1;
-	}
-
 	private void initAAFbo(int width, int height, int aaSamples)
 	{
 		if (OSType.getOSType() != OSType.MacOS)
@@ -824,41 +748,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		mainPassLegacy.OnPostDrawScene();
 	}
 
-	private void prepareInterfaceTexture(int canvasWidth, int canvasHeight)
-	{
-		if (canvasWidth != lastCanvasWidth || canvasHeight != lastCanvasHeight)
-		{
-			lastCanvasWidth = canvasWidth;
-			lastCanvasHeight = canvasHeight;
-
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, interfacePbo);
-			glBufferData(GL_PIXEL_UNPACK_BUFFER, canvasWidth * canvasHeight * 4L, GL_STREAM_DRAW);
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-			glBindTexture(GL_TEXTURE_2D, interfaceTexture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, canvasWidth, canvasHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-
-		final BufferProvider bufferProvider = client.getBufferProvider();
-		final int[] pixels = bufferProvider.getPixels();
-		final int width = bufferProvider.getWidth();
-		final int height = bufferProvider.getHeight();
-
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, interfacePbo);
-		ByteBuffer interfaceBuf = glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-		if (interfaceBuf != null)
-		{
-			interfaceBuf
-					.asIntBuffer()
-					.put(pixels, 0, width * height);
-			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-		}
-		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, 0);
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
-
 	// MAIN DRAW
 	@Override
 	public void draw(int overlayColor)
@@ -871,7 +760,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		final int canvasHeight = client.getCanvasHeight();
 		final int canvasWidth = client.getCanvasWidth();
-		prepareInterfaceTexture(canvasWidth, canvasHeight);
 
 		final int viewportHeight = client.getViewportHeight();
 		final int viewportWidth = client.getViewportWidth();
@@ -881,7 +769,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		regionOverlay.setActive(config.showRegionOverlay());
 		performanceOverlay.setActive(config.showPerformanceOverlay());
 		lightOverlay.SetActive(config.showLightOverlays());
-
 
 		// Setup anti-aliasing
 		final AntiAliasingMode antiAliasingMode = config.antiAliasingMode();
@@ -1014,41 +901,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			currentPlane = client.getPlane();
 		}
 
-		// TODO:: fix aa
-//		if (aaEnabled)
-//		{
-//			int width = lastStretchedCanvasWidth;
-//			int height = lastStretchedCanvasHeight;
-//
-//			if (OSType.getOSType() != OSType.MacOS)
-//			{
-//				final GraphicsConfiguration graphicsConfiguration = clientUI.getGraphicsConfiguration();
-//				final AffineTransform transform = graphicsConfiguration.getDefaultTransform();
-//
-//				width = getScaledValue(transform.getScaleX(), width);
-//				height = getScaledValue(transform.getScaleY(), height);
-//			}
-//
-//			glBindFramebuffer(GL_READ_FRAMEBUFFER, colorFramebuffer.getId());
-//			glReadBuffer(GL_COLOR_ATTACHMENT0);
-//
-//			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, colorFramebuffer.getId());
-//			glDrawBuffer(GL_COLOR_ATTACHMENT0);
-//
-//			glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
-//				GL_COLOR_BUFFER_BIT, GL_NEAREST);
-//
-//			// Reset
-//			glBindFramebuffer(GL_READ_FRAMEBUFFER, awtContext.getFramebuffer(false));
-//		}
-
-		// Clear buffers
-
 	    shadowPass.OnPostRenderFrame();
 		mainPassLegacy.OnPostRenderFrame();
 		postProcessingPass.OnPostRenderFrame();
+
+		compositePass.SetOverlayColor(overlayColor);
 		compositePass.OnPostRenderFrame();
-		drawUi(overlayColor, canvasHeight, canvasWidth);
 
 		try
 		{
@@ -1396,78 +1254,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		glUseProgram(0);
 	}
 
-	//todo:: rename to something?
-	private void drawUi(final int overlayColor, final int canvasHeight, final int canvasWidth)
-	{
-		// Use the texture bound in the first pass
-		final UIScalingMode uiScalingMode = config.uiScalingMode();
-
-		glUseProgram(shaderHandler.uiShader.id());
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.uiShader.id());
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, mainPassLegacy.frameBuffer.getTexture().getId());
-		glUniform1i(uni.MainTexture, 1);
-
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, postProcessingPass.bloomFramebuffer.getTexture().getId());
-		glUniform1i(uni.BloomTexture, 2);
-
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, interfaceTexture);
-		glUniform1i(uni.InterfaceTexture, 3);
-
-		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, shadowPass.GetFramebuffer().getTexture().getId());
-		glUniform1i(uni.ShadowMap, 4);
-
-		glActiveTexture(GL_TEXTURE5);
-		glBindTexture(GL_TEXTURE_2D, shadowPass.GetDynamicFramebuffer().getTexture().getId());
-		glUniform1i(uni.DynamicShadowMap, 5);
-
-		glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
-		glUniform2i(uni.TexSourceDimensions, canvasWidth, canvasHeight);
-		glUniform1i(uni.UiColorBlindMode, config.colorBlindMode().ordinal());
-		glUniform4f(uni.UiAlphaOverlay,
-			(overlayColor >> 16 & 0xFF) / 255f,
-			(overlayColor >> 8 & 0xFF) / 255f,
-			(overlayColor & 0xFF) / 255f,
-			(overlayColor >>> 24) / 255f
-		);
-
-		if (client.isStretchedEnabled())
-		{
-			Dimension dim = client.getStretchedDimensions();
-			glDpiAwareViewport(0, 0, dim.width, dim.height);
-			glUniform2i(uni.TexTargetDimensions, dim.width, dim.height);
-		}
-		else
-		{
-			glDpiAwareViewport(0, 0, canvasWidth, canvasHeight);
-			glUniform2i(uni.TexTargetDimensions, canvasWidth, canvasHeight);
-		}
-
-		// Set the sampling function used when stretching the UI.
-		// This is probably better done with sampler objects instead of texture parameters, but this is easier and likely more portable.
-		// See https://www.khronos.org/opengl/wiki/Sampler_Object for details.
-		if (client.isStretchedEnabled())
-		{
-			// GL_NEAREST makes sampling for bicubic/xBR simpler, so it should be used whenever linear isn't
-			final int function = uiScalingMode == UIScalingMode.LINEAR ? GL_LINEAR : GL_NEAREST;
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, function);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, function);
-		}
-
-		glBindVertexArray(vaoUiHandle);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-		// Reset
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glActiveTexture(GL_TEXTURE0);
-		glBindVertexArray(0);
-		glUseProgram(0);
-	}
-
 	/**
 	 * Convert the front framebuffer to an Image
 	 *
@@ -1688,7 +1474,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		return (int) (value * scale + .5);
 	}
 
-	private void glDpiAwareViewport(final int x, final int y, final int width, final int height)
+	public void glDpiAwareViewport(final int x, final int y, final int width, final int height)
 	{
 		if (OSType.getOSType() == OSType.MacOS)
 		{
