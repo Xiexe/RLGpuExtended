@@ -1344,11 +1344,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			tileHeightTex = 0;
 		}
 
-		final int TILEHEIGHT_BUFFER_SIZE = Constants.MAX_Z * EXTENDED_SCENE_SIZE * EXTENDED_SCENE_SIZE * Short.BYTES;
-		ShortBuffer tileBuffer = ByteBuffer
-			.allocateDirect(TILEHEIGHT_BUFFER_SIZE)
-			.order(ByteOrder.nativeOrder())
-			.asShortBuffer();
+		final int TILEHEIGHT_BUFFER_SIZE = Constants.MAX_Z * EXTENDED_SCENE_SIZE * EXTENDED_SCENE_SIZE * Float.BYTES;
+		FloatBuffer tileBuffer = ByteBuffer
+				.allocateDirect(TILEHEIGHT_BUFFER_SIZE)
+				.order(ByteOrder.nativeOrder())
+				.asFloatBuffer();
 
 		int[][][] tileHeights = scene.getTileHeights();
 		for (int z = 0; z < Constants.MAX_Z; ++z)
@@ -1359,27 +1359,26 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				{
 					int h = tileHeights[z][x][y];
 					assert (h & 0b111) == 0;
-					h >>= 3;
-					tileBuffer.put((short) h);
+					tileBuffer.put((float) h);
 				}
 			}
 		}
 		tileBuffer.flip();
 
 		tileHeightTex = glGenTextures();
-		glBindTexture(GL_TEXTURE_3D, tileHeightTex);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_R16I,
-			EXTENDED_SCENE_SIZE, EXTENDED_SCENE_SIZE, Constants.MAX_Z,
-			0, GL_RED_INTEGER, GL_SHORT, tileBuffer);
-		glBindTexture(GL_TEXTURE_3D, 0);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, tileHeightTex);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-		// bind to texture 2
+		glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R32F,
+				EXTENDED_SCENE_SIZE, EXTENDED_SCENE_SIZE, Constants.MAX_Z,
+				0, GL_RED, GL_FLOAT, tileBuffer);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
 		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_3D, tileHeightTex); // binding = 2 in the shader
+		glBindTexture(GL_TEXTURE_2D_ARRAY, tileHeightTex);
 		glActiveTexture(GL_TEXTURE0);
 	}
 

@@ -10,26 +10,30 @@
 
 #include "shaders/glsl/common.glsl"
 
-layout(binding = 2) uniform isampler3D tileHeightSampler;
-
-int tile_height(int z, int x, int y) {
-    #define ESCENE_OFFSET 40 // (184-104)/2
-  return texelFetch(tileHeightSampler, ivec3(x + ESCENE_OFFSET, y + ESCENE_OFFSET, z), 0).r << 3;
-}
-
+layout(binding = 2) uniform sampler2DArray tileHeightSampler;
 vec4 hillskew_vertexf(vec4 v, int hillskew, int y, int plane) {
-    if (hillskew == 1) {
-        float fx = v.x / 128;
-        float fz = v.z / 128;
-        int sx = int(floor(fx));
-        int sz = int(floor(fz));
-        float h1 = mix(tile_height(plane, sx, sz), tile_height(plane, sx + 1, sz), fract(fx));
-        float h2 = mix(tile_height(plane, sx, sz + 1), tile_height(plane, sx + 1, sz + 1), fract(fx));
-        float h3 = mix(h1, h2, fract(fz));
-        return vec4(v.x, v.y + h3 - y, v.z, v.w);
-    } else {
-        return v;
-    }
+    #define ESCENE_OFFSET 40.0
+
+    // The size of half a texel in normalized coordinates.
+    // This is the key to fixing the offset.
+    vec2 halfTexel = vec2(0.5 / EXTENDED_SCENE_SIZE, 0.5 / EXTENDED_SCENE_SIZE);
+
+    // Calculate the base normalized coordinates, same as before.
+    vec2 normalizedXY = vec2(
+    (v.x / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE,
+    (v.z / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE
+    );
+
+    // --- THE FIX ---
+    // Subtract half a texel to align the sampling grid with the texelFetch grid.
+    // This ensures hardware blending happens between the correct texel centers.
+    vec3 texCoord = vec3(normalizedXY + halfTexel, float(plane));
+
+    // Use textureLod with the corrected coordinate.
+    // The magic number '- 64' should be removed.
+    float h = textureLod(tileHeightSampler, texCoord, 0.0).r;
+
+    return vec4(v.x, v.y + (h - y)*hillskew, v.z, v.w);
 }
 
 #define OUT_OF_BOUNDS 0xFFFFFFFF
