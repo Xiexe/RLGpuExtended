@@ -3,6 +3,7 @@ package com.gpuExtended.rendering.passes;
 import com.google.common.base.Stopwatch;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.overlays.PerformanceOverlay;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.FrameBuffer;
@@ -284,7 +285,9 @@ public class ShadowPass implements IPassBase {
     }
 
     @Override
-    public void OnPreRenderFrame() {}
+    public void OnPreRenderFrame() {
+        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
+    }
 
     @Override
     public void OnRenderFrame() {
@@ -293,7 +296,9 @@ public class ShadowPass implements IPassBase {
     }
 
     @Override
-    public void OnPostRenderFrame() {}
+    public void OnPostRenderFrame() {
+        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
+    }
 
     @Override
     public void OnPreDrawScene() {}

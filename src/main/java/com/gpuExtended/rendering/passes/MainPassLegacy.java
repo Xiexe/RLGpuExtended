@@ -114,6 +114,7 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnPreRenderFrame() {
+        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
         frameBuffer.clearFramebuffer();
     }
 
@@ -215,6 +216,8 @@ public class MainPassLegacy implements IPassBase {
 
         computeBufferContext.totalDynamicVertices = 0;
         computeBufferContext.totalDynamicUvs = 0;
+
+        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
 
     @Override

@@ -5,14 +5,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
 import com.gpuExtended.config.AntiAliasingMode;
-import com.gpuExtended.config.UIScalingMode;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.overlays.*;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
-import com.gpuExtended.rendering.FrameBuffer;
-import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.rendering.passes.*;
 import com.gpuExtended.scene.Environment;
@@ -227,7 +224,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public int[] currentViewport = new int[4];
 
 	@Inject
-	private ShadowMapOverlay shadowMapOverlay;
+	private RenderTargetsOverlay shadowMapOverlay;
 
 	@Inject
 	private SceneTileMaskOverlay sceneTileMaskOverlay;
