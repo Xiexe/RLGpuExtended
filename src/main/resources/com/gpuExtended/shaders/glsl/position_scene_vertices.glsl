@@ -14,25 +14,13 @@ layout(binding = 2) uniform sampler2DArray tileHeightSampler;
 vec4 hillskew_vertexf(vec4 v, int hillskew, int y, int plane) {
     #define ESCENE_OFFSET 40.0
 
-    // The size of half a texel in normalized coordinates.
-    // This is the key to fixing the offset.
     vec2 halfTexel = vec2(0.5 / EXTENDED_SCENE_SIZE, 0.5 / EXTENDED_SCENE_SIZE);
-
-    // Calculate the base normalized coordinates, same as before.
     vec2 normalizedXY = vec2(
-    (v.x / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE,
-    (v.z / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE
+        (v.x / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE,
+        (v.z / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE
     );
-
-    // --- THE FIX ---
-    // Subtract half a texel to align the sampling grid with the texelFetch grid.
-    // This ensures hardware blending happens between the correct texel centers.
     vec3 texCoord = vec3(normalizedXY + halfTexel, float(plane));
-
-    // Use textureLod with the corrected coordinate.
-    // The magic number '- 64' should be removed.
     float h = textureLod(tileHeightSampler, texCoord, 0.0).r;
-
     return vec4(v.x, v.y + (h - y)*hillskew, v.z, v.w);
 }
 
