@@ -1,4 +1,4 @@
-const float bias = 0.0007;
+const float bias = 0.0008;
 const float lightSize = 0.01;
 const int shadowSamples = 16;
 

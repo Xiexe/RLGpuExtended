@@ -1471,15 +1471,35 @@
       2987,
       2999
     ]
+  },
+  {
+    "name": "PLAYER_ANIM_ALCHEMY",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, 0, 0],
+    "intensity": 1,
+    "radius": 5,
+    "animations" : [
+      {
+        "id": 713,
+        "frames": [
+          {
+            "frame": 0,
+            "color": [1, 1, 0],
+            "intensity": 1
+          },
+          {
+            "frame": 3,
+            "color": [1, 0.5, 0],
+            "intensity": 2
+          },
+          {
+            "frame": 6,
+            "color": [1, 1, 0],
+            "intensity": 1
+          }
+        ]
+      }
+    ]
   }
-//  },
-//  {
-//    "name": "ANIM_ALCHEMY",
-//    "type": "point",
-//    "color": [1, 1, 0],
-//    "offset": [0, 0, 0],
-//    "intensity": 1,
-//    "radius": 5,
-//    "spotAnimId" :
-//  }
 ]

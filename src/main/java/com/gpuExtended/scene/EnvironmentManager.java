@@ -123,7 +123,13 @@ public class EnvironmentManager
         plugin.skybox.Initialize();
         environments = new Environment[0];
         areas = new Area[0];
-        timeOfDay = 8; // Start at 8AM
+
+        if (plugin.config.customTimeOfDay() <= 0) {
+            timeOfDay = 7; // Start at 7AM
+        }
+        else {
+            timeOfDay = plugin.config.customTimeOfDay();
+        }
 
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
             LoadEnvironments();
@@ -183,9 +189,14 @@ public class EnvironmentManager
         CleanupOldProjectiles();
         CheckRegion();
 
-        timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
-        if (timeOfDay >= 24f)
-            timeOfDay -= 24f;
+        if (plugin.config.customTimeOfDay() <= 0) {
+            timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
+            if (timeOfDay >= 24f)
+                timeOfDay -= 24f;
+        }
+        else {
+            timeOfDay = plugin.config.customTimeOfDay();
+        }
     }
 
     public void RenderSkybox()
@@ -883,6 +894,18 @@ public class EnvironmentManager
             sceneLights.remove(testNpcLight);
             npcLightHashMap.remove(npc);
         }
+    }
+
+    public void OnAnimationChanged(AnimationChanged event) {
+        Actor actor = event.getActor();
+        int animationId = actor.getAnimation();
+
+        // Find a light with animations for this animation Id
+
+        // Create the light if it doesn't exist
+
+
+        // On Update, update the light sources according to the animation keyframes.
     }
 
     public Light GetLightAtIndex(int index)

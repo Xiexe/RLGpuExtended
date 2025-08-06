@@ -332,6 +332,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				createGlDebugCallback();
 
 				// Initialize Render Pass Handlers
+				uniforms.InitializeResourceTextures();
 				shadowPass.Init();
 				mainPassLegacy.Init();
 				postProcessingPass.Init();
@@ -547,6 +548,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void onNpcDespawned(NpcDespawned event)
 	{
 		environmentManager.OnNpcDespawned(event);
+	}
+
+	@Subscribe
+	public void onAnimationChanged(AnimationChanged event) {
+		environmentManager.OnAnimationChanged(event);
 	}
 
 	private void setupSyncMode()

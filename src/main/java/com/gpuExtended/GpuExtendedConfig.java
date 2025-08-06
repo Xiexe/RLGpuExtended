@@ -489,6 +489,22 @@ public interface GpuExtendedConfig extends Config
 			return 75;
 		}
 
+		@Range(
+				min = 0,
+				max = 24
+		)
+		@ConfigItem(
+				keyName = "customTimeOfDay",
+				name = "Time of Day",
+				description = "If 0, time of day will be dynamic. Otherwise, 1-24",
+				position = 100,
+				section = lightSettings
+		)
+		default int customTimeOfDay()
+		{
+			return 0;
+		}
+
 		@ConfigItem(
 				keyName = "overrideLightRotation",
 				name = "Custom Sun Rotation",

@@ -115,7 +115,7 @@ vec4 unpackColor(vec4 packedColor) {
     return vec4(r, g, b, a);
 }
 
-void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, float distanceToPlayer)
+void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, float distanceToPlayer, float fadeOut)
 {
     ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
     vec4 packedFillColor = texelFetch(tileFillColorMap, cellUv, 0);
@@ -152,8 +152,8 @@ void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, f
             (tileUv.y > 1.0 - outlineWidth && tileUv.x > 1.0 - cornerLength)
         );
 
-        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder));
-        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder));
+        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder) * fadeOut);
+        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder) * fadeOut);
     }
 }
 
@@ -170,7 +170,7 @@ float GetTileHeight(vec3 fragPosition) {
 
 // TilePosition.w = corner length
 // TilePosition.z = plane
-void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer)
+void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer, float fadeOut)
 {
     float x = fragPos.x;
     float z = fragPos.z;
@@ -206,11 +206,11 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
             );
             if (isBorder)
             {
-                image = mix(image, borderColor.rgb * 2, borderColor.a);
+                image = mix(image, borderColor.rgb, borderColor.a * fadeOut);
             }
             else
             {
-                image = mix(image, fillColor.rgb, fillColor.a);
+                image = mix(image, fillColor.rgb , fillColor.a * fadeOut);
             }
         }
     }

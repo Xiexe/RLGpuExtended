@@ -324,9 +324,17 @@ public class ShadowPass implements IPassBase {
         glClear(GL_DEPTH_BUFFER_BIT);
         glDepthFunc(GL_LEQUAL);
 
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+
         int shaderProgram = plugin.shaderHandler.shadowPassShader.id();
         glUseProgram(shaderProgram);
         Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(shaderProgram);
+
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+        glUniform1i(uni.BlueNoiseTexture, 8);
 
         glUniformBlockBinding(shaderProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
@@ -335,16 +343,13 @@ public class ShadowPass implements IPassBase {
         glUniformBlockBinding(shaderProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glEnable(GL_DEPTH_TEST);
-
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         GL30.glBindVertexArray(staticVertexArrayObjectId);
 
         glDrawArrays(GL_TRIANGLES, 0, numStaticVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
+        glCullFace(GL_BACK);
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
 
@@ -363,9 +368,17 @@ public class ShadowPass implements IPassBase {
         glClear(GL_DEPTH_BUFFER_BIT);
         glDepthFunc(GL_LEQUAL);
 
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+
         int shaderProgram = plugin.shaderHandler.shadowPassShader.id();
         glUseProgram(shaderProgram);
         Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(shaderProgram);
+
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+        glUniform1i(uni.BlueNoiseTexture, 8);
 
         glUniformBlockBinding(shaderProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
@@ -388,10 +401,6 @@ public class ShadowPass implements IPassBase {
 //        }
 //
         glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
-
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glEnable(GL_DEPTH_TEST);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);

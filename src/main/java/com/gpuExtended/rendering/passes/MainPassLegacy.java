@@ -159,6 +159,10 @@ public class MainPassLegacy implements IPassBase {
         glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
         glUniform1i(uni.TileHeightMap, 7);
 
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+        glUniform1i(uni.BlueNoiseTexture, 8);
+
         glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
         glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
         glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);

@@ -67,5 +67,6 @@ uniform sampler2D dynamicShadowMap;
 uniform sampler2D tileFillColorMap; // holds colors of tiles
 uniform sampler2D tileBorderColorMap; // holds textures of tiles
 uniform sampler2D tileSettingsMap; // holds settings of tiles
+uniform sampler2D blueNoiseTexture;
 
 uniform vec2 textureAnimations[128];

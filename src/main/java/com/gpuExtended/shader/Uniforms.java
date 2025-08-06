@@ -1,10 +1,15 @@
 package com.gpuExtended.shader;
 
 import com.gpuExtended.GpuExtendedPlugin;
+import com.gpuExtended.rendering.Texture2D;
+import com.gpuExtended.util.Props;
+import com.gpuExtended.util.ResourcePath;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 
+import static com.gpuExtended.util.ResourcePath.path;
 import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
@@ -37,8 +42,7 @@ public class Uniforms
         public int TileMarkerBorderColorMap;
         public int TileMarkerFillColorMap;
         public int TileMarkerSettingsMap;
-        public int RoofMaskTextureMap;
-        public int GodNoiseTextureMap;
+        public int BlueNoiseTexture;
         public int TileHeightMap;
         
         public int SourceTexture;
@@ -49,6 +53,31 @@ public class Uniforms
     }
 
     public HashMap<Integer, ShaderVariables> map;
+
+    ResourcePath blueNoisePath = Props.getPathOrDefault(
+            "blue-noise", () ->
+                path(GpuExtendedPlugin.class, "textures/noise/blue_noise_rgba.png")
+        );
+
+    @Getter
+    private Texture2D blueNoiseTexture;
+
+    public void InitializeResourceTextures() {
+        Texture2D.TextureSettings settings = new Texture2D.TextureSettings() {{
+            level = 0;
+            internalFormat = GL_RGBA;
+            border = 0;
+            format = GL_RGBA;
+            type = GL_UNSIGNED_BYTE;
+            pixels = 0;
+            minFilter = GL_NEAREST;
+            magFilter = GL_NEAREST;
+            wrapS = GL_REPEAT;
+            wrapT = GL_REPEAT;
+        }};
+
+        blueNoiseTexture = Texture2D.loadFromResourcePath(blueNoisePath, settings);
+    }
 
     public void InitializeShaderUniformsForShader(int shader, GpuExtendedPlugin.ComputeMode computeMode)
     {
@@ -65,9 +94,8 @@ public class Uniforms
         shaderVariables.TileMarkerFillColorMap = glGetUniformLocation(shader, "tileFillColorMap");
         shaderVariables.TileMarkerBorderColorMap = glGetUniformLocation(shader, "tileBorderColorMap");
         shaderVariables.TileMarkerSettingsMap = glGetUniformLocation(shader, "tileSettingsMap");
-        shaderVariables.RoofMaskTextureMap = glGetUniformLocation(shader, "roofMaskMap");
         shaderVariables.TileHeightMap = glGetUniformLocation(shader, "tileHeightMap");
-        shaderVariables.GodNoiseTextureMap = glGetUniformLocation(shader, "godNoiseMap");
+        shaderVariables.BlueNoiseTexture = glGetUniformLocation(shader, "blueNoiseTexture");
         
         shaderVariables.SourceTexture = glGetUniformLocation(shader, "srcTexture");
         shaderVariables.DestinationTexture = glGetUniformLocation(shader, "dstTexture");
