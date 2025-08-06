@@ -1301,6 +1301,17 @@
     ]
   },
   {
+    "name": "MORAVIO_BASE_LIGHT",
+    "type": "point",
+    "color": [1, 1, 1],
+    "offset": [0, 0.5, 3.5],
+    "intensity": 2,
+    "radius": 8,
+    "walls" : [
+      54022
+    ]
+  },
+  {
     "name": "PROJECTILE_RED",
     "type": "point",
     "color": [1.00, 0.00, 0.00],

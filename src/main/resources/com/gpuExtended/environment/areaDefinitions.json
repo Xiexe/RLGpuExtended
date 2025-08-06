@@ -209,6 +209,16 @@
     ]
   },
   {
+    "name": "TAVERLY",
+    "environment": "DEFAULT",
+    "bounds": [
+      {
+        "start": [2876, 3407, -1],
+        "end": [2935, 3490, -1]
+      }
+    ]
+  },
+  {
     "name": "TITHE_FARM",
     "environment": "DEFAULT",
     "bounds": [

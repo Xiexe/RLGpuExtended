@@ -42,7 +42,7 @@ float saturate(float value) {
 }
 
 void main() {
-    float blueNoise = texture(blueNoiseTexture, gl_FragCoord.xy / 32).a;
+    float blueNoise = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0)).a;
 
     float alpha = fAlpha;
     if (fTextureId > 0) {
