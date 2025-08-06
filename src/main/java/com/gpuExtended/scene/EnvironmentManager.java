@@ -14,6 +14,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -974,7 +975,14 @@ public class EnvironmentManager
         Player player = client.getLocalPlayer();
         if(player == null) return null;
 
-        boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
+        LocalPoint localPoint = player.getLocalLocation();
+        WorldPoint worldPoint = player.getWorldLocation();
+        if (client.isInInstancedRegion())
+        {
+            worldPoint = WorldPoint.fromLocalInstance(client, localPoint);
+        }
+
+        boolean isInOverworld = WorldPoint.getMirrorPoint(worldPoint, true).getY() < Constants.OVERWORLD_MAX_Y;
         Environment targetEnvironment = isInOverworld ? GetDefaultOverworldEnvironment() : GetDefaultUndergroundEnvironment();
         return targetEnvironment;
     }
