@@ -62,6 +62,7 @@ void main() {
     PopulateSurfaceNormal(s, flags, fNormal, fFlatNormal);
 
     vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
+    float tileHeightmap = GetTileHeight(vec3(sceneUV, flags.plane));
 
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
@@ -76,18 +77,16 @@ void main() {
     vec3 diffuse = s.albedo.rgb * ndl;
     vec3 lighting = diffuse * mainLight.color.rgb * shadowMap;
     vec3 litFragment = lighting.rgb + ambientColor.rgb * s.albedo.rgb;
-    ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
+    ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition, tileHeightmap);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
     ApplyFog(finalColor, fPosition, distanceToCamera);
 
     if(!flags.isDynamicModel)
     {
-        vec2 tilePos = (fPosition.xz + (TILE_SIZE * SCENE_OFFSET)) / (EXTENDED_SCENE_SIZE * TILE_SIZE);
-        float height = GetTileHeight(vec3(tilePos, flags.plane));
         float transitionRange = 16;
-        float tileHeightMarkerRangeEdge0 = height - transitionRange * 2;
-        float tileHeightMarkerRangeEdge1 = height - transitionRange * 0.5;
+        float tileHeightMarkerRangeEdge0 = tileHeightmap - transitionRange * 2;
+        float tileHeightMarkerRangeEdge1 = tileHeightmap - transitionRange * 0.5;
         float markerIntensity = smoothstep(tileHeightMarkerRangeEdge0, tileHeightMarkerRangeEdge1, fPosition.y);
 
 //        float height = GetTileHeight(vec3(fPosition.x + sceneOffsetX, fPosition.z + sceneOffsetZ, flags.plane));

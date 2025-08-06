@@ -446,6 +446,7 @@ public class EnvironmentManager
                             continue;
                         }
 
+
                         WorldPoint tileWorldLocation = tile.getWorldLocation();
                         int[] worldLocation = new int[]{
                                 tileWorldLocation.getX(),
@@ -458,7 +459,9 @@ public class EnvironmentManager
                         {
                             ArrayList<Light> lightsForTile = tileLights.get(hash);
                             LocalPoint location = tile.getLocalLocation();
-                            Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
+                            float tileHeight = Perspective.getTileHeight(client, location, z);
+
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
                             for (int i = 0; i < lightsForTile.size(); i++) {
                                 Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position, tile.getPlane(), 0, plugin.awtContext);
                                 sceneLights.add(light);
@@ -473,7 +476,8 @@ public class EnvironmentManager
                             {
                                 int orientation = wallObject.getOrientationA();
                                 LocalPoint location = wallObject.getLocalLocation();
-                                Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
+                                float tileHeight = Perspective.getTileHeight(client, location, z);
+                                Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
 
                                 for (int i = 0; i < lightsForWallObject.size(); i++) {
                                     Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
@@ -490,7 +494,8 @@ public class EnvironmentManager
                             {
                                 int orientation = decorativeObject.getConfig() >> 6 & 3;
                                 LocalPoint location = decorativeObject.getLocalLocation();
-                                Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), orientation);
+                                float tileHeight = Perspective.getTileHeight(client, location, z);
+                                Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, orientation);
 
                                 for (int i = 0; i < lightsForDecoration.size(); i++) {
 
@@ -509,7 +514,8 @@ public class EnvironmentManager
                                 {
                                     int orientation = gameObject.getConfig() >> 6 & 3;
                                     LocalPoint location = gameObject.getLocalLocation();
-                                    Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), 0);
+                                    float tileHeight = Perspective.getTileHeight(client, location, z);
+                                    Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
 
                                     for (int i = 0; i < lightsForGameobject.size(); i++) {
                                         Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);

@@ -1,6 +1,6 @@
 const float bias = 0.0008;
 const float lightSize = 0.01;
-const int shadowSamples = 16;
+const int shadowSamples = 12;
 
 float LightAttenuation(float dist, float radius) {
     return pow(clamp(1.0 - (dist * dist) / (radius * radius), 0.0, 1.0), 5);
@@ -41,7 +41,7 @@ float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float
 }
 
 float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shadowBias) {
-    float fudgeFactor = 4;
+    float fudgeFactor = 2;
     vec2 shadowRes = textureSize(shadowTex, 0);
     float currentDepth = projCoords.z - shadowBias;
     float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * fudgeFactor;
@@ -133,7 +133,7 @@ vec3 imaBandEdge(float bandDistance, float distToLight)
     return band;
 }
 
-void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec3 normal, vec3 fragPos)
+void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec3 normal, vec3 fragPos, float tileHeights)
 {
     int numLights = lightBinIndicies[getLightBinIndex(LIGHTS_BIN_NUM_LIGHTS_INDEX, flags.tileX, flags.tileY, flags.plane)];
     vec3 lightDebug = vec3(float(numLights) / float(LIGHTS_PER_TILE - 1));
@@ -149,6 +149,7 @@ void ApplyAdditiveLighting(inout vec3 image, VertexFlags flags, vec3 albedo, vec
         int lightIndex = lightBinIndicies[oneDIndex];
         if(lightIndex >= 0) {
             Light light = additiveLights[lightIndex];
+//            light.pos.z += tileHeights;
 
             vec3 toLight = ((light.pos.xyz / TILE_SIZE) - (fragPos.xzy / TILE_SIZE));
             float distToLight = length(toLight);

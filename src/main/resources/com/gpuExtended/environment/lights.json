@@ -60,6 +60,23 @@
     ]
   },
   {
+    "name": "WALL_TORCH_WHILE_GUTHIX_SLEEPS",
+    "type": "point",
+    "color": [1.00, 0.35, 0.025],
+    "offset": [0, 1, 2],
+    "intensity": 2,
+    "radius": 5,
+    "animation": "flicker",
+    "walls": [
+      53407,
+      53415,
+      53413,
+      53403,
+      53399,
+      53408
+    ]
+  },
+  {
     "name": "GENERIC_CANDELABRA",
     "type": "point",
     "color": [1.00, 0.7, 0.00],
@@ -106,16 +123,30 @@
     "type": "point",
     "color": [1.00, 0.25, 0.00],
     "offset": [0, 0, 1],
-    "intensity": 4,
-    "radius": 6,
+    "intensity": 1,
+    "radius": 5,
     "animation": "flicker",
     "gameObjects": [
       3769,
+      4265,
+      4267,
       10660,
       26185,
       43475,
       44021,
       49927
+    ]
+  },
+  {
+    "name" : "RUNECRAFT_ALTAR_PILLAR_WHITE",
+    "type": "point",
+    "color": [1, 1, 1],
+    "offset": [0, 0, 2],
+    "intensity": 2,
+    "radius": 5,
+    "animation": "flicker",
+    "gameObjects": [
+      34789
     ]
   },
   {
