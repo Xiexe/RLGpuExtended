@@ -13,6 +13,7 @@ public class Vector3 extends Vector2
         return new Vector3(0,0,0);
     }
 
+    @Override
     public Vector3 Normalize()
     {
         float length = (float) Math.sqrt(x * x + y * y + z * z);
@@ -29,9 +30,9 @@ public class Vector3 extends Vector2
 
     public static Vector3 Add(Vector3 v1, Vector3 v2) {
         return new Vector3(
-                v1.x - v2.x,
-                v1.y - v2.y,
-                v1.z - v2.z
+                v1.x + v2.x,
+                v1.y + v2.y,
+                v1.z + v2.z
         );
     }
 

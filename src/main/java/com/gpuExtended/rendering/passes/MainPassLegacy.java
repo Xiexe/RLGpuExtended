@@ -6,7 +6,10 @@ import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.overlays.PerformanceOverlay;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
+import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.rendering.camera.Camera;
+import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
@@ -38,6 +41,7 @@ public class MainPassLegacy implements IPassBase {
     @Inject
     public GpuExtendedPlugin plugin;
 
+    public Camera camera;
     public FrameBuffer frameBuffer;
     VertexBufferContext vertexBufferContext;
     VertexBufferContext nextSceneVertexBufferContext;
@@ -48,6 +52,10 @@ public class MainPassLegacy implements IPassBase {
         InitFramebuffer();
         InitBuffers();
         InitVAO();
+
+        Vector3 worldUp = new Vector3(0, 1, 0);
+        Vector3 position = Vector3.Zero();
+        camera = new Camera(position, worldUp, 0, 0);
     }
 
     private void InitBuffers() {
@@ -131,49 +139,52 @@ public class MainPassLegacy implements IPassBase {
 
         plugin.skybox.Render(); // Render the skybox first.
 
-        glUseProgram(plugin.shaderHandler.mainPassShader.id());
+        glUseProgram(plugin.shaders.mainPassShader.id());
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(plugin.shaderHandler.mainPassShader.id());
+        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(plugin.shaders.mainPassShader.id());
+
+        glUniform1i(shaderVars.Textures, 1); // texture sampler array is bound to texture1
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
-        glUniform1i(uni.ShadowMap, 2);
+        glUniform1i(shaderVars.ShadowMap, 2);
 
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetDynamicFramebuffer().getTexture().getId());
-        glUniform1i(uni.DynamicShadowMap, 3);
+        glUniform1i(shaderVars.DynamicShadowMap, 3);
 
         glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileFillColorTexture.getId());
-        glUniform1i(uni.TileMarkerFillColorMap, 4);
+        glUniform1i(shaderVars.TileMarkerFillColorMap, 4);
 
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileBorderColorTexture.getId());
-        glUniform1i(uni.TileMarkerBorderColorMap, 5);
+        glUniform1i(shaderVars.TileMarkerBorderColorMap, 5);
 
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileSettingsTexture.getId());
-        glUniform1i(uni.TileMarkerSettingsMap, 6);
+        glUniform1i(shaderVars.TileMarkerSettingsMap, 6);
 
         glActiveTexture(GL_TEXTURE7);
         glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
-        glUniform1i(uni.TileHeightMap, 7);
+        glUniform1i(shaderVars.TileHeightMap, 7);
 
         glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
-        glUniform1i(uni.BlueNoiseTexture, 8);
+        glUniform1i(shaderVars.BlueNoiseTexture, 8);
 
-        glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaderHandler.mainPassShader.id(), uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, plugin.lightBinsBuffer.glBufferId);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, plugin.lightBinsBuffer.glBufferId);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+        // TODO:: if the shaders get recompiled, this uniform never gets set back to the shader.
         final TextureProvider textureProvider = plugin.client.getTextureProvider();
         if (plugin.textureArrayId == -1) {
             // lazy init textures as they may not be loaded at plugin start.
@@ -182,20 +193,13 @@ public class MainPassLegacy implements IPassBase {
             if (plugin.textureArrayId > -1) {
                 // if texture upload is successful, compute and set texture animations
                 float[] texAnims = plugin.textureManager.computeTextureAnimations(textureProvider);
-                glUniform2fv(uni.TextureAnimations, texAnims);
+                glUniform2fv(shaderVars.TextureAnimations, texAnims);
             }
         }
-//
-        glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
 
-        // We just allow the GL to do face culling. Note this requires the priority renderer
-        // to have logic to disregard culled faces in the priority depth testing.
         glEnable(GL_CULL_FACE);
-
-        // Enable blending for alpha
         glEnable(GL_BLEND);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
         glDrawArrays(GL_TRIANGLES, 0, computeBufferContext.totalVertices);
@@ -316,9 +320,9 @@ public class MainPassLegacy implements IPassBase {
         plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
         plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
-        DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaderHandler.unorderedComputeShader.id());
-        DispatchSortingCompute(cCtx.tmpSmallModelBuffer, cCtx.numSmallModels, plugin.shaderHandler.smallOrderedComputeShader.id());
-        DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.numLargeModels, plugin.shaderHandler.largeOrderedComputeShader.id());
+        DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader.id());
+        DispatchSortingCompute(cCtx.tmpSmallModelBuffer, cCtx.numSmallModels, plugin.shaders.smallOrderedComputeShader.id());
+        DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.numLargeModels, plugin.shaders.largeOrderedComputeShader.id());
 
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
@@ -606,14 +610,14 @@ public class MainPassLegacy implements IPassBase {
 
     private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, int computeShader) {
         Uniforms uniforms = plugin.uniforms;
-        ShaderHandler shaders = plugin.shaderHandler;
+        ShaderHandler shaders = plugin.shaders;
 
         // Bind uniforms for compute shaders | TODO:: this may not need to be done every frame. Also, move uniform buffers to uniform wrapper or something
         glUniformBlockBinding(shaders.smallOrderedComputeShader.id(), uniforms.GetUniforms(shaders.smallOrderedComputeShader.id()).BlockSmall, CAMERA_BUFFER_BINDING_ID);
-        glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, plugin.glCameraUniformBuffer.glBufferId);
+        glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, uniforms.glCameraUniformBuffer.glBufferId);
 
         glUniformBlockBinding(shaders.largeOrderedComputeShader.id(), uniforms.GetUniforms(shaders.largeOrderedComputeShader.id()).BlockLarge, CAMERA_BUFFER_BINDING_ID);
-        glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, plugin.glCameraUniformBuffer.glBufferId);
+        glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, uniforms.glCameraUniformBuffer.glBufferId);
 
         glUseProgram(computeShader);
 

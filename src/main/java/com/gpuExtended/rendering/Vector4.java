@@ -34,5 +34,4 @@ public class Vector4 extends Vector3
         float length = (float) Math.sqrt(x*x + y*y + z*z);
         return new Vector4(x / length, y / length, z / length, this.w);
     }
-
 }

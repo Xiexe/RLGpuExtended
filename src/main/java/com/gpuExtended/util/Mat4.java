@@ -25,6 +25,10 @@
  */
 package com.gpuExtended.util;
 
+import com.gpuExtended.rendering.Vector3;
+import com.gpuExtended.rendering.camera.Frustum;
+import com.gpuExtended.rendering.camera.Plane;
+
 public class Mat4
 {
 	private Mat4()
@@ -62,6 +66,63 @@ public class Mat4
 				0, 0, 1, 0,
 				tx, ty, tz, 1,
 			};
+	}
+
+	/**
+	 * Creates a view matrix that looks from an eye position towards a target.
+	 * This is used to position and orient the camera in the world.
+	 *
+	 * The result is a matrix that transforms world-space coordinates into view-space.
+	 *
+	 * @param eye    The position of the camera. A float[3] array {x, y, z}.
+	 * @param center The point in the world the camera is looking at. A float[3] array {x, y, z}.
+	 * @param up     The "up" direction of the world (usually {0, 1, 0}). A float[3] array.
+	 * @return A column-major 4x4 view matrix as a float[16] array.
+	 */
+	public static float[] lookAt(Vector3 eye, Vector3 center, Vector3 up) {
+		// 1. Create the forward vector (z-axis of camera space)
+		// In a right-handed system, the camera looks down its negative z-axis.
+		// So, we calculate the vector pointing from the center to the eye.
+		Vector3 zAxis = Vector3.Subtract(eye, center).Normalize();
+
+		// 2. Create the right vector (x-axis of camera space)
+		// This is the cross product of the world's up vector and our new z-axis.
+		Vector3 xAxis = Vector3.Cross(up, zAxis).Normalize();
+
+		// 3. Create the camera's true up vector (y-axis of camera space)
+		// This is the cross product of our new z-axis and x-axis to ensure orthogonality.
+		Vector3 yAxis = Vector3.Cross(zAxis, xAxis);
+
+		// The view matrix is composed of the three basis vectors (xAxis, yAxis, zAxis)
+		// and a translation component. The translation part moves the world so that
+		// the 'eye' is at the origin. This is done by taking the dot product of the
+		// axes with the eye position.
+
+		return new float[]{
+				// Column 1 (X-axis)
+				xAxis.x,
+				yAxis.x,
+				zAxis.x,
+				0,
+
+				// Column 2 (Y-axis)
+				xAxis.y,
+				yAxis.y,
+				zAxis.y,
+				0,
+
+				// Column 3 (Z-axis)
+				xAxis.z,
+				yAxis.z,
+				zAxis.z,
+				0,
+
+				// Column 4 (Translation)
+				-xAxis.Dot(eye),
+				-yAxis.Dot(eye),
+				-zAxis.Dot(eye),
+				1
+		};
 	}
 
 	public static float[] rotateX(float rx)
@@ -159,6 +220,176 @@ public class Mat4
 				0, 0, -1f / (far), 0,
 				0, 0, 0, 1
 		};
+	}
+
+	/**
+	 * Creates a perspective projection matrix.
+	 * This matrix simulates depth by making objects farther away appear smaller.
+	 *
+	 * @param fovy   The vertical field of view angle, in radians.
+	 * @param aspect The aspect ratio of the viewport (width / height).
+	 * @param near   The distance to the near clipping plane. Must be positive.
+	 * @param far    The distance to the far clipping plane. Must be positive.
+	 * @return A column-major 4x4 perspective matrix as a float[16] array.
+	 */
+	public static float[] perspective(float fovy, float aspect, float near, float far) {
+		float[] m = new float[16];
+
+		float tanHalfFovy = (float) Math.tan(fovy / 2.0f);
+
+		m[0] = 1.0f / (aspect * tanHalfFovy);
+		m[1] = 0.0f;
+		m[2] = 0.0f;
+		m[3] = 0.0f;
+
+		m[4] = 0.0f;
+		m[5] = 1.0f / (tanHalfFovy);
+		m[6] = 0.0f;
+		m[7] = 0.0f;
+
+		m[8] = 0.0f;
+		m[9] = 0.0f;
+		m[10] = -(far + near) / (far - near);
+		m[11] = -1.0f;
+
+		m[12] = 0.0f;
+		m[13] = 0.0f;
+		m[14] = -(2.0f * far * near) / (far - near);
+		m[15] = 0.0f;
+
+		return m;
+	}
+
+	/**
+	 * Creates an orthographic projection matrix.
+	 * This matrix defines a 3D box-shaped viewing volume. Objects are rendered
+	 * without perspective distortion, which is useful for 2D elements or technical drawings.
+	 *
+	 * @param left   The coordinate of the left vertical clipping plane.
+	 * @param right  The coordinate of the right vertical clipping plane.
+	 * @param bottom The coordinate of the bottom horizontal clipping plane.
+	 * @param top    The coordinate of the top horizontal clipping plane.
+	 * @param near   The distance to the near depth clipping plane.
+	 * @param far    The distance to the far depth clipping plane.
+	 * @return A column-major 4x4 orthographic matrix as a float[16] array.
+	 */
+	public static float[] orthographic(float left, float right, float bottom, float top, float near, float far) {
+		float[] m = new float[16];
+
+		float r_l = 1.0f / (right - left);
+		float t_b = 1.0f / (top - bottom);
+		float f_n = 1.0f / (far - near);
+
+		m[0] = 2.0f * r_l;
+		m[1] = 0.0f;
+		m[2] = 0.0f;
+		m[3] = 0.0f;
+
+		m[4] = 0.0f;
+		m[5] = 2.0f * t_b;
+		m[6] = 0.0f;
+		m[7] = 0.0f;
+
+		m[8] = 0.0f;
+		m[9] = 0.0f;
+		m[10] = -2.0f * f_n; // The negative is because we're mapping to a right-handed NDC
+		m[11] = 0.0f;
+
+		m[12] = -(right + left) * r_l;
+		m[13] = -(top + bottom) * t_b;
+		m[14] = -(far + near) * f_n;
+		m[15] = 1.0f;
+
+		return m;
+	}
+
+	/**
+	 * Multiplies two 4x4 matrices and returns the result in a new float[16] array.
+	 * The multiplication order is a * b.
+	 *
+	 * @param a The left-hand side matrix.
+	 * @param b The right-hand side matrix.
+	 * @return A new float[16] array containing the result.
+	 */
+	public static float[] multiply(final float[] a, final float[] b) {
+		float[] result = new float[16];
+
+		for (int col = 0; col < 4; col++) {
+			for (int row = 0; row < 4; row++) {
+				float sum = 0;
+				for (int i = 0; i < 4; i++) {
+					// For column-major: result[col*4 + row] = sum(a[i*4 + row] * b[col*4 + i])
+					sum += a[i*4 + row] * b[col*4 + i];
+				}
+				result[col*4 + row] = sum;
+			}
+		}
+		return result;
+	}
+
+
+	/**
+	 * Extracts the 6 planes of the viewing frustum from a combined view-projection matrix.
+	 * The planes are normalized, which is useful for distance calculations.
+	 *
+	 * @param vpMatrix The combined view * projection matrix.
+	 * @return A Frustum object containing the six planes.
+	 */
+	public static Frustum extractFrustumPlanes(float[] vpMatrix) {
+		float[] m = vpMatrix;
+
+		// The plane equations are derived from the rows of the transposed VP matrix.
+		// Each row (m00, m01, m02, m03) corresponds to Ax + By + Cz + Dw = 0 in clip space.
+
+		// Left Plane: Row 4 + Row 1
+		Plane left = Plane.fromCoefficients(
+				m[3] + m[0],
+				m[7] + m[4],
+				m[11] + m[8],
+				m[15] + m[12]
+		);
+
+		// Right Plane: Row 4 - Row 1
+		Plane right = Plane.fromCoefficients(
+				m[3] - m[0],
+				m[7] - m[4],
+				m[11] - m[8],
+				m[15] - m[12]
+		);
+
+		// Bottom Plane: Row 4 + Row 2
+		Plane bottom = Plane.fromCoefficients(
+				m[3] + m[1],
+				m[7] + m[5],
+				m[11] + m[9],
+				m[15] + m[13]
+		);
+
+		// Top Plane: Row 4 - Row 2
+		Plane top = Plane.fromCoefficients(
+				m[3] - m[1],
+				m[7] - m[5],
+				m[11] - m[9],
+				m[15] - m[13]
+		);
+
+		// Near Plane: Row 4 + Row 3
+		Plane near = Plane.fromCoefficients(
+				m[3] + m[2],
+				m[7] + m[6],
+				m[11] + m[10],
+				m[15] + m[14]
+		);
+
+		// Far Plane: Row 4 - Row 3
+		Plane far = Plane.fromCoefficients(
+				m[3] - m[2],
+				m[7] - m[6],
+				m[11] - m[10],
+				m[15] - m[14]
+		);
+
+		return new Frustum(left, right, bottom, top, near, far);
 	}
 
 	public static void mul(final float[] a, final float[] b)

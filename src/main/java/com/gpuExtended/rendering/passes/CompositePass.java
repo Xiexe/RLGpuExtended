@@ -2,7 +2,7 @@ package com.gpuExtended.rendering.passes;
 
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.config.UIScalingMode;
-import com.gpuExtended.shader.Uniforms;
+import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.util.GpuFloatBuffer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -110,33 +110,33 @@ public class CompositePass implements IPassBase {
         // Use the texture bound in the first pass
         final UIScalingMode uiScalingMode = plugin.config.uiScalingMode();
 
-        glUseProgram(plugin.shaderHandler.uiShader.id());
-        Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(plugin.shaderHandler.uiShader.id());
+        glUseProgram(plugin.shaders.uiShader.id());
+        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(plugin.shaders.uiShader.id());
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, plugin.mainPassLegacy.frameBuffer.getTexture().getId());
-        glUniform1i(uni.MainTexture, 1);
+        glUniform1i(shaderVars.MainTexture, 1);
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, plugin.postProcessingPass.bloomFramebuffer.getTexture().getId());
-        glUniform1i(uni.BloomTexture, 2);
+        glUniform1i(shaderVars.BloomTexture, 2);
 
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, compositeTexture);
-        glUniform1i(uni.InterfaceTexture, 3);
+        glUniform1i(shaderVars.InterfaceTexture, 3);
 
         glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
-        glUniform1i(uni.ShadowMap, 4);
+        glUniform1i(shaderVars.ShadowMap, 4);
 
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetDynamicFramebuffer().getTexture().getId());
-        glUniform1i(uni.DynamicShadowMap, 5);
+        glUniform1i(shaderVars.DynamicShadowMap, 5);
 
-        glUniform1i(uni.TexSamplingMode, uiScalingMode.getMode());
-        glUniform2i(uni.TexSourceDimensions, canvasWidth, canvasHeight);
-        glUniform1i(uni.UiColorBlindMode, plugin.config.colorBlindMode().ordinal());
-        glUniform4f(uni.UiAlphaOverlay,
+        glUniform1i(shaderVars.TexSamplingMode, uiScalingMode.getMode());
+        glUniform2i(shaderVars.TexSourceDimensions, canvasWidth, canvasHeight);
+        glUniform1i(shaderVars.UiColorBlindMode, plugin.config.colorBlindMode().ordinal());
+        glUniform4f(shaderVars.UiAlphaOverlay,
                 (overlayColor >> 16 & 0xFF) / 255f,
                 (overlayColor >> 8 & 0xFF) / 255f,
                 (overlayColor & 0xFF) / 255f,
@@ -147,12 +147,12 @@ public class CompositePass implements IPassBase {
         {
             Dimension dim = plugin.client.getStretchedDimensions();
             plugin.glDpiAwareViewport(0, 0, dim.width, dim.height);
-            glUniform2i(uni.TexTargetDimensions, dim.width, dim.height);
+            glUniform2i(shaderVars.TexTargetDimensions, dim.width, dim.height);
         }
         else
         {
             plugin.glDpiAwareViewport(0, 0, canvasWidth, canvasHeight);
-            glUniform2i(uni.TexTargetDimensions, canvasWidth, canvasHeight);
+            glUniform2i(shaderVars.TexTargetDimensions, canvasWidth, canvasHeight);
         }
 
         // Set the sampling function used when stretching the UI.

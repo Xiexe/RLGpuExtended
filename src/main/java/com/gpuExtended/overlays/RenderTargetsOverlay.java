@@ -66,7 +66,7 @@ public class RenderTargetsOverlay extends Overlay {
 
         clientThread.invoke(() -> {
             try {
-                plugin.shaderHandler.Recompile();
+                plugin.shaders.Recompile();
             } catch (IOException | ShaderException ex) {
                 log.error("Error while recompiling shaders:", ex);
                 plugin.stopPlugin();
@@ -77,8 +77,8 @@ public class RenderTargetsOverlay extends Overlay {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
-            glUseProgram(plugin.shaderHandler.uiShader.id());
-            int uniBounds = glGetUniformLocation(plugin.shaderHandler.uiShader.id(), "shadowMapOverlayDimensions");
+            glUseProgram(plugin.shaders.uiShader.id());
+            int uniBounds = glGetUniformLocation(plugin.shaders.uiShader.id(), "shadowMapOverlayDimensions");
             if (uniBounds != -1)
                 glUniform4i(uniBounds, 0, 0, 0, 0);
         }
@@ -89,7 +89,7 @@ public class RenderTargetsOverlay extends Overlay {
         var bounds = getBounds();
 
         clientThread.invoke(() -> {
-            int uiShader = plugin.shaderHandler.uiShader.id();
+            int uiShader = plugin.shaders.uiShader.id();
             if (uiShader == 0 && isActive) {
                 log.error("ShadowMapOverlay: glUiProgram is 0");
                 return;
@@ -118,8 +118,6 @@ public class RenderTargetsOverlay extends Overlay {
                     );
                 }
             }
-
-            plugin.checkGLErrors();
         });
 
 //        log.info("Rendering Shadowmap Debug Overlay.");

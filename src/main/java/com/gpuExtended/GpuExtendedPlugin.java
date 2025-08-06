@@ -9,10 +9,8 @@ import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.opengl.OpenCLManager;
 import com.gpuExtended.overlays.*;
 import com.gpuExtended.regions.Area;
-import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.rendering.passes.*;
-import com.gpuExtended.scene.Environment;
 import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.Skybox;
@@ -28,8 +26,6 @@ import com.gpuExtended.util.deserializers.VectorDeserializer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.api.hooks.DrawCallbacks;
 import net.runelite.client.callback.ClientThread;
@@ -118,7 +114,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public Uniforms uniforms;
 
 	@Inject
-	public ShaderHandler shaderHandler;
+	public ShaderHandler shaders;
 
 	@Inject
 	public EnvironmentManager environmentManager;
@@ -178,20 +174,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public int textureArrayId;
 	public int tileHeightTex;
 
-	public final GLBuffer glCameraUniformBuffer = new GLBuffer("camera uniform buffer");
-	private final GLBuffer glPlayerUniformBuffer = new GLBuffer("player uniform buffer");
-	private final GLBuffer glEnvironmentUniformBuffer = new GLBuffer("environment uniform buffer");
-	private final GLBuffer glTileMarkerUniformBuffer = new GLBuffer("tile marker uniform buffer");
-	private final GLBuffer glSystemInfoUniformBuffer = new GLBuffer("system info uniform buffer");
-	private final GLBuffer glConfigUniformBuffer = new GLBuffer("config uniform buffer");
-
-	private ByteBuffer bBufferCameraBlock;
-	private ByteBuffer bBufferPlayerBlock;
-	private ByteBuffer bBufferEnvironmentBlock;
-	private ByteBuffer bBufferTileMarkerBlock;
-	private ByteBuffer bBufferSystemInfoBlock;
-	private ByteBuffer bBufferConfigBlock;
-
 	private int lastStretchedCanvasWidth;
 	private int lastStretchedCanvasHeight;
 	private AntiAliasingMode lastAntiAliasingMode;
@@ -208,11 +190,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public int sceneId;
 	private int nextSceneId;
 
-	private long Time;
+	public long Time;
 	private long LastTime;
-	private float DeltaTime;
+	public float DeltaTime;
 	private long StartTime;
-	private float currentTrueTileAlpha = 1;
+	public float currentTrueTileAlpha = 1;
 	private int currentPlane = 0;
 	private long frameTime = 0;
 
@@ -220,7 +202,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	public boolean roofFading = false;
 
-	private int[] lastPlayerPosition = new int[2];
+	public int[] lastPlayerPosition = new int[2];
 
 	public int[] currentViewport = new int[4];
 
@@ -239,6 +221,11 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Inject
 	private TileInspectorOverlay tileInspectorOverlay;
 
+	@Provides
+	GpuExtendedConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(GpuExtendedConfig.class);
+	}
 
 	@Override
 	protected void startUp()
@@ -305,7 +292,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				lwjglInitted = true;
 
-				checkGLErrors();
 				if (log.isDebugEnabled() && glCapabilities.glDebugMessageControl != 0)
 				{
 					debugCallback = GLUtil.setupDebugMessageCallback();
@@ -333,6 +319,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				// Initialize Render Pass Handlers
 				uniforms.InitializeResourceTextures();
+				uniforms.InitializeUniformBlocks();
+
 				shadowPass.Init();
 				mainPassLegacy.Init();
 				postProcessingPass.Init();
@@ -341,7 +329,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				setupSyncMode();
 
-				shaderHandler.Initialize();
+				shaders.Initialize();
 				tileMarkerManager.Initialize(EXTENDED_SCENE_SIZE);
 				environmentManager.Initialize();
 
@@ -369,7 +357,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				}
 
 				environmentManager.LoadAreas();
-				checkGLErrors();
 			}
 			catch (Throwable e)
 			{
@@ -469,12 +456,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			// force main buffer provider rebuild to turn off alpha channel
 			client.resizeCanvas();
 		});
-	}
-
-	@Provides
-	GpuExtendedConfig provideConfig(ConfigManager configManager)
-	{
-		return configManager.getConfig(GpuExtendedConfig.class);
 	}
 
 	@Subscribe
@@ -586,57 +567,28 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		}
 
 		client.setUnlockedFpsTarget(actualSwapInterval == 0 ? config.fpsTarget() : 0);
-		checkGLErrors();
 	}
 
 	private void shutdownProgram()
 	{
 		FileWatcher.destroy();
-	    shaderHandler.cleanup();
+	    shaders.cleanup();
 	}
 
 	private void initBuffers()
 	{
 		initGlBuffer(lightBinsBuffer);
 
-		initGlBuffer(glCameraUniformBuffer);
-		initGlBuffer(glPlayerUniformBuffer);
-		initGlBuffer(glEnvironmentUniformBuffer);
-		initGlBuffer(glTileMarkerUniformBuffer);
-		initGlBuffer(glSystemInfoUniformBuffer);
-		initGlBuffer(glConfigUniformBuffer);
-
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
 		// +1 for the light count
 		glBufferData(GL_SHADER_STORAGE_BUFFER, Ints.BYTES * EXTENDED_SCENE_SIZE * EXTENDED_SCENE_SIZE * MAX_Z * (MAX_LIGHTS_PER_TILE + 1), GL_DYNAMIC_COPY);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-		initUniformBufferBlocks();
 	}
 
-	private void initGlBuffer(GLBuffer glBuffer)
+	public void initGlBuffer(GLBuffer glBuffer)
 	{
 		glBuffer.glBufferId = glGenBuffers();
 		log.info("Initialized GLBuffer: {}, {}", glBuffer.glBufferId, glBuffer.name);
-	}
-
-	private void initUniformBufferBlocks()
-	{
-		bBufferCameraBlock = initUniformBufferBlock(glCameraUniformBuffer, 128);
-		bBufferPlayerBlock = initUniformBufferBlock(glPlayerUniformBuffer, 24);
-		bBufferEnvironmentBlock = initUniformBufferBlock(glEnvironmentUniformBuffer, 16 + 16 + 4 + 4 + 4 + 4 + 128 + (64 * MAX_LIGHTS));
-		bBufferTileMarkerBlock = initUniformBufferBlock(glTileMarkerUniformBuffer, 144);
-		bBufferSystemInfoBlock = initUniformBufferBlock(glSystemInfoUniformBuffer, 24);
-		bBufferConfigBlock = initUniformBufferBlock(glConfigUniformBuffer, 7 * Float.BYTES);
-
-		glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, ENVIRONMENT_BUFFER_BINDING_ID, glEnvironmentUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, TILEMARKER_BUFFER_BINDING_ID, glTileMarkerUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, SYSTEMINFO_BUFFER_BINDING_ID, glSystemInfoUniformBuffer.glBufferId);
-		glBindBufferBase(GL_UNIFORM_BUFFER, CONFIG_BUFFER_BINDING_ID, glConfigUniformBuffer.glBufferId);
-
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
 	private ByteBuffer initUniformBufferBlock(GLBuffer glBuffer, int blockSizeBytes)
@@ -649,23 +601,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private void shutdownBuffers()
 	{
 		destroyGlBuffer(lightBinsBuffer);
-
-		destroyGlBuffer(glCameraUniformBuffer);
-		destroyGlBuffer(glPlayerUniformBuffer);
-		destroyGlBuffer(glEnvironmentUniformBuffer);
-		destroyGlBuffer(glTileMarkerUniformBuffer);
-		destroyGlBuffer(glSystemInfoUniformBuffer);
-		destroyGlBuffer(glConfigUniformBuffer);
-
-		bBufferCameraBlock = null;
-		bBufferPlayerBlock = null;
-		bBufferEnvironmentBlock = null;
-		bBufferTileMarkerBlock = null;
-		bBufferSystemInfoBlock = null;
-		bBufferConfigBlock = null;
+		uniforms.Dispose();
 	}
 
-	private void destroyGlBuffer(GLBuffer glBuffer)
+	public void destroyGlBuffer(GLBuffer glBuffer)
 	{
 		if (glBuffer.glBufferId != -1)
 		{
@@ -746,8 +685,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		scene.setDrawDistance(getDrawDistance());
 
 		mainPassLegacy.OnDrawScene();
-
-		checkGLErrors();
 	}
 
 	@Override
@@ -772,7 +709,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		final int viewportHeight = client.getViewportHeight();
 		final int viewportWidth = client.getViewportWidth();
 
-		shadowMapOverlay.setActive(config.showShadowMap(), shaderHandler.uiShader.id());
+		shadowMapOverlay.setActive(config.showShadowMap(), shaders.uiShader.id());
 		sceneTileMaskOverlay.setActive(config.showTileMask());
 		regionOverlay.setActive(config.showRegionOverlay());
 		performanceOverlay.setActive(config.showPerformanceOverlay());
@@ -899,7 +836,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			LastTime = currentTime;
 			environmentManager.Update(DeltaTime);
 
-			updateUniformBlocks();
+			uniforms.UpdateUniformBlocks();
 			shadowPass.OnRenderFrame();
 			mainPassLegacy.OnRenderFrame();
 			postProcessingPass.OnRenderFrame();
@@ -937,329 +874,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 		glBindFramebuffer(GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
 
-		checkGLErrors();
-
 		performanceOverlay.EndTimer(PerformanceOverlay.TimerType.FRAME_CPU);
-	}
-
-	private void updateUniformBlocks()
-	{
-		if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
-		{
-			return;
-		}
-
-		// Calculate camera matrix
-		float[] cameraProjectionMatrix = Mat4.scale(client.getScale(), client.getScale(), 1);
-		Mat4.mul(cameraProjectionMatrix, Mat4.projection(client.getViewportWidth(), client.getViewportHeight(), 50));
-		Mat4.mul(cameraProjectionMatrix, Mat4.rotateX((float) -(Math.PI - cameraPitch)));
-		Mat4.mul(cameraProjectionMatrix, Mat4.rotateY((float) cameraYaw));
-		Mat4.mul(cameraProjectionMatrix, Mat4.translate((float) -cameraX, (float) -cameraY, (float) -cameraZ));
-
-		int playerX = client.getLocalPlayer().getLocalLocation().getX();
-		int playerY = client.getLocalPlayer().getLocalLocation().getY();
-		int playerPlane = client.getPlane();
-
-		final TextureProvider textureProvider = client.getTextureProvider();
-		Environment env = environmentManager.GetCurrentEnvironment();
-
-		Bounds currentBounds = environmentManager.currentBounds;
-		boolean roofFadingEnabled = currentBounds != null ? currentBounds.isAllowRoofFading() : true;
-
-		// <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
-			bBufferCameraBlock.clear();
-
-			// Fill the cameraProjectionMatrix (16 floats, 64 bytes)
-			for(int i = 0; i < cameraProjectionMatrix.length; i++) {
-				bBufferCameraBlock.putFloat(cameraProjectionMatrix[i]);
-			}
-
-			// Fill cameraPosition (4 floats, 16 bytes)
-			bBufferCameraBlock.putFloat((float) cameraX);
-			bBufferCameraBlock.putFloat((float) cameraY);
-			bBufferCameraBlock.putFloat((float) cameraZ);
-			bBufferCameraBlock.putFloat(0); // pad
-
-			// Fill cameraFocalPoint (4 floats, 16 bytes)
-			bBufferCameraBlock.putFloat((float) client.getCameraFpX());
-			bBufferCameraBlock.putFloat((float) client.getCameraFpY());
-			bBufferCameraBlock.putFloat((float) client.getCameraFpZ());
-			bBufferCameraBlock.putFloat(0); // pad
-
-			// Fill cameraPitch (4 bytes), cameraYaw (4 bytes), zoom (4 bytes), centerX (4 bytes), centerY (4 bytes)
-			// According to std140 layout rules, each of these must be 4 bytes aligned
-			bBufferCameraBlock.putFloat((float) cameraPitch);
-			bBufferCameraBlock.putFloat((float) cameraYaw);
-			bBufferCameraBlock.putInt(client.getScale());
-			bBufferCameraBlock.putInt(client.getCenterX());
-			bBufferCameraBlock.putInt(client.getCenterY());
-
-			bBufferCameraBlock.flip();
-
-			glBindBuffer(GL_UNIFORM_BUFFER, glCameraUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glCameraUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferCameraBlock);
-		// </editor-fold>
-
-		// <editor-fold defaultstate="collapsed" desc="Populate Player Buffer Block">
-			bBufferPlayerBlock.clear();
-			bBufferPlayerBlock.putFloat((float) playerX);
-			bBufferPlayerBlock.putFloat((float) playerY);
-			bBufferPlayerBlock.putFloat((float) playerPlane);
-			bBufferPlayerBlock.putFloat(0); // pad
-
-			bBufferPlayerBlock.putInt(client.getScene().getBaseX());
-			bBufferPlayerBlock.putInt(client.getScene().getBaseY());
-			bBufferPlayerBlock.flip();
-
-			glBindBuffer(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glPlayerUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferPlayerBlock);
-		// </editor-fold>
-
-		// <editor-fold defaultstate="collapsed" desc="Populate Environment Buffer Block">
-			bBufferEnvironmentBlock.clear();
-
-			// Ambient Color
-			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(environmentManager.ambientColor.getBlue() / 255f);
-			bBufferEnvironmentBlock.putFloat(0);
-
-			// Sky Color
-			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(environmentManager.skyColor.getBlue() / 255f);
-			bBufferEnvironmentBlock.putFloat(0);
-
-			// Fog
-			bBufferEnvironmentBlock.putInt(env.Type); // Pad
-			bBufferEnvironmentBlock.putFloat(env.FogDepth);
-			bBufferEnvironmentBlock.putInt(0);
-			bBufferEnvironmentBlock.putInt(0);
-
-
-			// Pack Main Light
-
-			Light mainLight = environmentManager.mainLight;
-			// Pos
-			bBufferEnvironmentBlock.putFloat(mainLight.viewMatrix[2]);
-			bBufferEnvironmentBlock.putFloat(-mainLight.viewMatrix[6]);
-			bBufferEnvironmentBlock.putFloat(mainLight.viewMatrix[10]);
-			bBufferEnvironmentBlock.putFloat(client.getPlane()); // light type / directional
-
-			// Offset
-			bBufferEnvironmentBlock.putFloat(0);
-			bBufferEnvironmentBlock.putFloat(0);
-			bBufferEnvironmentBlock.putFloat(0);
-			bBufferEnvironmentBlock.putFloat(0); // pad
-
-			// Color
-			bBufferEnvironmentBlock.putFloat(mainLight.color.getRed() / 255f);
-			bBufferEnvironmentBlock.putFloat(mainLight.color.getGreen() / 255f);
-			bBufferEnvironmentBlock.putFloat(mainLight.color.getBlue() / 255f);
-			bBufferEnvironmentBlock.putFloat(0); // pad
-
-			bBufferEnvironmentBlock.putFloat(0); // light intensity
-			bBufferEnvironmentBlock.putFloat(0); // light radius
-			bBufferEnvironmentBlock.putInt(0); // light animation
-			bBufferEnvironmentBlock.putFloat(0); // pad
-
-			for(int i = 0; i < mainLight.projectionMatrix.length; i++)
-			{
-				bBufferEnvironmentBlock.putFloat(mainLight.projectionMatrix[i]);
-			}
-
-			// Pack Lights
-			//environmentManager.DetermineRenderedLights();
-			for(int i = 0; i < MAX_LIGHTS; i++)
-			{
-				// TODO:: check visibility of light from frustum.
-				Light light = environmentManager.GetLightAtIndex(i);
-				if(light != null)
-				{
-					bBufferEnvironmentBlock.putFloat(light.position.x);
-					bBufferEnvironmentBlock.putFloat(light.position.y);
-					bBufferEnvironmentBlock.putFloat(light.position.z);
-					bBufferEnvironmentBlock.putFloat(light.plane);
-
-					bBufferEnvironmentBlock.putFloat(light.offset.x);
-					bBufferEnvironmentBlock.putFloat(light.offset.y);
-					bBufferEnvironmentBlock.putFloat(light.offset.z);
-					bBufferEnvironmentBlock.putFloat(light.hash);
-
-					bBufferEnvironmentBlock.putFloat(light.color.getRed() / 255f);
-					bBufferEnvironmentBlock.putFloat(light.color.getGreen() / 255f);
-					bBufferEnvironmentBlock.putFloat(light.color.getBlue() / 255f);
-					bBufferEnvironmentBlock.putFloat(0);
-
-					bBufferEnvironmentBlock.putFloat(light.intensity);
-					bBufferEnvironmentBlock.putFloat(light.radius);
-					bBufferEnvironmentBlock.putInt(light.animation.ordinal());
-					bBufferEnvironmentBlock.putInt(light.type.ordinal());
-				}
-			}
-
-			bBufferEnvironmentBlock.flip();
-
-			glBindBuffer(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.glBufferId);
-			glClearBufferData(GL_UNIFORM_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, new int[]{0});
-			glBufferData(GL_UNIFORM_BUFFER, glEnvironmentUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferEnvironmentBlock);
-		// </editor-fold>
-
-		// <editor-fold defaultstate="collapsed" desc="Populate Tile Marker Buffer Block">
-			float currentTileX = -1;
-			float currentTileY = -1;
-			float currentTileZ = -1;
-			float targetTileX = -1;
-			float targetTileY = -1;
-			float targetTileZ = -1;
-			float hoveredTileX = -1;
-			float hoveredTileY = -1;
-			float hoveredTileZ = -1;
-
-			final WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
-			if (playerPos != null)
-			{
-				final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-				if (playerPosLocal != null)
-				{
-					currentTileX = (float)playerPosLocal.getX();
-					currentTileY = (float)playerPosLocal.getY();
-					currentTileZ = (float)client.getPlane();
-				}
-			}
-
-			if(client.getLocalDestinationLocation() != null)
-			{
-				targetTileX = (float)client.getLocalDestinationLocation().getX();
-				targetTileY = (float)client.getLocalDestinationLocation().getY();
-				targetTileZ = (float)client.getPlane();
-			}
-
-			if(client.getSelectedSceneTile() != null)
-			{
-				hoveredTileX = (float)client.getSelectedSceneTile().getLocalLocation().getX();
-				hoveredTileY = (float)client.getSelectedSceneTile().getLocalLocation().getY();
-				hoveredTileZ = (float)client.getPlane();
-			}
-
-			if(config.trueTileFadeOut())
-			{
-				if( client.getLocalPlayer().getLocalLocation().getX() == lastPlayerPosition[0] &&
-					client.getLocalPlayer().getLocalLocation().getY() == lastPlayerPosition[1])
-				{
-					currentTrueTileAlpha = Math.max(0, currentTrueTileAlpha - (float)DeltaTime / config.trueTileFadeOutTime());
-				}
-				else
-				{
-					currentTrueTileAlpha = 1;
-				}
-			}
-			else
-			{
-				currentTrueTileAlpha = 1;
-			}
-
-			bBufferTileMarkerBlock.clear();
-			bBufferTileMarkerBlock.putFloat(currentTileX);
-			bBufferTileMarkerBlock.putFloat(currentTileY);
-			bBufferTileMarkerBlock.putFloat(config.trueTileBorderWidth());
-			bBufferTileMarkerBlock.putFloat(config.trueTileCornerLength());
-
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getRed() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getGreen() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileFillColor().getBlue() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? (config.trueTileFillColor().getAlpha() / 255f) * currentTrueTileAlpha : 0);
-
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileBorderColor().getRed() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileBorderColor().getGreen() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? config.trueTileBorderColor().getBlue() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightTrueTile() ? (config.trueTileBorderColor().getAlpha() / 255f) * currentTrueTileAlpha : 0);
-
-			bBufferTileMarkerBlock.putFloat(targetTileX);
-			bBufferTileMarkerBlock.putFloat(targetTileY);
-			bBufferTileMarkerBlock.putFloat(config.destinationTileBorderWidth());
-			bBufferTileMarkerBlock.putFloat(config.destinationTileCornerLength());
-
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getRed() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getGreen() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getBlue() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileFillColor().getAlpha() / 255f : 0);
-
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getRed() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getGreen() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getBlue() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightDestinationTile() ? config.destinationTileBorderColor().getAlpha() / 255f : 0);
-
-			bBufferTileMarkerBlock.putFloat(hoveredTileX);
-			bBufferTileMarkerBlock.putFloat(hoveredTileY);
-			bBufferTileMarkerBlock.putFloat(config.hoveredTileBorderWidth());
-			bBufferTileMarkerBlock.putFloat(config.hoveredTileCornerLength());
-
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getRed() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getGreen() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getBlue() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileFillColor().getAlpha() / 255f : 0);
-
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getRed() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getGreen() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getBlue() / 255f : 0);
-			bBufferTileMarkerBlock.putFloat(config.highlightHoveredTile() ? config.hoveredTileBorderColor().getAlpha() / 255f : 0);
-
-			bBufferTileMarkerBlock.flip();
-
-			glBindBuffer(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferTileMarkerBlock);
-		// </editor-fold>
-
-		// <editor-fold defaultstate="collapsed" desc="Populate System Info Block">
-			bBufferSystemInfoBlock.clear();
-
-			bBufferSystemInfoBlock.putInt(client.getGameState() == GameState.LOGGED_IN ? (client.getGameCycle() & 127) : 0);
-			bBufferSystemInfoBlock.putInt(currentViewport[2]);
-			bBufferSystemInfoBlock.putInt(currentViewport[3]);
-			bBufferSystemInfoBlock.putFloat(DeltaTime);
-			bBufferSystemInfoBlock.putFloat(Time);
-
-			bBufferSystemInfoBlock.flip();
-
-			glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
-		// </editor-fold>
-
-		// <editor-fold defaultstate="collapsed" desc="Populate Config Block">
-			bBufferConfigBlock.clear();
-
-			bBufferConfigBlock.putFloat((float) textureProvider.getBrightness());
-			bBufferConfigBlock.putFloat(config.smoothBanding() ? 0 : 1);
-			bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
-			bBufferConfigBlock.putInt(getDrawDistance());
-			bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-			bBufferConfigBlock.putInt(config.shadowMode().getValue());
-			bBufferConfigBlock.putInt(config.shadowDistance());
-
-			bBufferConfigBlock.flip();
-
-			glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
-			glBufferData(GL_UNIFORM_BUFFER, glConfigUniformBuffer.size, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
-		// </editor-fold>
-
-		int[] lightClearValue = new int[]{-1};
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBinsBuffer.glBufferId);
-		glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, lightClearValue);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, lightBinsBuffer.glBufferId);
-
-		glUseProgram(shaderHandler.lightBinningComputeShader.id());
-		Uniforms.ShaderVariables uni = uniforms.GetUniforms(shaderHandler.lightBinningComputeShader.id());
-		glUniformBlockBinding(shaderHandler.lightBinningComputeShader.id(), uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-
-		glDispatchCompute(EXTENDED_SCENE_SIZE / 8, EXTENDED_SCENE_SIZE / 8, MAX_Z);
-		glUseProgram(0);
 	}
 
 	/**
@@ -1408,7 +1023,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		loadingScene = false;
 
 		nextSceneId = -1;
-		checkGLErrors();
 	}
 
 	/**
@@ -1568,45 +1182,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				glBuffer.clBuffer = CL10GL.clCreateFromGLBuffer(openCLManager.context, clFlags, glBuffer.glBufferId, (int[]) null);
 			}
 		}
-	}
-
-	public void checkGLErrors()
-	{
-//		if (!log.isDebugEnabled())
-//		{
-//			return;
-//		}
-//
-//		for (; ; )
-//		{
-//			int err = glGetError();
-//			if (err == GL_NO_ERROR)
-//			{
-//				return;
-//			}
-//
-//			String errStr;
-//			switch (err)
-//			{
-//				case GL_INVALID_ENUM:
-//					errStr = "INVALID_ENUM";
-//					break;
-//				case GL_INVALID_VALUE:
-//					errStr = "INVALID_VALUE";
-//					break;
-//				case GL_INVALID_OPERATION:
-//					errStr = "INVALID_OPERATION";
-//					break;
-//				case GL_INVALID_FRAMEBUFFER_OPERATION:
-//					errStr = "INVALID_FRAMEBUFFER_OPERATION";
-//					break;
-//				default:
-//					errStr = "" + err;
-//					break;
-//			}
-//
-//			log.debug("glGetError:", new Exception(errStr));
-//		}
 	}
 
 	public void createGlDebugCallback()
