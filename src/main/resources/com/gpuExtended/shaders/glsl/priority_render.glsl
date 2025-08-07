@@ -210,7 +210,7 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
 
   const vec3 LIGHT_DIR_MODEL = vec3(0.57735026, 0.57735026, 0.57735026);
   const int IGNORE_LOW_LIGHTNESS = 3;
-  const float LIGHTNESS_MULTIPLIER = 3.f;
+  const float LIGHTNESS_MULTIPLIER = 4.f;
   const int BASE_LIGHTEN = 10;
 
   int saturation = (hsl >> 7) & 0x7;
@@ -289,11 +289,11 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
         flagsB = tempflags[offset + localId * 3 + 1];
         flagsC = tempflags[offset + localId * 3 + 2];
     }
-
-    // undo vanilla lighting
-    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-    undoVanillaShading(thisrvC.ahsl, normC.xyz);
+//
+//    // undo vanilla lighting
+//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
+//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
+//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
 
     normA = rotate_vertex(normA, orientation);
     normB = rotate_vertex(normB, orientation);
