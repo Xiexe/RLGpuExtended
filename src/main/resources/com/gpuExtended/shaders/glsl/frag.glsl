@@ -97,9 +97,14 @@ void main() {
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer, markerIntensity);
     }
 
-    float wireFrame = GetWireframe(fBarycentricCoordinate, 0, 1);
     vec4 outColor = vec4(finalColor, s.albedo.a);
-    outColor = mix(outColor, vec4(0.33,0.33,0.33, 1), showWireframe ? wireFrame : 0);
+
+    float wireFrame = GetWireframe(fBarycentricCoordinate, 0.25, 1);
+    float wireAlpha = showWireframe ? wireFrame : 0.0;
+
+    outColor = mix(outColor, vec4(vec3(0.25), 1.0), wireAlpha);
+
+
     FragColor = outColor;
 //    FragColor = vec4(vec3(withinMarkerThreshold), 1);
 //    FragColor = vec4(vec3((-fPosition.y / 1000)), 1);
