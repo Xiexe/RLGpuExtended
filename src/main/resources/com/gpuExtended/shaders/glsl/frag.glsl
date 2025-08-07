@@ -103,16 +103,5 @@ void main() {
     float wireAlpha = showWireframe ? wireFrame : 0.0;
 
     outColor = mix(outColor, vec4(vec3(0.25), 1.0), wireAlpha);
-
-
     FragColor = outColor;
-//    FragColor = vec4(vec3(withinMarkerThreshold), 1);
-//    FragColor = vec4(vec3((-fPosition.y / 1000)), 1);
-//    FragColor = vec4(vec3(shadowMap * ndl), s.albedo.a);
-//    FragColor = vec4(vec3(flags.isOnBridge), s.albedo.a);
-//    FragColor = vec4(vec3(flags.objectType / 8f), 1);
-
-//    float blue = texture(blueNoiseTexture, vec2(gl_FragCoord.xy) / 128).a;
-//    float blue1 = texture(blueNoiseTexture, vec2(gl_FragCoord.xy) / 128).g;
-//    FragColor = vec4(vec3((blue)), 1);
 }
