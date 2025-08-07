@@ -3,10 +3,14 @@ package com.gpuExtended.util.deserializers;
 import com.google.gson.*;
 import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
+import com.gpuExtended.scene.KeyframedLightAnimation;
 import com.gpuExtended.scene.Light;
+import com.gpuExtended.scene.LightKeyframe;
 
 import java.awt.Color;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LightDeserializer implements JsonDeserializer<Light> {
     @Override
@@ -54,6 +58,48 @@ public class LightDeserializer implements JsonDeserializer<Light> {
         float radius = 2;
         if (lightObject.has("radius")) {
             radius = lightObject.get("radius").getAsFloat();
+        }
+
+        List<KeyframedLightAnimation> lightAnimations = new ArrayList<>();
+        if (lightObject.has("animations")) {
+            JsonArray animationsArray = lightObject.getAsJsonArray("animations");
+            for (JsonElement animElement : animationsArray) {
+                JsonObject animObject = animElement.getAsJsonObject();
+                int animId = animObject.get("id").getAsInt();
+
+                List<LightKeyframe> keyframes = new ArrayList<>();
+                if (animObject.has("frames")) {
+                    JsonArray framesArray = animObject.getAsJsonArray("frames");
+                    for (JsonElement frameElement : framesArray) {
+                        JsonObject frameObject = frameElement.getAsJsonObject();
+                        int frame = frameObject.get("frame").getAsInt();
+
+                        // Use the light's default values if not specified in the keyframe
+                        Color frameColor = color;
+                        if (frameObject.has("color")) {
+                            JsonArray frameColorArray = frameObject.getAsJsonArray("color");
+                            frameColor = new Color(
+                                    frameColorArray.get(0).getAsFloat(),
+                                    frameColorArray.get(1).getAsFloat(),
+                                    frameColorArray.get(2).getAsFloat()
+                            );
+                        }
+
+                        Float frameIntensity = intensity;
+                        if (frameObject.has("intensity")) {
+                            frameIntensity = frameObject.get("intensity").getAsFloat();
+                        }
+
+                        Float frameRadius = radius;
+                        if (frameObject.has("radius")) {
+                            frameRadius = frameObject.get("radius").getAsFloat();
+                        }
+
+                        keyframes.add(new LightKeyframe(frame, frameColor, frameIntensity, frameRadius));
+                    }
+                }
+                lightAnimations.add(new KeyframedLightAnimation(animId, keyframes));
+            }
         }
 
         int[][] tiles = context.deserialize(lightObject.get("tiles"), int[][].class);

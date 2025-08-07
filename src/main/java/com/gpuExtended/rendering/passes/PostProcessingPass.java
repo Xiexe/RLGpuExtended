@@ -3,7 +3,7 @@ package com.gpuExtended.rendering.passes;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
-import com.gpuExtended.shader.Uniforms;
+import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.util.GpuFloatBuffer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -87,8 +87,8 @@ public class PostProcessingPass implements IPassBase {
         glBindVertexArray(vertexArrayObject);
 
         // Prefilter
-        glUseProgram(plugin.shaderHandler.bloomPrefilterShader.id());
-        Uniforms.ShaderVariables uniP = plugin.uniforms.GetUniforms(plugin.shaderHandler.bloomPrefilterShader.id());
+        glUseProgram(plugin.shaders.bloomPrefilterShader.id());
+        ShaderVariables uniP = plugin.uniforms.GetUniforms(plugin.shaders.bloomPrefilterShader.id());
         glActiveTexture(GL_TEXTURE1);
 
         glBindTexture(GL_TEXTURE_2D, primaryFramebuffer.getTexture().getId());
@@ -102,8 +102,8 @@ public class PostProcessingPass implements IPassBase {
         bloomFramebuffer.generateMipmaps();
         bloomFramebuffer.bind();
         // Downsample
-        glUseProgram(plugin.shaderHandler.bloomDownsampleShader.id());
-        Uniforms.ShaderVariables uniB = plugin.uniforms.GetUniforms(plugin.shaderHandler.bloomDownsampleShader.id());
+        glUseProgram(plugin.shaders.bloomDownsampleShader.id());
+        ShaderVariables uniB = plugin.uniforms.GetUniforms(plugin.shaders.bloomDownsampleShader.id());
 
         glActiveTexture(GL_TEXTURE1);
         glUniform1i(uniB.SourceTexture, 1);
@@ -129,8 +129,8 @@ public class PostProcessingPass implements IPassBase {
         // ---
 
         // Upsample
-        glUseProgram(plugin.shaderHandler.bloomUpsampleShader.id());
-        Uniforms.ShaderVariables uniU = plugin.uniforms.GetUniforms(plugin.shaderHandler.bloomUpsampleShader.id());
+        glUseProgram(plugin.shaders.bloomUpsampleShader.id());
+        ShaderVariables uniU = plugin.uniforms.GetUniforms(plugin.shaders.bloomUpsampleShader.id());
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, bloomFramebuffer.getTexture().getId());

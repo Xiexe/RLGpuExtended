@@ -14,6 +14,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -123,7 +124,13 @@ public class EnvironmentManager
         plugin.skybox.Initialize();
         environments = new Environment[0];
         areas = new Area[0];
-        timeOfDay = 8; // Start at 8AM
+
+        if (plugin.config.customTimeOfDay() <= 0) {
+            timeOfDay = 7; // Start at 7AM
+        }
+        else {
+            timeOfDay = plugin.config.customTimeOfDay();
+        }
 
         ENVIRONMENT_PATH.watch("\\.(json)$", path -> {
             LoadEnvironments();
@@ -183,9 +190,14 @@ public class EnvironmentManager
         CleanupOldProjectiles();
         CheckRegion();
 
-        timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
-        if (timeOfDay >= 24f)
-            timeOfDay -= 24f;
+        if (plugin.config.customTimeOfDay() <= 0) {
+            timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
+            if (timeOfDay >= 24f)
+                timeOfDay -= 24f;
+        }
+        else {
+            timeOfDay = plugin.config.customTimeOfDay();
+        }
     }
 
     public void RenderSkybox()
@@ -434,6 +446,7 @@ public class EnvironmentManager
                             continue;
                         }
 
+
                         WorldPoint tileWorldLocation = tile.getWorldLocation();
                         int[] worldLocation = new int[]{
                                 tileWorldLocation.getX(),
@@ -446,7 +459,9 @@ public class EnvironmentManager
                         {
                             ArrayList<Light> lightsForTile = tileLights.get(hash);
                             LocalPoint location = tile.getLocalLocation();
-                            Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
+                            float tileHeight = Perspective.getTileHeight(client, location, z);
+
+                            Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
                             for (int i = 0; i < lightsForTile.size(); i++) {
                                 Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position, tile.getPlane(), 0, plugin.awtContext);
                                 sceneLights.add(light);
@@ -461,7 +476,8 @@ public class EnvironmentManager
                             {
                                 int orientation = wallObject.getOrientationA();
                                 LocalPoint location = wallObject.getLocalLocation();
-                                Vector4 position = new Vector4(location.getX(), location.getY(), z, 0);
+                                float tileHeight = Perspective.getTileHeight(client, location, z);
+                                Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
 
                                 for (int i = 0; i < lightsForWallObject.size(); i++) {
                                     Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
@@ -478,7 +494,8 @@ public class EnvironmentManager
                             {
                                 int orientation = decorativeObject.getConfig() >> 6 & 3;
                                 LocalPoint location = decorativeObject.getLocalLocation();
-                                Vector4 position = new Vector4(location.getX(), location.getY(), z + decorativeObject.getZ(), orientation);
+                                float tileHeight = Perspective.getTileHeight(client, location, z);
+                                Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, orientation);
 
                                 for (int i = 0; i < lightsForDecoration.size(); i++) {
 
@@ -497,7 +514,8 @@ public class EnvironmentManager
                                 {
                                     int orientation = gameObject.getConfig() >> 6 & 3;
                                     LocalPoint location = gameObject.getLocalLocation();
-                                    Vector4 position = new Vector4(location.getX(), location.getY(), z + gameObject.getZ(), 0);
+                                    float tileHeight = Perspective.getTileHeight(client, location, z);
+                                    Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
 
                                     for (int i = 0; i < lightsForGameobject.size(); i++) {
                                         Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
@@ -885,6 +903,18 @@ public class EnvironmentManager
         }
     }
 
+    public void OnAnimationChanged(AnimationChanged event) {
+        Actor actor = event.getActor();
+        int animationId = actor.getAnimation();
+
+        // Find a light with animations for this animation Id
+
+        // Create the light if it doesn't exist
+
+
+        // On Update, update the light sources according to the animation keyframes.
+    }
+
     public Light GetLightAtIndex(int index)
     {
         if(index < 0 || index >= sceneLights.size())
@@ -951,7 +981,14 @@ public class EnvironmentManager
         Player player = client.getLocalPlayer();
         if(player == null) return null;
 
-        boolean isInOverworld = WorldPoint.getMirrorPoint(player.getWorldLocation(), true).getY() < Constants.OVERWORLD_MAX_Y;
+        LocalPoint localPoint = player.getLocalLocation();
+        WorldPoint worldPoint = player.getWorldLocation();
+        if (client.isInInstancedRegion())
+        {
+            worldPoint = WorldPoint.fromLocalInstance(client, localPoint);
+        }
+
+        boolean isInOverworld = WorldPoint.getMirrorPoint(worldPoint, true).getY() < Constants.OVERWORLD_MAX_Y;
         Environment targetEnvironment = isInOverworld ? GetDefaultOverworldEnvironment() : GetDefaultUndergroundEnvironment();
         return targetEnvironment;
     }

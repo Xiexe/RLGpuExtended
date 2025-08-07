@@ -38,7 +38,7 @@ out float fFogAmount;
 out float fSurfaceDepth;
 out flat int isEmissive;
 out flat ivec4 fFlags;
-out VertexFlags fVertexFlags;
+out vec2 fBarycentricCoordinate;
 
 bool CheckIsTree(int texId)
 {
@@ -85,6 +85,12 @@ void main() {
   vec3 v2 = gVertex[2];
   vec3 triangleNormal = normalize(cross(v1 - v0, v2 - v0));
 
+  vec2[3] baryCoords = vec2[3](
+    vec2(1,0),
+    vec2(0,1),
+    vec2(0,0)
+  );
+
   for (int i = 0; i < 3; ++i) {
     vec4 color = gColor[i];
     vec4 normal = gNormal[i];
@@ -104,7 +110,8 @@ void main() {
     fUv = uv[i];
     fFlags = gFlags[i];
     fSurfaceDepth = normal.w;
-    fVertexFlags = gVertexFlags[i];
+    fBarycentricCoordinate = baryCoords[i];
+
     gl_Position = cameraProjectionMatrix * vec4(vertex, 1);
     EmitVertex();
   }

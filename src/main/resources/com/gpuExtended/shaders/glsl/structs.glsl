@@ -32,11 +32,10 @@ struct VertexFlags
     int tileX;
     int tileY;
     int plane;
+    int objectType;
     bool isBridge;
-    bool isTerrain;
     bool isDynamicModel;
     bool isOnBridge;
-    bool isRoof;
 };
 
 void PopulateVertexFlags(inout VertexFlags flags, ivec4 meshFlags)
@@ -45,7 +44,6 @@ void PopulateVertexFlags(inout VertexFlags flags, ivec4 meshFlags)
     flags.tileY             = ((meshFlags.x >> BIT_YPOS) & 255);
     flags.plane             = ((meshFlags.x >> BIT_PLANE) & 3);
     flags.isBridge          = ((meshFlags.x >> BIT_ISBRIDGE) & 1) > 0;
-    flags.isTerrain         = ((meshFlags.x >> BIT_ISTERRAIN) & 1) > 0;
-    flags.isDynamicModel    = ((meshFlags.x >> BIT_ISDYNAMICMODEL) & 1) > 0;
     flags.isOnBridge        = ((meshFlags.x >> BIT_ISONBRIDGE) & 1) > 0;
+    flags.objectType        = meshFlags.y;
 }

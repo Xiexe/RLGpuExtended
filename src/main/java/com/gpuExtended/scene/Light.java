@@ -1,25 +1,20 @@
 package com.gpuExtended.scene;
 
 import com.google.gson.annotations.SerializedName;
-import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.rendering.*;
 import com.gpuExtended.util.Mat4;
-import com.gpuExtended.util.Mathmatics;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Perspective;
 import net.runelite.rlawt.AWTContext;
 
 import javax.annotation.Nullable;
 import java.awt.*;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Objects;
 
-import static net.runelite.api.Constants.SCENE_SIZE;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL11C.GL_NEAREST;
@@ -103,6 +98,7 @@ public class Light
     public float intensity = 1;
     public float radius = 2;
     public int plane = 0;
+    public ArrayList<KeyframedLightAnimation> animations = null;
     public int[][] tiles = new int[0][0];
     public int[] decorations = new int[0];
     public int[] gameObjects = new int[0];

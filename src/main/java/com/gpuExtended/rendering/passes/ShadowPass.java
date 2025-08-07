@@ -8,7 +8,7 @@ import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
-import com.gpuExtended.shader.Uniforms;
+import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.util.GpuFloatBuffer;
 import com.gpuExtended.util.contexts.RenderableContext;
 import com.gpuExtended.util.contexts.TileContext;
@@ -324,20 +324,24 @@ public class ShadowPass implements IPassBase {
         glClear(GL_DEPTH_BUFFER_BIT);
         glDepthFunc(GL_LEQUAL);
 
-        int shaderProgram = plugin.shaderHandler.shadowPassShader.id();
-        glUseProgram(shaderProgram);
-        Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(shaderProgram);
-
-        glUniformBlockBinding(shaderProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-
+        glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        glEnable(GL_DEPTH_TEST);
+
+        int shaderProgram = plugin.shaders.shadowPassShader.id();
+        glUseProgram(shaderProgram);
+        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(shaderProgram);
+
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+        glUniform1i(shaderVars.BlueNoiseTexture, 8);
+
+        glUniformBlockBinding(shaderProgram, shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         GL30.glBindVertexArray(staticVertexArrayObjectId);
@@ -345,6 +349,7 @@ public class ShadowPass implements IPassBase {
         glDrawArrays(GL_TRIANGLES, 0, numStaticVertices);
         GL30.glBindVertexArray(lastVertexArray);
 
+        glCullFace(GL_BACK);
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
 
@@ -363,35 +368,26 @@ public class ShadowPass implements IPassBase {
         glClear(GL_DEPTH_BUFFER_BIT);
         glDepthFunc(GL_LEQUAL);
 
-        int shaderProgram = plugin.shaderHandler.shadowPassShader.id();
-        glUseProgram(shaderProgram);
-        Uniforms.ShaderVariables uni = plugin.uniforms.GetUniforms(shaderProgram);
-
-        glUniformBlockBinding(shaderProgram, uni.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, uni.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-
-        // TODO:: This probably should be initted somewhere else. Currently its in both the main pass and shadow pass.
-//        final TextureProvider textureProvider = plugin.client.getTextureProvider();
-//        if (textureArrayId == -1) {
-//            // lazy init textures as they may not be loaded at plugin start.
-//            // this will return -1 and retry if not all textures are loaded yet, too.
-//            textureArrayId = plugin.textureManager.initTextureArray(textureProvider);
-//            if (textureArrayId > -1) {
-//                // if texture upload is successful, compute and set texture animations
-//                float[] texAnims = plugin.textureManager.computeTextureAnimations(textureProvider);
-//                glUniform2fv(uni.TextureAnimations, texAnims);
-//            }
-//        }
-//
-        glUniform1i(uni.Textures, 1); // texture sampler array is bound to texture1
-
+        glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        glEnable(GL_DEPTH_TEST);
+
+        int shaderProgram = plugin.shaders.shadowPassShader.id();
+        glUseProgram(shaderProgram);
+        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(shaderProgram);
+
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+        glUniform1i(shaderVars.BlueNoiseTexture, 8);
+
+        glUniformBlockBinding(shaderProgram, shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+        glUniform1i(shaderVars.Textures, 1); // texture sampler array is bound to texture1
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);

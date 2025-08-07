@@ -12,6 +12,7 @@ in float fFogAmount;
 in float fSurfaceDepth;
 in flat int isEmissive;
 in flat ivec4 fFlags;
+in vec2 fBarycentricCoordinate;
 
 out vec4 FragColor;
 
@@ -62,6 +63,7 @@ void main() {
     PopulateSurfaceNormal(s, flags, fNormal, fFlatNormal);
 
     vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
+    float tileHeightmap = GetTileHeight(vec3(sceneUV, flags.plane));
 
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
@@ -76,21 +78,30 @@ void main() {
     vec3 diffuse = s.albedo.rgb * ndl;
     vec3 lighting = diffuse * mainLight.color.rgb * shadowMap;
     vec3 litFragment = lighting.rgb + ambientColor.rgb * s.albedo.rgb;
-    ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition);
+    ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition, tileHeightmap);
 
     vec3 finalColor = CheckIsUnlitTexture(fTextureId) ? s.albedo.rgb : litFragment;
     ApplyFog(finalColor, fPosition, distanceToCamera);
 
-    if(!flags.isDynamicModel && flags.isTerrain)
+    if(!flags.isDynamicModel)
     {
-        DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer);
-        DrawTileMarker(finalColor, flags, fPosition, vec4(targetTile.xy, flags.plane, targetTile.w), targetTileFillColor, targetTileOutlineColor, targetTile.z, distanceToPlayer);
-        DrawTileMarker(finalColor, flags, fPosition, vec4(hoveredTile.xy, flags.plane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer);
-        DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer);
+        float transitionRange = 16;
+        float tileHeightMarkerRangeEdge0 = tileHeightmap - transitionRange * 2;
+        float tileHeightMarkerRangeEdge1 = tileHeightmap - transitionRange * 0.5;
+        float markerIntensity = smoothstep(tileHeightMarkerRangeEdge0, tileHeightMarkerRangeEdge1, fPosition.y);
+
+//        float height = GetTileHeight(vec3(fPosition.x + sceneOffsetX, fPosition.z + sceneOffsetZ, flags.plane));
+        DrawMarkedTilesFromMap(finalColor, flags, fPosition, distanceToPlayer, markerIntensity);
+        DrawTileMarker(finalColor, flags, fPosition, vec4(targetTile.xy, flags.plane, targetTile.w), targetTileFillColor, targetTileOutlineColor, targetTile.z, distanceToPlayer, markerIntensity);
+        DrawTileMarker(finalColor, flags, fPosition, vec4(hoveredTile.xy, flags.plane, hoveredTile.w), hoveredTileFillColor, hoveredTileOutlineColor, hoveredTile.z, distanceToPlayer, markerIntensity);
+        DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer, markerIntensity);
     }
 
-    FragColor = vec4(finalColor.rgb, s.albedo.a);
-//    FragColor = vec4(vec3(shadowMap * ndl), s.albedo.a);
-//    FragColor = vec4(vec3(flags.isTerrain), s.albedo.a);
-//    FragColor = vec4(vec3(fTextureId == TREE_MAPLE), 1);
+    vec4 outColor = vec4(finalColor, s.albedo.a);
+
+    float wireFrame = GetWireframe(fBarycentricCoordinate, 0.25, 1);
+    float wireAlpha = showWireframe ? wireFrame : 0.0;
+
+    outColor = mix(outColor, vec4(vec3(0.25), 1.0), wireAlpha);
+    FragColor = outColor;
 }

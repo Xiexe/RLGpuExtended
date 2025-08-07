@@ -37,18 +37,20 @@ void clip(float value) {
     if(value < 0) discard;
 }
 
-void main() {
-    float dither = Dither(gl_FragCoord.xy);
+float saturate(float value) {
+    return clamp(value, 0.0, 1.0);
+}
 
+void main() {
+    float blueNoise = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0)).a;
+
+    float alpha = fAlpha;
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
-        float alpha = texture(textures, vec3(fUv, float(textureIdx))).a;
-        clip((alpha * fAlpha) - dither);
+        alpha *= texture(textures, vec3(fUv, float(textureIdx))).a;
     }
-    else
-    {
-        clip(fAlpha - dither);
-    }
+
+    clip(alpha - blueNoise);
 
     gl_FragDepth = gl_FragCoord.z;
 }

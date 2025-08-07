@@ -120,8 +120,6 @@ public class SceneTileMaskOverlay extends Overlay {
                     );
                 }
             }
-
-            plugin.checkGLErrors();
         });
 
         g.setColor(Color.BLACK);

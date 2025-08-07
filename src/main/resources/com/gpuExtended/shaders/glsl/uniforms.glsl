@@ -58,13 +58,19 @@ layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
     int colorBlindMode;                 // 4 bytes
     int shadowMode;                     // 4 bytes
     int shadowDistance;               // 4 bytes
+    bool showWireframe; // 1 byte
+    bool pad; // 1 byte
+    bool pad1; // 1 byte
+    bool pad2; // 1 byte
 };
 
 uniform sampler2DArray textures;
+uniform sampler2DArray tileHeightMap;
 uniform sampler2D shadowMap;
 uniform sampler2D dynamicShadowMap;
 uniform sampler2D tileFillColorMap; // holds colors of tiles
 uniform sampler2D tileBorderColorMap; // holds textures of tiles
 uniform sampler2D tileSettingsMap; // holds settings of tiles
+uniform sampler2D blueNoiseTexture;
 
 uniform vec2 textureAnimations[128];

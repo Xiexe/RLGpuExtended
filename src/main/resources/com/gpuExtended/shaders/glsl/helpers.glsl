@@ -95,7 +95,7 @@ void PopulateSurfaceNormal(inout Surface s, VertexFlags f, vec4 normal, vec4 fla
     flatNormal.y = -flatNormal.y; // runescape uses -y as up by default. Lets make that more sane.
 
     bool hasValidNormals = (normal.x > 0.0 || normal.y > 0.0 || normal.z > 0.0);
-    s.normal = mix(flatNormal, normal, hasValidNormals && (f.isDynamicModel || f.isTerrain || CheckIsTree(fTextureId)));
+    s.normal = mix(flatNormal, normal, hasValidNormals && (f.objectType == TYPE_DYNAMIC_MODEL || f.objectType == TYPE_TERRAIN || CheckIsTree(fTextureId)));
     s.normal.rgb = normalize(s.normal.rgb);
 }
 
@@ -115,7 +115,7 @@ vec4 unpackColor(vec4 packedColor) {
     return vec4(r, g, b, a);
 }
 
-void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, float distanceToPlayer)
+void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, float distanceToPlayer, float fadeOut)
 {
     ivec2 cellUv = ivec2(flags.tileX, flags.tileY);
     vec4 packedFillColor = texelFetch(tileFillColorMap, cellUv, 0);
@@ -152,14 +152,25 @@ void DrawMarkedTilesFromMap(inout vec3 image, VertexFlags flags, vec3 fragPos, f
             (tileUv.y > 1.0 - outlineWidth && tileUv.x > 1.0 - cornerLength)
         );
 
-        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder));
-        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder));
+        image = mix(image, fillColor.rgb, fillColor.a * float(!isBorder) * fadeOut);
+        image = mix(image, outlineColor.rgb, outlineColor.a * float(isBorder) * fadeOut);
     }
+}
+
+float GetTileHeight(vec3 fragPosition) {
+    vec2 halfTexel = vec2(0.5 / EXTENDED_SCENE_SIZE, 0.5 / EXTENDED_SCENE_SIZE);
+    vec2 normalizedXY = vec2(
+        (fragPosition.x / 128.0 + SCENE_OFFSET) / EXTENDED_SCENE_SIZE,
+        (fragPosition.y / 128.0 + SCENE_OFFSET) / EXTENDED_SCENE_SIZE
+    );
+    vec3 texCoord = vec3(fragPosition.xy + halfTexel, float(fragPosition.z));
+    float h = textureLod(tileHeightMap, texCoord, 0.0).r;
+    return h;
 }
 
 // TilePosition.w = corner length
 // TilePosition.z = plane
-void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer)
+void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tilePosition, vec4 fillColor, vec4 borderColor, float lineWidth, float distanceToPlayer, float fadeOut)
 {
     float x = fragPos.x;
     float z = fragPos.z;
@@ -168,16 +179,13 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
 
     int cellX = int(floor(x / TILE_SIZE) * TILE_SIZE);
     int cellZ = int(floor(z / TILE_SIZE) * TILE_SIZE);
-
     float realPlane = max(0, flags.plane - (flags.isBridge ? 1 : 0));
 
     bool tileValidPlane = approximatelyEqual(realPlane, playerPosition.z, 0.01);
-    bool isTileWalkable = /*(flags.isTerrain || flags.isBridge) &&*/ tileValidPlane;
     if (cellX >= int(tilePosition.x - TILE_SIZE) &&
         cellZ >= int(tilePosition.y - TILE_SIZE) &&
         cellX <= int(tilePosition.x) &&
-        cellZ <= int(tilePosition.y) &&
-        isTileWalkable
+        cellZ <= int(tilePosition.y)
     )
     {
         float eps = 0.01;
@@ -198,14 +206,27 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
             );
             if (isBorder)
             {
-                image = mix(image, borderColor.rgb * 2, borderColor.a);
+                image = mix(image, borderColor.rgb, borderColor.a * fadeOut);
             }
             else
             {
-                image = mix(image, fillColor.rgb, fillColor.a);
+                image = mix(image, fillColor.rgb , fillColor.a * fadeOut);
             }
         }
     }
+}
+
+float GetWireframe(vec2 barycentricCoordinates, float wireframeWidth, float wireframeThreshold) {
+    vec3 barys;
+    barys.xy = fBarycentricCoordinate.xy;
+    barys.z = 1 - barys.x - barys.y;
+    vec3 deltas = fwidth(barys);
+    vec3 smoothing = deltas * wireframeThreshold;
+    vec3 thickness = deltas * wireframeWidth;
+
+    barys = smoothstep(thickness, thickness + smoothing, barys);
+    float minBary = min(barys.x, min(barys.y, barys.z));
+    return 1-minBary;
 }
 
 // Pre-defined set of sample points for blocker search and PCF

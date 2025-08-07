@@ -1,7 +1,3 @@
-
-
-layout(binding = 2) uniform isampler3D tileHeightSampler;
-
 // Calculate adjusted priority for a face with a given priority, distance, and
 // model global min10 and face distance averages. This allows positioning faces
 // with priorities 10/11 into the correct 'slots' resulting in 18 possible
@@ -191,51 +187,52 @@ void insert_face(uint localId, modelinfo minfo, int adjPrio, int distance, int p
   }
 }
 
-int tile_height(int z, int x, int y) {
-#define ESCENE_OFFSET 40 // (184-104)/2
-  return texelFetch(tileHeightSampler, ivec3(x + ESCENE_OFFSET, y + ESCENE_OFFSET, z), 0).r << 3;
-}
-
+layout(binding = 2) uniform sampler2DArray tileHeightSampler;
 vec4 hillskew_vertexf(vec4 v, int hillskew, int y, int plane) {
-  if (hillskew == 1) {
-    float fx = v.x / 128;
-    float fz = v.z / 128;
-    int sx = int(floor(fx));
-    int sz = int(floor(fz));
-    float h1 = mix(tile_height(plane, sx, sz), tile_height(plane, sx + 1, sz), fract(fx));
-    float h2 = mix(tile_height(plane, sx, sz + 1), tile_height(plane, sx + 1, sz + 1), fract(fx));
-    float h3 = mix(h1, h2, fract(fz));
-    return vec4(v.x, v.y + h3 - y, v.z, v.w);
-  } else {
-    return v;
-  }
+  #define ESCENE_OFFSET 40.0
+
+  vec2 halfTexel = vec2(0.5 / EXTENDED_SCENE_SIZE, 0.5 / EXTENDED_SCENE_SIZE);
+  vec2 normalizedXY = vec2(
+  (v.x / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE,
+  (v.z / 128.0 + ESCENE_OFFSET) / EXTENDED_SCENE_SIZE
+  );
+  vec3 texCoord = vec3(normalizedXY + halfTexel, float(plane));
+  float h = textureLod(tileHeightSampler, texCoord, 0.0).r;
+  return vec4(v.x, v.y + (h - y)*hillskew, v.z, v.w);
 }
 
 void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
+  unrotatedNormal = normalize(unrotatedNormal);
+  // A precomputed lookup table for: pow(saturation / 7., 0.05)
+  const float[8] POW_LOOKUP = float[8](
+  0.0f, 0.908f, 0.938f, 0.958f, 0.972f, 0.983f, 0.992f, 1.0f
+  );
+
   const vec3 LIGHT_DIR_MODEL = vec3(0.57735026, 0.57735026, 0.57735026);
-  // subtracts the X lowest lightness levels from the formula.
-  // helps keep darker colors appropriately dark
   const int IGNORE_LOW_LIGHTNESS = 3;
-  // multiplier applied to vertex' lightness value.
-  // results in greater lightening of lighter colors
-  const float LIGHTNESS_MULTIPLIER = 3.f;
-  // the minimum amount by which each color will be lightened
+  const float LIGHTNESS_MULTIPLIER = 4.f;
   const int BASE_LIGHTEN = 10;
 
-  int saturation = hsl >> 7 & 0x7;
+  int saturation = (hsl >> 7) & 0x7;
   int lightness = hsl & 0x7F;
-  float vanillaLightDotNormals = dot(LIGHT_DIR_MODEL, unrotatedNormal);
-  if (vanillaLightDotNormals > 0) {
-    vanillaLightDotNormals /= length(unrotatedNormal);
-    float lighten = max(0, lightness - IGNORE_LOW_LIGHTNESS);
-    lightness += int((lighten * LIGHTNESS_MULTIPLIER + BASE_LIGHTEN - lightness) * (vanillaLightDotNormals));
-  }
 
-  int maxLightness;
-  maxLightness = int(127 - 72 * pow(saturation / 7., .05));
+  // Calculate the dot product. Assumes unrotatedNormal is normalized.
+  float vanillaLightDotNormals = dot(LIGHT_DIR_MODEL, unrotatedNormal);
+
+  // Branchless version of the "if(vanillaLightDotNormals > 0)" check
+  float positiveNdl = max(0.0, vanillaLightDotNormals);
+
+  // The entire calculation is now performed by every thread,
+  // but it results in adding 0 if the surface is not lit.
+  float lighten = max(0, lightness - IGNORE_LOW_LIGHTNESS);
+  lightness += int((lighten * LIGHTNESS_MULTIPLIER + BASE_LIGHTEN - lightness) * positiveNdl);
+
+  // Use the lookup table instead of the expensive pow() function
+  int maxLightness = int(127.f - 72.f * POW_LOOKUP[saturation]);
+
   lightness = min(lightness, maxLightness);
-  hsl &= ~0x7F;
-  hsl |= lightness;
+
+  hsl = (hsl & ~0x7F) | lightness;
 }
 
 void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDistance, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
@@ -292,6 +289,11 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
         flagsB = tempflags[offset + localId * 3 + 1];
         flagsC = tempflags[offset + localId * 3 + 2];
     }
+//
+//    // undo vanilla lighting
+//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
+//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
+//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
 
     normA = rotate_vertex(normA, orientation);
     normB = rotate_vertex(normB, orientation);
