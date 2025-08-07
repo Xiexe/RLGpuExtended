@@ -216,6 +216,19 @@ void DrawTileMarker(inout vec3 image, VertexFlags flags, vec3 fragPos, vec4 tile
     }
 }
 
+float GetWireframe(vec2 barycentricCoordinates, float wireframeWidth, float wireframeThreshold) {
+    vec3 barys;
+    barys.xy = fBarycentricCoordinate.xy;
+    barys.z = 1 - barys.x - barys.y;
+    vec3 deltas = fwidth(barys);
+    vec3 smoothing = deltas * wireframeThreshold;
+    vec3 thickness = deltas * wireframeWidth;
+
+    barys = smoothstep(thickness, thickness + smoothing, barys);
+    float minBary = min(barys.x, min(barys.y, barys.z));
+    return 1-minBary;
+}
+
 // Pre-defined set of sample points for blocker search and PCF
 const vec2 poissonDisk[64] = vec2[](
     vec2(-0.499557, 0.035246), vec2(0.227272, -0.179687),

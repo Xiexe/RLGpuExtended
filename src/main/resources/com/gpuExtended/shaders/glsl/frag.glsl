@@ -12,6 +12,7 @@ in float fFogAmount;
 in float fSurfaceDepth;
 in flat int isEmissive;
 in flat ivec4 fFlags;
+in vec2 fBarycentricCoordinate;
 
 out vec4 FragColor;
 
@@ -96,7 +97,10 @@ void main() {
         DrawTileMarker(finalColor, flags, fPosition, vec4(currentTile.xy, flags.plane, currentTile.w), currentTileFillColor, currentTileOutlineColor, currentTile.z, distanceToPlayer, markerIntensity);
     }
 
-    FragColor = vec4(finalColor.rgb, s.albedo.a);
+    float wireFrame = GetWireframe(fBarycentricCoordinate, 0, 1);
+    vec4 outColor = vec4(finalColor, s.albedo.a);
+    outColor = mix(outColor, vec4(0.33,0.33,0.33, 1), showWireframe ? wireFrame : 0);
+    FragColor = outColor;
 //    FragColor = vec4(vec3(withinMarkerThreshold), 1);
 //    FragColor = vec4(vec3((-fPosition.y / 1000)), 1);
 //    FragColor = vec4(vec3(shadowMap * ndl), s.albedo.a);

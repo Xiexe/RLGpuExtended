@@ -58,6 +58,10 @@ layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
     int colorBlindMode;                 // 4 bytes
     int shadowMode;                     // 4 bytes
     int shadowDistance;               // 4 bytes
+    bool showWireframe; // 1 byte
+    bool pad; // 1 byte
+    bool pad1; // 1 byte
+    bool pad2; // 1 byte
 };
 
 uniform sampler2DArray textures;

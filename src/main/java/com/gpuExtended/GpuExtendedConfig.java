@@ -562,6 +562,18 @@ public interface GpuExtendedConfig extends Config
 		String debugging = "debugging";
 
 		@ConfigItem(
+				keyName = "showWireframe",
+				name = "Show Wireframe",
+				description = "",
+				position = 0,
+				section = debugging
+		)
+		default boolean showWireframe()
+		{
+			return false;
+		}
+
+		@ConfigItem(
 				keyName = "showShadowMap",
 				name = "Show Shadow Map",
 				description = "",

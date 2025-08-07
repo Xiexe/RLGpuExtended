@@ -14,7 +14,7 @@
     "tiles": []
   },
   {
-    "name": "GENERIC_TORCHES",
+    "name": "GENERIC_TORCH",
     "type": "point",
     "color": [1.00, 0.35, 0.025],
     "offset": [0, 0, 1.5],
@@ -45,7 +45,8 @@
       20832,
       24172,
       24173,
-      24174
+      24174,
+      53875
     ],
     "gameObjects": [
       724,
@@ -56,7 +57,63 @@
       11472,
       17237,
       41565,
-      50170
+      50170,
+      53876,
+      53844
+    ]
+  },
+  {
+    "name": "GENERIC_TORCH_BLUE",
+    "type": "point",
+    "color": [0.4, 0.4, 1],
+    "offset": [0, 0, 2],
+    "intensity": 8,
+    "radius": 8,
+    "animation": "flicker",
+    "decorations": [],
+    "gameObjects": [
+      53820
+    ]
+  },
+  {
+    "name": "GENERIC_TORCH_WHITE",
+    "type": "point",
+    "color": [1, 1, 1],
+    "offset": [0, 0, 2],
+    "intensity": 8,
+    "radius": 8,
+    "animation": "flicker",
+    "decorations": [],
+    "gameObjects": [
+      53819
+    ]
+  },
+  {
+    "name": "GENERIC_TORCH_GREEN",
+    "type": "point",
+    "color": [0, 1, 0],
+    "offset": [0, 0, 2],
+    "intensity": 4,
+    "radius": 8,
+    "animation": "flicker",
+    "decorations": [],
+    "gameObjects": [
+      53735
+    ]
+  },
+  {
+    "name": "ALTAR_TORCH_WHILE_GUTHIX_SLEEPS",
+    "type": "point",
+    "color": [1.00, 0.35, 0.025],
+    "offset": [1.5, 0, 1.5],
+    "intensity": 2,
+    "radius": 5,
+    "animation": "flicker",
+    "decorations": [
+    ],
+    "gameObjects": [
+      53843,
+      53845
     ]
   },
   {
@@ -1293,7 +1350,7 @@
     "name": "VARROCK_HOUSE_LIGHT",
     "type": "point",
     "color": [1, 0.5, 0.0],
-    "offset": [0, 0, 5],
+    "offset": [0, 0, 3],
     "intensity": 4,
     "radius": 6,
     "animation": "flicker",
@@ -1494,16 +1551,8 @@
   {
     "name": "NPC_PHASYMATYS_GHOST",
     "type": "point",
-    "color": [
-      0.1,
-      1,
-      0.1
-    ],
-    "offset": [
-      0,
-      0,
-      1
-    ],
+    "color": [0.1, 1, 0.1],
+    "offset": [0, 0, 1],
     "intensity": 2,
     "radius": 6,
     "animation": "pulse",
@@ -1513,6 +1562,18 @@
       2998,
       2987,
       2999
+    ]
+  },
+  {
+    "name": "NPC_LIGHT_CREATURE",
+    "type": "point",
+    "color": [0.3, 0.3, 1.0],
+    "offset": [0, 0, 1],
+    "intensity": 6,
+    "radius": 6,
+    "animation": "pulse",
+    "npcs": [
+      5435
     ]
   },
   {
