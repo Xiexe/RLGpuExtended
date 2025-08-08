@@ -64,6 +64,52 @@ void shuffle_vertex(int localId, inout Vertex v[FACES_PER_THREAD], in int whoSen
   barrier();
 }
 
+void shuffle_vec4(int localId, inout vec4 v[FACES_PER_THREAD], in int whoSendsMeVertices[FACES_PER_THREAD]) {
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].x);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].x = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].y);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].y = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].z);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].z = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].w);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].w = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+}
+
 void main() {
   uint groupId = gl_WorkGroupID.x;
   uint localId = gl_LocalInvocationID.x * FACES_PER_THREAD;
@@ -117,10 +163,22 @@ void main() {
   memoryBarrierShared();
   barrier();
 
-int outputOffsets[FACES_PER_THREAD];
+  int outputOffsets[FACES_PER_THREAD];
   int thisRenderPriority[FACES_PER_THREAD];
+
+  vec4 texA[FACES_PER_THREAD];
+  vec4 texB[FACES_PER_THREAD];
+  vec4 texC[FACES_PER_THREAD];
+
+  vec4 normalA[FACES_PER_THREAD];
+  vec4 normalB[FACES_PER_THREAD];
+  vec4 normalC[FACES_PER_THREAD];
   for (int i = 0; i < FACES_PER_THREAD; i++) {
-    calculate_output_offsets(localId + i, minfo, prioAdj[i], dis[i], vA[i], vB[i], vC[i], outputOffsets[i], thisRenderPriority[i]);
+    calculate_output_offsets(localId + i, minfo, prioAdj[i], dis[i],
+                             vA[i], vB[i], vC[i],
+                             outputOffsets[i], thisRenderPriority[i]);
+    gather_texture_attribute(localId + i, minfo, texA[i], texB[i], texC[i]);
+    gather_normal_attribute(localId + i, minfo, normalA[i], normalB[i], normalC[i]);
   }
 
   memoryBarrierShared();
@@ -159,8 +217,16 @@ int outputOffsets[FACES_PER_THREAD];
   shuffle_vertex(int(localId), vA, whoSendsMeVertices);
   shuffle_vertex(int(localId), vB, whoSendsMeVertices);
   shuffle_vertex(int(localId), vC, whoSendsMeVertices);
+  memoryBarrierShared();
+  barrier();
+  shuffle_vec4(int(localId), texA, whoSendsMeVertices);
+  shuffle_vec4(int(localId), texB, whoSendsMeVertices);
+  shuffle_vec4(int(localId), texC, whoSendsMeVertices);
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
-    position_and_output(localId + i, minfo, vA[i], vB[i], vC[i]);
+    position_and_output(localId + i, minfo,
+                        vA[i], vB[i], vC[i],
+                        texA[i], texB[i], texC[i],
+                        normalA[i], normalB[i], normalC[i]);
   }
 }
