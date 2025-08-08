@@ -67,10 +67,21 @@ public class ShaderHandler {
             .add(GL_VERTEX_SHADER, "vert_postProcess.glsl")
             .add(GL_FRAGMENT_SHADER, "bloom_prefilter.glsl");
 
-    public Shader largeOrderedComputeShader = new Shader()
+    public Shader orderedComputeShader64 = new Shader()
             .add(GL_COMPUTE_SHADER, "comp.glsl");
-
-    public Shader smallOrderedComputeShader = new Shader()
+    public Shader orderedComputeShader128 = new Shader()
+            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader orderedComputeShader256 = new Shader()
+            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader orderedComputeShader512 = new Shader()
+            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader orderedComputeShader1024 = new Shader()
+            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader orderedComputeShader2048 = new Shader()
+            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader orderedComputeShader4096 = new Shader()
+            .add(GL_COMPUTE_SHADER, "comp.glsl");
+    public Shader orderedComputeShaderMAX_TRIANGLES = new Shader()
             .add(GL_COMPUTE_SHADER, "comp.glsl");
 
     public Shader unorderedComputeShader = new Shader()
@@ -167,8 +178,15 @@ public class ShaderHandler {
         switch (computeMode)
         {
             case OPENGL:
-                largeOrderedComputeShader.compile(createTemplate(1024, 6), compiledShaders);
-                smallOrderedComputeShader.compile(createTemplate(512, 1), compiledShaders);
+                orderedComputeShader64.compile(createTemplate(64, 1), compiledShaders);
+                orderedComputeShader128.compile(createTemplate(128, 1), compiledShaders);
+                orderedComputeShader256.compile(createTemplate(256, 1), compiledShaders);
+                orderedComputeShader512.compile(createTemplate(512, 1), compiledShaders);
+                orderedComputeShader1024.compile(createTemplate(1024, 1), compiledShaders);
+                orderedComputeShader2048.compile(createTemplate(1024, 2), compiledShaders);
+                orderedComputeShader4096.compile(createTemplate(1024, 4), compiledShaders);
+                orderedComputeShaderMAX_TRIANGLES.compile(createTemplate(1024, 6), compiledShaders);
+
                 unorderedComputeShader.compile(template, compiledShaders);
                 lightBinningComputeShader.compile(template, compiledShaders);
                 break;
