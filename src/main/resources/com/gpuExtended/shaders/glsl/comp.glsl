@@ -25,45 +25,37 @@ void shuffle_vertex(int localId, inout Vertex v[FACES_PER_THREAD], in int whoSen
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].pos.x);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].pos.x = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].pos.y);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].pos.y = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].pos.z);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].pos.z = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = v[i].ahsl;
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].ahsl = renderPris[whoSendsMeVertices[i]];
   }
-  memoryBarrierShared();
   barrier();
 }
 
@@ -71,45 +63,37 @@ void shuffle_vec4(int localId, inout vec4 v[FACES_PER_THREAD], in int whoSendsMe
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].x);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].x = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].y);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].y = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].z);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].z = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     renderPris[localId + i] = floatBitsToInt(v[i].w);
   }
-  memoryBarrierShared();
   barrier();
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     v[i].w = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
-  memoryBarrierShared();
   barrier();
 }
 
@@ -141,14 +125,12 @@ void main() {
     get_face(localId + i, minfo, cameraYaw, cameraPitch, dis[i], vA[i], vB[i], vC[i]);
   }
 
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     add_face_prio_distance(localId + i, minfo, vA[i], vB[i], vC[i], dis[i], pos);
   }
 
-  memoryBarrierShared();
   barrier();
 
   int prioAdj[FACES_PER_THREAD];
@@ -157,14 +139,12 @@ void main() {
     idx[i] = map_face_priority(localId + i, minfo, dis[i], vA[i], prioAdj[i]);
   }
 
-  memoryBarrierShared();
   barrier();
 
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     insert_face(localId + i, minfo, prioAdj[i], dis[i], idx[i]);
   }
 
-  memoryBarrierShared();
   barrier();
 
   int outputOffsets[FACES_PER_THREAD];
@@ -174,7 +154,6 @@ void main() {
                              outputOffsets[i]);
   }
 
-  memoryBarrierShared();
   barrier();
 
   // Scatter localIds from renderPris to the thread they're relevant to
@@ -186,7 +165,6 @@ void main() {
     }
   }
 
-  memoryBarrierShared();
   barrier();
   // Now each thread knows which localId to look up in shared memory to get info about a vertex
   // For example if thread0 has renderPri[0] == 5, this means that thread 5 tells thread 0 what vertex to write out. IE. whoSendsMeVertices[0] = 5
@@ -203,7 +181,6 @@ void main() {
     }
   }
 
-  memoryBarrierShared();
   barrier();
 
   // Shuffle vertices from threads who've already read them to threads who share the same output index
