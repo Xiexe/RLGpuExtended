@@ -209,6 +209,21 @@
     ]
   },
   {
+    "name": "GUTHIXIAN_TEMPLE",
+    "environment": "DEFAULT_UNDERGROUND",
+    "hideOtherAreas": true,
+    "bounds": [
+      {
+        "start": [4037, 4548, -1],
+        "end": [4091, 4613, -1]
+      },
+      {
+        "start": [4022, 4348, -1],
+        "end": [4166, 4482, -1]
+      }
+    ]
+  },
+  {
     "name": "TAVERLY",
     "environment": "DEFAULT",
     "bounds": [
