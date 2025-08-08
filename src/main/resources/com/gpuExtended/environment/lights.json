@@ -1461,17 +1461,19 @@
       118,
       133,
       146,
-      159
+      159,
+      2857
     ]
   },
   {
     "name": "PROJECTILE_YELLOW",
     "type": "point",
-    "color": [1, 1, 0.00],
+    "color": [1, 0.5, 0.00],
     "intensity": 1,
     "radius": 5,
     "projectiles": [
-      178
+      178,
+      2853
     ]
   },
   {

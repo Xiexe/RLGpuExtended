@@ -442,6 +442,7 @@ public class EnvironmentManager
                         }
 
                         // Skip tiles that are not on the same plane as the player
+                        // TODO:: Maybe we dont need to skip this with light binning.
                         if (tile.getPlane() != client.getPlane()) {
                             continue;
                         }
