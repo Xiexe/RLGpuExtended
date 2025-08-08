@@ -235,6 +235,59 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   hsl = (hsl & ~0x7F) | lightness;
 }
 
+void calculate_output_offsets(uint localId, modelinfo minfo, int thisPriority, int thisDistance,
+                              Vertex thisrvA, Vertex thisrvB, Vertex thisrvC,
+                              out int myOffset, out int thisRenderPri) {
+  int size = minfo.size;
+
+  if (localId < size) {
+    int outOffset = minfo.idx;
+    int toffset = minfo.toffset;
+    int flags = minfo.flags;
+    int offset = minfo.offset;
+
+    // we only have to order faces against others of the same priority
+    const int priorityOffset = count_prio_offset(thisPriority);
+    const int numOfPriority = totalMappedNum[thisPriority];
+    const int start = priorityOffset;                // index of first face with this priority
+    const int end = priorityOffset + numOfPriority;  // index of last face with this priority
+    const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
+    myOffset = priorityOffset;
+    int orientation = flags & 0x7ff;
+    int plane = (flags >> BIT_ZHEIGHT) & 3;
+    int hillskew = (flags >> BIT_HILLSKEW) & 1;
+
+    // calculate position this face will be in
+    for (int i = start; i < end; ++i) {
+      if (renderPriority < renderPris[i]) {
+        ++myOffset;
+      }
+    }
+
+    thisRenderPri = renderPris[localId];
+  }
+}
+
+void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
+  int size = minfo.size;
+  vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+  if (localId < size) {
+    vec4 vertA = vec4(thisrvA.pos, 0) + pos;
+    vec4 vertB = vec4(thisrvB.pos, 0) + pos;
+    vec4 vertC = vec4(thisrvC.pos, 0) + pos;
+
+    int myOffset = int(localId);
+    int outOffset = minfo.idx;
+    vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
+    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
+    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
+
+    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
+    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
+    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
+  }
+}
+
 void gather_texture_attribute(uint localId, modelinfo minfo, out vec4 texA, out vec4 texB, out vec4 texC) {
   int size = minfo.size;
 
@@ -283,6 +336,19 @@ void gather_texture_attribute(uint localId, modelinfo minfo, out vec4 texA, out 
   }
 }
 
+void output_uvs(uint localId, modelinfo minfo, vec4 texA, vec4 texB, vec4 texC) {
+  int size = minfo.size;
+  vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+  if (localId < size) {
+    int myOffset = int(localId);
+    int outOffset = minfo.idx;
+
+    uvout[outOffset + myOffset * 3] = texA.wxyz;
+    uvout[outOffset + myOffset * 3 + 1] = texB.wxyz;
+    uvout[outOffset + myOffset * 3 + 2] = texC.wxyz;
+  }
+}
+
 void gather_normal_attribute(uint localId, modelinfo minfo, out vec4 normA, out vec4 normB, out vec4 normC) {
   int size = minfo.size;
 
@@ -316,168 +382,12 @@ void gather_normal_attribute(uint localId, modelinfo minfo, out vec4 normA, out 
   }
 }
 
-void calculate_output_offsets(uint localId, modelinfo minfo, int thisPriority, int thisDistance,
-                              Vertex thisrvA, Vertex thisrvB, Vertex thisrvC,
-                              out int myOffset, out int thisRenderPri) {
-  int size = minfo.size;
-
-  if (localId < size) {
-    int outOffset = minfo.idx;
-    int toffset = minfo.toffset;
-    int flags = minfo.flags;
-    int offset = minfo.offset;
-
-    // we only have to order faces against others of the same priority
-    const int priorityOffset = count_prio_offset(thisPriority);
-    const int numOfPriority = totalMappedNum[thisPriority];
-    const int start = priorityOffset;                // index of first face with this priority
-    const int end = priorityOffset + numOfPriority;  // index of last face with this priority
-    const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
-    myOffset = priorityOffset;
-    int orientation = flags & 0x7ff;
-    int plane = (flags >> BIT_ZHEIGHT) & 3;
-    int hillskew = (flags >> BIT_HILLSKEW) & 1;
-
-    // calculate position this face will be in
-    for (int i = start; i < end; ++i) {
-      if (renderPriority < renderPris[i]) {
-        ++myOffset;
-      }
-    }
-
-    thisRenderPri = renderPris[localId];
-/*
-    vec4 normA, normB, normC;
-    ivec4 flagsA, flagsB, flagsC;
-
-    if (flags < 0)
-    {
-        normA = normal[offset + localId * 3    ];
-        normB = normal[offset + localId * 3 + 1];
-        normC = normal[offset + localId * 3 + 2];
-
-        flagsA = flagsin[offset + localId * 3    ];
-        flagsB = flagsin[offset + localId * 3 + 1];
-        flagsC = flagsin[offset + localId * 3 + 2];
-    }
-    else
-    {
-        normA = tempnormal[offset + localId * 3    ];
-        normB = tempnormal[offset + localId * 3 + 1];
-        normC = tempnormal[offset + localId * 3 + 2];
-
-        flagsA = tempflags[offset + localId * 3    ];
-        flagsB = tempflags[offset + localId * 3 + 1];
-        flagsC = tempflags[offset + localId * 3 + 2];
-    }
-//
-//    // undo vanilla lighting
-//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
-
-    normA = rotate_vertex(normA, orientation);
-    normB = rotate_vertex(normB, orientation);
-    normC = rotate_vertex(normC, orientation);
-
-    // apply hillskew
-    vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
-    vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
-    vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
-
-    normA = hillskew_vertexf(normA, hillskew, minfo.y, plane);
-    normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
-    normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
-
-    normalout[outOffset + myOffset * 3]     = normA;
-    normalout[outOffset + myOffset * 3 + 1] = normB;
-    normalout[outOffset + myOffset * 3 + 2] = normC;
-
-    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
-
-    // write to out buffer
-    vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
-    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
-    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
-
-    if (toffset < 0)
-    {
-      uvout[outOffset + myOffset * 3] = vec4(0);
-      uvout[outOffset + myOffset * 3 + 1] = vec4(0);
-      uvout[outOffset + myOffset * 3 + 2] = vec4(0);
-    }
-    else
-    {
-      vec4 texA, texB, texC;
-
-      if (flags >= 0) {
-        texA = temptexb[toffset + localId * 3];
-        texB = temptexb[toffset + localId * 3 + 1];
-        texC = temptexb[toffset + localId * 3 + 2];
-      } else {
-        texA = texb[toffset + localId * 3];
-        texB = texb[toffset + localId * 3 + 1];
-        texC = texb[toffset + localId * 3 + 2];
-      }
-
-      // swizzle from (tex,x,y,z) to (x,y,z,tex) for rotate and hillskew
-      texA = texA.yzwx;
-      texB = texB.yzwx;
-      texC = texC.yzwx;
-      // rotate
-      texA = rotate_vertex(texA, orientation);
-      texB = rotate_vertex(texB, orientation);
-      texC = rotate_vertex(texC, orientation);
-      // position
-      texA += pos;
-      texB += pos;
-      texC += pos;
-      // hillskew
-      texA = hillskew_vertexf(texA, hillskew, minfo.y, plane);
-      texB = hillskew_vertexf(texB, hillskew, minfo.y, plane);
-      texC = hillskew_vertexf(texC, hillskew, minfo.y, plane);
-      uvout[outOffset + myOffset * 3] = texA.wxyz;
-      uvout[outOffset + myOffset * 3 + 1] = texB.wxyz;
-      uvout[outOffset + myOffset * 3 + 2] = texC.wxyz;
-    }*/
-  }
-}
-
-void position_and_output(uint localId, modelinfo minfo,
-                         Vertex thisrvA, Vertex thisrvB, Vertex thisrvC,
-                         vec4 texA, vec4 texB, vec4 texC,
-                         vec4 normA, vec4 normB, vec4 normC) {
+void output_normals(uint localId, modelinfo minfo, vec4 normA, vec4 normB, vec4 normC) {
   int size = minfo.size;
   vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
   if (localId < size) {
-    vec4 vertA = vec4(thisrvA.pos, 0) + pos;
-    vec4 vertB = vec4(thisrvB.pos, 0) + pos;
-    vec4 vertC = vec4(thisrvC.pos, 0) + pos;
-
-    int flags = minfo.flags;
-    int orientation = flags & 0x7ff;
-    int plane = (flags >> BIT_ZHEIGHT) & 3;
-    int hillskew = (flags >> BIT_HILLSKEW) & 1;
-
-    //vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
-    //vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
-    //vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
-
     int myOffset = int(localId);
     int outOffset = minfo.idx;
-    vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
-    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
-    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
-
-    uvout[outOffset + myOffset * 3] = texA.wxyz;
-    uvout[outOffset + myOffset * 3 + 1] = texB.wxyz;
-    uvout[outOffset + myOffset * 3 + 2] = texC.wxyz;
-
-    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
 
     normalout[outOffset + myOffset * 3]     = normA;
     normalout[outOffset + myOffset * 3 + 1] = normB;

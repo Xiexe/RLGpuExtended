@@ -127,6 +127,7 @@ void main() {
     }
   }
 
+  // TODO: recalc distance/prio to reduce register usage?
   int prio[FACES_PER_THREAD];
   int dis[FACES_PER_THREAD];
   Vertex vA[FACES_PER_THREAD];
@@ -147,6 +148,7 @@ void main() {
   memoryBarrierShared();
   barrier();
 
+  // TODO: recalc prioAdj/idx to reduce register usage?
   int prioAdj[FACES_PER_THREAD];
   int idx[FACES_PER_THREAD];
   for (int i = 0; i < FACES_PER_THREAD; i++) {
@@ -165,20 +167,11 @@ void main() {
 
   int outputOffsets[FACES_PER_THREAD];
   int thisRenderPriority[FACES_PER_THREAD];
-
-  vec4 texA[FACES_PER_THREAD];
-  vec4 texB[FACES_PER_THREAD];
-  vec4 texC[FACES_PER_THREAD];
-
-  vec4 normalA[FACES_PER_THREAD];
-  vec4 normalB[FACES_PER_THREAD];
-  vec4 normalC[FACES_PER_THREAD];
   for (int i = 0; i < FACES_PER_THREAD; i++) {
     calculate_output_offsets(localId + i, minfo, prioAdj[i], dis[i],
                              vA[i], vB[i], vC[i],
                              outputOffsets[i], thisRenderPriority[i]);
-    gather_texture_attribute(localId + i, minfo, texA[i], texB[i], texC[i]);
-    gather_normal_attribute(localId + i, minfo, normalA[i], normalB[i], normalC[i]);
+
   }
 
   memoryBarrierShared();
@@ -214,19 +207,43 @@ void main() {
   memoryBarrierShared();
   barrier();
 
+  // TODO: gather and shuffle one vertex at a time to reduce register usage
   shuffle_vertex(int(localId), vA, whoSendsMeVertices);
   shuffle_vertex(int(localId), vB, whoSendsMeVertices);
   shuffle_vertex(int(localId), vC, whoSendsMeVertices);
+
   memoryBarrierShared();
   barrier();
+
+  vec4 texA[FACES_PER_THREAD];
+  vec4 texB[FACES_PER_THREAD];
+  vec4 texC[FACES_PER_THREAD];
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    output_vertices_and_flags(localId + i, minfo, vA[i], vB[i], vC[i]);
+    gather_texture_attribute(localId + i, minfo, texA[i], texB[i], texC[i]);
+  }
+
   shuffle_vec4(int(localId), texA, whoSendsMeVertices);
   shuffle_vec4(int(localId), texB, whoSendsMeVertices);
   shuffle_vec4(int(localId), texC, whoSendsMeVertices);
 
+  memoryBarrierShared();
+  barrier();
+
+  vec4 normalA[FACES_PER_THREAD];
+  vec4 normalB[FACES_PER_THREAD];
+  vec4 normalC[FACES_PER_THREAD];
   for (int i = 0; i < FACES_PER_THREAD; i++) {
-    position_and_output(localId + i, minfo,
-                        vA[i], vB[i], vC[i],
-                        texA[i], texB[i], texC[i],
-                        normalA[i], normalB[i], normalC[i]);
+    output_uvs(localId + i, minfo, texA[i], texB[i], texC[i]);
+    gather_normal_attribute(localId + i, minfo, normalA[i], normalB[i], normalC[i]);
+  }
+  shuffle_vec4(int(localId), normalA, whoSendsMeVertices);
+  shuffle_vec4(int(localId), normalB, whoSendsMeVertices);
+  shuffle_vec4(int(localId), normalC, whoSendsMeVertices);
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    output_normals(localId + i, minfo, normalA[i], normalB[i], normalC[i]);
   }
 }
