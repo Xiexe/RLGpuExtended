@@ -235,7 +235,7 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   hsl = (hsl & ~0x7F) | lightness;
 }
 
-void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDistance, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
+void calculate_output_offsets(uint localId, modelinfo minfo, int thisPriority, int thisDistance, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC, out int myOffset, out int thisRenderPri) {
   int size = minfo.size;
 
   if (localId < size) {
@@ -250,7 +250,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     const int start = priorityOffset;                // index of first face with this priority
     const int end = priorityOffset + numOfPriority;  // index of last face with this priority
     const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
-    int myOffset = priorityOffset;
+    myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
     int plane = (flags >> BIT_ZHEIGHT) & 3;
     int hillskew = (flags >> BIT_HILLSKEW) & 1;
@@ -262,6 +262,8 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       }
     }
 
+    thisRenderPri = renderPris[localId];
+/*
     vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
     vec4 vertA = vec4(thisrvA.pos, 0) + pos;
     vec4 vertB = vec4(thisrvB.pos, 0) + pos;
@@ -360,6 +362,35 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
       uvout[outOffset + myOffset * 3] = texA.wxyz;
       uvout[outOffset + myOffset * 3 + 1] = texB.wxyz;
       uvout[outOffset + myOffset * 3 + 2] = texC.wxyz;
-    }
+    }*/
+  }
+}
+
+void position_and_output(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
+  int size = minfo.size;
+  vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+  if (localId < size) {
+    vec4 vertA = vec4(thisrvA.pos, 0) + pos;
+    vec4 vertB = vec4(thisrvB.pos, 0) + pos;
+    vec4 vertC = vec4(thisrvC.pos, 0) + pos;
+
+    int flags = minfo.flags;
+    int orientation = flags & 0x7ff;
+    int plane = (flags >> BIT_ZHEIGHT) & 3;
+    int hillskew = (flags >> BIT_HILLSKEW) & 1;
+
+    //vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
+    //vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
+    //vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
+
+    int myOffset = int(localId);
+    int outOffset = minfo.idx;
+    vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
+    vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
+    vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
+
+    uvout[outOffset + myOffset * 3] = vec4(0);
+    uvout[outOffset + myOffset * 3 + 1] = vec4(0);
+    uvout[outOffset + myOffset * 3 + 2] = vec4(0);
   }
 }

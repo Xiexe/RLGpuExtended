@@ -18,6 +18,52 @@ layout(local_size_x = THREAD_COUNT) in;
 #include "shaders/glsl/common.glsl"
 #include "shaders/glsl/priority_render.glsl"
 
+void shuffle_vertex(int localId, inout Vertex v[FACES_PER_THREAD], in int whoSendsMeVertices[FACES_PER_THREAD]) {
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].pos.x);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].pos.x = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].pos.y);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].pos.y = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToInt(v[i].pos.z);
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].pos.z = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  memoryBarrierShared();
+  barrier();
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = v[i].ahsl;
+  }
+  memoryBarrierShared();
+  barrier();
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].ahsl = renderPris[whoSendsMeVertices[i]];
+  }
+  memoryBarrierShared();
+  barrier();
+}
+
 void main() {
   uint groupId = gl_WorkGroupID.x;
   uint localId = gl_LocalInvocationID.x * FACES_PER_THREAD;
@@ -71,7 +117,50 @@ void main() {
   memoryBarrierShared();
   barrier();
 
+int outputOffsets[FACES_PER_THREAD];
+  int thisRenderPriority[FACES_PER_THREAD];
   for (int i = 0; i < FACES_PER_THREAD; i++) {
-    sort_and_insert(localId + i, minfo, prioAdj[i], dis[i], vA[i], vB[i], vC[i]);
+    calculate_output_offsets(localId + i, minfo, prioAdj[i], dis[i], vA[i], vB[i], vC[i], outputOffsets[i], thisRenderPriority[i]);
+  }
+
+  memoryBarrierShared();
+  barrier();
+
+  // Scatter localIds from renderPris to the thread they're relevant to
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    int size = minfo.size;
+
+    if ((localId+i) < size) { // TODO: when moving this remove the + i
+      //int localIdFromRenderPriority = (~(thisRenderPriority[i] & 0xffff)) & 0xffff;
+      renderPris[outputOffsets[i]] = int(localId+i);
+    }
+  }
+
+  memoryBarrierShared();
+  barrier();
+  // Now each thread knows which localId to look up in shared memory to get info about a vertex
+  // For example if thread0 has renderPri[0] == 5, this means that thread 5 tells thread 0 what vertex to write out. IE. whoSendsMeVertices[0] = 5
+  int whoSendsMeVertices[FACES_PER_THREAD];
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    int size = minfo.size;
+
+    if ((localId+i) < size) { // TODO: when moving this remove the + i
+      whoSendsMeVertices[i] = renderPris[localId+i]; // TODO: when moving this remove the + i
+    } else {
+      // For out of bounds vertices, we make them look at their own index to remove the if check for size each time
+      // The index into shared memory is in bounds, it's just not going to have any valid data
+      whoSendsMeVertices[i] = int(localId) + i; // TODO: when moving this remove the + i
+    }
+  }
+
+  memoryBarrierShared();
+  barrier();
+
+  shuffle_vertex(int(localId), vA, whoSendsMeVertices);
+  shuffle_vertex(int(localId), vB, whoSendsMeVertices);
+  shuffle_vertex(int(localId), vC, whoSendsMeVertices);
+
+  for (int i = 0; i < FACES_PER_THREAD; i++) {
+    position_and_output(localId + i, minfo, vA[i], vB[i], vC[i]);
   }
 }
