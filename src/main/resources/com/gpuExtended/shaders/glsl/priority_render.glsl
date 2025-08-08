@@ -319,6 +319,9 @@ void gather_texture_attribute(uint localId, modelinfo minfo, uint vertexIndex, o
       tex = tex.wxyz; // back to (tex,x,y,z)
     }
   }
+  else {
+    tex = vec4(0);
+  }
 }
 
 void output_uv(uint localId, modelinfo minfo, uint vertexIndex, vec4 tex) {
@@ -353,6 +356,9 @@ void gather_normal_attribute(uint localId, modelinfo minfo, uint vertexIndex, ou
 
     norm = rotate_vertex(norm, orientation);
     norm = hillskew_vertexf(norm, hillskew, minfo.y, plane);
+  }
+  else {
+    norm = vec4(0);
   }
 }
 

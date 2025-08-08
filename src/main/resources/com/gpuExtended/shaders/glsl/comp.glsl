@@ -206,7 +206,6 @@ void main() {
   memoryBarrierShared();
   barrier();
 
-  // TODO: Does re-reading vA/vB/vC help?
   // Shuffle vertices from threads who've already read them to threads who share the same output index
   // This way the thread who read verts[i] writes to outverts[i] making the writes coalesced
   shuffle_vertex(int(localId), vA, whoSendsMeVertices);
