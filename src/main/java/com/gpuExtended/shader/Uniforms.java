@@ -86,7 +86,6 @@ public class Uniforms
 
         ShaderVariables shaderVariables = new ShaderVariables();
         shaderVariables.ShadowMap = glGetUniformLocation(shader, "shadowMap");
-        shaderVariables.DynamicShadowMap = glGetUniformLocation(shader, "dynamicShadowMap");
         shaderVariables.DepthMap = glGetUniformLocation(shader, "depthMap");
 
         shaderVariables.TileMarkerFillColorMap = glGetUniformLocation(shader, "tileFillColorMap");

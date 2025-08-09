@@ -22,7 +22,6 @@ public class ShaderVariables
     public int SystemInfoBlock;
     public int ConfigBlock;
     public int ShadowMap;
-    public int DynamicShadowMap;
     public int DepthMap;
     public int TileMarkerBorderColorMap;
     public int TileMarkerFillColorMap;

@@ -289,8 +289,7 @@ public class ShadowPass implements IPassBase {
 
     @Override
     public void OnRenderFrame() {
-        OnRenderStaticShadowMap();
-//        OnRenderDynamicShadowMap();
+        OnRenderShadowMap();
     }
 
     @Override
@@ -314,7 +313,7 @@ public class ShadowPass implements IPassBase {
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {}
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
-    public void OnRenderStaticShadowMap() {
+    public void OnRenderShadowMap() {
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
 
