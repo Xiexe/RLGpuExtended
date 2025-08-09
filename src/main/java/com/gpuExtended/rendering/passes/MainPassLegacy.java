@@ -412,6 +412,11 @@ public class MainPassLegacy implements IPassBase {
     @Override
     public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {
         Model model, offsetModel;
+
+        // TODO:: make a hashmap to track bad object ids to skip (53882 causes massive overdraw in guthix temple entrance)
+        int objectId = (int)(hash >> 20);
+        if(objectId == 53882) return;
+
         if (renderable instanceof Model)
         {
             model = (Model) renderable;
