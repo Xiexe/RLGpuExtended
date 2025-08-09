@@ -125,8 +125,8 @@ public class FrameBuffer {
     public void clearFramebuffer()
     {
         bind();
-        GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         unbind();
     }
 

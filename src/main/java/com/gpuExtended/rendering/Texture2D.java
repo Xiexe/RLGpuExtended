@@ -152,6 +152,22 @@ public class Texture2D {
         unbind();
     }
 
+    public void resize(int width, int height) {
+        bind();
+        glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                textureSettings.internalFormat,
+                width,
+                height,
+                0,
+                textureSettings.format,
+                textureSettings.type,
+                0
+        );
+        unbind();
+    }
+
     public void bind() {
 
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, id);

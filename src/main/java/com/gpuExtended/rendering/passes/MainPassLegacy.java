@@ -19,6 +19,8 @@ import com.gpuExtended.util.contexts.VertexBufferContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameStateChanged;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
 
@@ -43,6 +45,8 @@ public class MainPassLegacy implements IPassBase {
 
     public Camera camera;
     public FrameBuffer frameBuffer;
+    public Texture2D depthTexture;
+
     VertexBufferContext vertexBufferContext;
     VertexBufferContext nextSceneVertexBufferContext;
     ComputeBufferContext computeBufferContext;
@@ -84,7 +88,20 @@ public class MainPassLegacy implements IPassBase {
         textureSettings.wrapS = GL_CLAMP_TO_EDGE;
         textureSettings.wrapT = GL_CLAMP_TO_EDGE;
 
+        Texture2D.TextureSettings depthTextureSettings = new Texture2D.TextureSettings();
+        depthTextureSettings.internalFormat = GL_DEPTH_COMPONENT24;
+        depthTextureSettings.format = GL_DEPTH_COMPONENT;
+        depthTextureSettings.type = GL_FLOAT;
+        depthTextureSettings.minFilter = GL_LINEAR;
+        depthTextureSettings.magFilter = GL_LINEAR;
+        depthTextureSettings.wrapS = GL_CLAMP_TO_EDGE;
+        depthTextureSettings.wrapT = GL_CLAMP_TO_EDGE;
+
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
+        depthTexture = new Texture2D(depthTextureSettings);
+        frameBuffer.bind();
+        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, depthTexture.getId(), 0);
+        frameBuffer.unbind();
     }
 
     private void InitVAO() {
@@ -130,7 +147,7 @@ public class MainPassLegacy implements IPassBase {
     public void OnRenderFrame() {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_DEPTH_TEST);
 
         glBindVertexArray(vertexBufferContext.vertexArrayObjectId);
 
@@ -416,6 +433,7 @@ public class MainPassLegacy implements IPassBase {
         // TODO:: make a hashmap to track bad object ids to skip (53882 causes massive overdraw in guthix temple entrance)
         int objectId = (int)(hash >> 20);
         if(objectId == 53882) return;
+        if(objectId == 42260) return;
 
         if (renderable instanceof Model)
         {

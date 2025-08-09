@@ -824,6 +824,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 			if (mainPassLegacy.frameBuffer.getTexture().getWidth() != currentViewport[2] || mainPassLegacy.frameBuffer.getTexture().getHeight() != currentViewport[3]) {
 				mainPassLegacy.frameBuffer.resize(currentViewport[2], currentViewport[3]);
+				mainPassLegacy.depthTexture.resize(currentViewport[2], currentViewport[3]);
 				postProcessingPass.bloomFramebuffer.resize(currentViewport[2], currentViewport[3]);
 
 				log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);

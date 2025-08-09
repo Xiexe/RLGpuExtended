@@ -599,6 +599,7 @@ public class SceneUploader
 
 		final byte[] transparencies = model.getFaceTransparencies();
 		final byte[] facePriorities = model.getFaceRenderPriorities();
+		final byte[] faceDepthBias = model.getFaceBias();
 
 		final byte overrideAmount = model.getOverrideAmount();
 		final byte overrideHue = model.getOverrideHue();
@@ -685,9 +686,16 @@ public class SceneUploader
 
 			int packedAlphaPriorityFlags = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
 
-			vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
-			vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
-			vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
+//			if (faceDepthBias == null) {
+				vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
+				vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
+				vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
+//			} else {
+//				int depthBias = faceDepthBias[tri] * 10;
+//				vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0] + depthBias, packedAlphaPriorityFlags | color1);
+//				vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1] + depthBias, packedAlphaPriorityFlags | color2);
+//				vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2] + depthBias, packedAlphaPriorityFlags | color3);
+//			}
 
 			flagsBuffer.put(0, 0, 0, 0);
 			flagsBuffer.put(0, 0, 0, 0);

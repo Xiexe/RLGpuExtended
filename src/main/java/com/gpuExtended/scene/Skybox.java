@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL30;
 import java.nio.FloatBuffer;
 
 import static com.gpuExtended.util.constants.Variables.*;
+import static org.lwjgl.opengl.GL11C.glDepthMask;
 import static org.lwjgl.opengl.GL31C.glUniformBlockBinding;
 
 @Slf4j
@@ -89,6 +90,7 @@ public class Skybox {
     }
 
     public void Render() {
+        glDepthMask(false);
         int skyboxShader = plugin.shaders.skyboxShader.id();
         ShaderVariables shaderVars = plugin.uniforms.GetUniforms(skyboxShader);
 
@@ -109,5 +111,6 @@ public class Skybox {
         GL30.glBindVertexArray(vao);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 36);
         GL30.glBindVertexArray(lastVertexArray);
+        glDepthMask(true);
     }
 }
