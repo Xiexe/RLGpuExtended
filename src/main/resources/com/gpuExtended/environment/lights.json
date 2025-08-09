@@ -180,7 +180,7 @@
     "type": "point",
     "color": [1.00, 0.25, 0.00],
     "offset": [0, 0, 1],
-    "intensity": 1,
+    "intensity": 3,
     "radius": 5,
     "animation": "flicker",
     "gameObjects": [
