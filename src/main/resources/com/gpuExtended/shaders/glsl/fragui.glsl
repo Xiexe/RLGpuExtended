@@ -99,7 +99,6 @@ vec4 sampleUiTexture()
   return frag;
 }
 
-// Function to adjust saturation
 vec3 adjustSaturation(vec3 color, float saturation) {
   // Convert RGB to grayscale by calculating luminance
   float gray = dot(color, vec3(0.2126f, 0.7152f, 0.0722f));
@@ -107,10 +106,10 @@ vec3 adjustSaturation(vec3 color, float saturation) {
   return mix(vec3(gray), color, saturation);
 }
 
-// Function to adjust contrast
 vec3 adjustContrast(vec3 color, float contrast) {
-  // Shift the color by 0.5 to center it, scale it by the contrast factor, and then shift it back
-  return (color - 0.5) * contrast + 0.5;
+    // Contrast > 1 increases contrast, < 1 decreases contrast
+    color = (color - 0.5) * contrast + 0.5;
+    return color;
 }
 
 vec3 adjustBrightness(vec3 color, float brightnessAdjust) {
@@ -158,21 +157,23 @@ vec3 saturate(vec3 color) {
 
 void PostProcessImage(inout vec3 image, vec3 bloom, int colorBlindMode, float fogFalloff, int isEmissive)
 {
-  image += bloom;
-  ApplyTonemapping(image);
+    // TODO:: fix colorblind modes.
+    //    if (colorBlindMode > 0) {
+    //        srgb = colorblind(colorBlindMode, image);
+    //    }
 
-  image = adjustContrast(image, (configContrast / 255f));
-  image = adjustSaturation(image, (configSaturation / 255f));
+    image += bloom;
+    ApplyTonemapping(image);
 
-  if (colorBlindMode > 0) {
-    image = colorblind(colorBlindMode, image);
-  }
+    float brightness = ((configBrightness * 2.2) / 255f);
+    float gamma = brightness * 2.2; // Adjust gamma based on brightness setting
+    vec3 srgb = pow(image, vec3(1.0 / gamma));
 
-  float brightness = ((configBrightness * 2.2) / 255f);
-  float gamma = brightness * 2.2; // Adjust gamma based on brightness setting
-  vec3 srgb = pow(image, vec3(1.0 / gamma));
-  srgb = saturate(srgb);
-  image = srgb;//linearToGamma(image);
+    srgb = adjustContrast(srgb, (configContrast / 255f));
+    srgb = adjustSaturation(srgb, (configSaturation / 255f));
+    srgb = saturate(srgb);
+
+    image = srgb;
 }
 
 void main() {

@@ -1503,7 +1503,7 @@
     "name": "NPC_AUBURNVALE_SPIRIT",
     "type": "point",
     "color": [0.5, 1, 0.1],
-    "offset": [0, 0, 0],
+    "offset": [0, 0, -200],
     "intensity": 4,
     "radius": 4,
     "npcs": [
