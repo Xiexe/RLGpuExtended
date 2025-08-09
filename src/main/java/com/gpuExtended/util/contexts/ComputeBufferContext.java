@@ -1,12 +1,12 @@
 package com.gpuExtended.util.contexts;
 
+import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
 import lombok.extern.slf4j.Slf4j;
-import org.lwjgl.opengl.GL;
 
-import static org.lwjgl.opengl.GL15C.glGenBuffers;
-import static org.lwjgl.opengl.GL43C.GL_BUFFER;
+import static com.gpuExtended.util.constants.Variables.MAX_TRIANGLE;
+import static org.lwjgl.opengl.GL15C.*;
 import static org.lwjgl.opengl.GL43C.glObjectLabel;
 
 @Slf4j
@@ -31,16 +31,14 @@ public class ComputeBufferContext {
 
     // Buffers used for model sorting
     public GLBuffer tmpUnsortedModelBuffer;
-    public GLBuffer tmpSmallModelBuffer;
-    public GLBuffer tmpLargeModelBuffer;
 
     public GpuIntBuffer unsortedModelBuffer;
-    public GpuIntBuffer smallModelBuffer;
-    public GpuIntBuffer largeModelBuffer;
+
+    public GpuIntBuffer[] sortedModelIntBuffers;
+    public GLBuffer[] sortedModelGlBuffers;
+    public int[] numSortedModels;
 
     public int numUnsortedModels;
-    public int numSmallModels;
-    public int numLargeModels;
 
     public int totalVertices;
     public int totalDynamicVertices;
@@ -49,8 +47,6 @@ public class ComputeBufferContext {
     public ComputeBufferContext() {
 
         this.unsortedModelBuffer = new GpuIntBuffer();
-        this.smallModelBuffer = new GpuIntBuffer();
-        this.largeModelBuffer = new GpuIntBuffer();
 
         // Output
         this.vertexOutBuffer = new GLBuffer("vertex out buffer");
@@ -72,8 +68,6 @@ public class ComputeBufferContext {
 
         // Model Sorting buffers
         this.tmpUnsortedModelBuffer = new GLBuffer("unsorted model buffer");
-        this.tmpSmallModelBuffer = new GLBuffer("small model buffer");
-        this.tmpLargeModelBuffer = new GLBuffer("large model buffer");
 
         InitGLBuffer(this.vertexOutBuffer);
         InitGLBuffer(this.uvOutBuffer);
@@ -91,8 +85,73 @@ public class ComputeBufferContext {
         InitGLBuffer(this.dynamicFlagsBuffer);
 
         InitGLBuffer(this.tmpUnsortedModelBuffer);
-        InitGLBuffer(this.tmpSmallModelBuffer);
-        InitGLBuffer(this.tmpLargeModelBuffer);
+
+        InitSortedModelBuffers();
+    }
+
+    public void ResetSortedModelBufferCounts() {
+        for(int i = 0; i < 8; i++) {
+            this.numSortedModels[i] = 0;
+        }
+    }
+
+    public void ClearSortedModelBuffer() {
+        for(int i = 0; i < 8; i++) {
+            this.sortedModelIntBuffers[i].clear();
+        }
+    }
+
+    private void InitSortedModelBuffers() {
+        // Sizes are powers of two starting at 64
+        // 64 chosen as minimum because nvidia typically has 32 warp size and AMD has 64, so max between these two is a good default
+        // 64
+        // 128
+        // 256
+        // 512
+        // 1024
+        // 2048
+        // 4096
+        // MAX_TRIANGLE = 1024*6 = 6144
+        // 8 different sizes
+        this.sortedModelIntBuffers = new GpuIntBuffer[8];
+        this.sortedModelGlBuffers = new GLBuffer[8];
+        this.numSortedModels = new int[8];
+        for(int i = 0; i < 8; i++) {
+            int size = 64 << i;
+            this.sortedModelGlBuffers[i] = new GLBuffer("sorted models size=" + size);
+            InitGLBuffer(this.sortedModelGlBuffers[i]);
+            this.sortedModelIntBuffers[i] = new GpuIntBuffer();
+            this.numSortedModels[i] = 0;
+        }
+    }
+
+    public void FlipSortedModelBuffers() {
+        for(int i = 0; i < 8; i++) {
+            this.sortedModelIntBuffers[i].flip();
+        }
+    }
+
+    public void UpdateSortedModelBuffers(GpuExtendedPlugin plugin) {
+        for(int i = 0; i < 8; i++) {
+            plugin.updateBuffer(this.sortedModelGlBuffers[i], GL_ARRAY_BUFFER, this.sortedModelIntBuffers[i].getBuffer(), GL_DYNAMIC_DRAW);
+        }
+    }
+
+    public static int log2(int bits) // returns 0 for bits=0
+    {
+        double x = Math.log(bits) / Math.log(2);
+        return (int)Math.ceil(x);
+    }
+
+    public GpuIntBuffer GetCorrectModelBufferForTriangleCount(int triangles) {
+        assert triangles > 0 : "Triangle count was " + triangles;
+        assert triangles <= MAX_TRIANGLE : "Triangle count was greater than MAX_TRIANGLE=" + MAX_TRIANGLE + " triangles=" + triangles;
+        int log = log2(triangles);
+        if (log < 6) log = 6; // minimum 64. 6 == log2(64)
+
+        this.numSortedModels[log-6]++;
+        GpuIntBuffer buffer = this.sortedModelIntBuffers[log-6];
+        return buffer;
     }
 
     private void InitGLBuffer(GLBuffer glBuffer) {
@@ -102,8 +161,6 @@ public class ComputeBufferContext {
 
     public void Clear() {
         this.numUnsortedModels = 0;
-        this.numSmallModels = 0;
-        this.numLargeModels = 0;
 
         this.totalVertices = 0;
     }
@@ -125,16 +182,15 @@ public class ComputeBufferContext {
         this.dynamicFlagsBuffer = null;
 
         this.tmpUnsortedModelBuffer = null;
-        this.tmpSmallModelBuffer = null;
-        this.tmpLargeModelBuffer = null;
 
         this.unsortedModelBuffer = null;
-        this.smallModelBuffer = null;
-        this.largeModelBuffer = null;
 
         this.numUnsortedModels = 0;
-        this.numSmallModels = 0;
-        this.numLargeModels = 0;
+        this.ResetSortedModelBufferCounts();
+
+        this.numSortedModels = null;
+        this.sortedModelGlBuffers = null;
+        this.sortedModelIntBuffers = null;
 
         this.totalVertices = 0;
     }

@@ -218,14 +218,12 @@ public class MainPassLegacy implements IPassBase {
         vertexBufferContext.normalBuffer.clear();
         vertexBufferContext.flagsBuffer.clear();
 
-        computeBufferContext.smallModelBuffer.clear();
-        computeBufferContext.largeModelBuffer.clear();
         computeBufferContext.unsortedModelBuffer.clear();
+        computeBufferContext.ClearSortedModelBuffer();
 
-        computeBufferContext.numSmallModels = 0;
-        computeBufferContext.numLargeModels = 0;
+
+        computeBufferContext.ResetSortedModelBufferCounts();
         computeBufferContext.numUnsortedModels = 0;
-
         computeBufferContext.totalDynamicVertices = 0;
         computeBufferContext.totalDynamicUvs = 0;
 
@@ -290,8 +288,7 @@ public class MainPassLegacy implements IPassBase {
 
         vCtx.FlipBuffers();
         cCtx.unsortedModelBuffer.flip();
-        cCtx.smallModelBuffer.flip();
-        cCtx.largeModelBuffer.flip();
+        cCtx.FlipSortedModelBuffers();
 
         IntBuffer vertexBuffer = vCtx.vertexBuffer.getBuffer();
         FloatBuffer uvBuffer = vCtx.uvBuffer.getBuffer();
@@ -299,13 +296,10 @@ public class MainPassLegacy implements IPassBase {
         IntBuffer flagsBuffer = vCtx.flagsBuffer.getBuffer();
 
         IntBuffer modelBufferUnordered = cCtx.unsortedModelBuffer.getBuffer();
-        IntBuffer modelBufferSmall = cCtx.smallModelBuffer.getBuffer();
-        IntBuffer modelBufferLarge = cCtx.largeModelBuffer.getBuffer();
 
         // compute sorting buffers
         plugin.updateBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
-        plugin.updateBuffer(cCtx.tmpSmallModelBuffer, GL_ARRAY_BUFFER, modelBufferSmall, GL_DYNAMIC_DRAW);
-        plugin.updateBuffer(cCtx.tmpLargeModelBuffer, GL_ARRAY_BUFFER, modelBufferLarge, GL_DYNAMIC_DRAW);
+        cCtx.UpdateSortedModelBuffers(plugin);
 
         // dynamic model buffers
         plugin.updateBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
@@ -321,8 +315,15 @@ public class MainPassLegacy implements IPassBase {
         plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
         DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader.id());
-        DispatchSortingCompute(cCtx.tmpSmallModelBuffer, cCtx.numSmallModels, plugin.shaders.smallOrderedComputeShader.id());
-        DispatchSortingCompute(cCtx.tmpLargeModelBuffer, cCtx.numLargeModels, plugin.shaders.largeOrderedComputeShader.id());
+
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[0], cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[1], cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[2], cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[3], cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[4], cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[5], cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[6], cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096.id());
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES.id());
 
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
@@ -445,6 +446,7 @@ public class MainPassLegacy implements IPassBase {
         assert model == renderable;
 
         if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+            if (offsetModel.getFaceCount() <= 0) return;
             int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
             int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
@@ -453,7 +455,7 @@ public class MainPassLegacy implements IPassBase {
             int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
             int exFlags = GetExFlags(hash, tileX, tileY, z, false);
 
-            GpuIntBuffer b = GetCorrectModelBufferForTriangleCount(faceCount);
+            GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(faceCount);
 
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
@@ -486,6 +488,7 @@ public class MainPassLegacy implements IPassBase {
         int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
         if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+            if (model.getFaceCount() <= 0) return;
             int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
             int exFlags = GetExFlags(hash, tileX, tileY, z, true);
             boolean hasUv = model.getFaceTextures() != null;
@@ -493,7 +496,7 @@ public class MainPassLegacy implements IPassBase {
 
             int vertexCount = plugin.sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
 
-            GpuIntBuffer b = GetCorrectModelBufferForTriangleCount(vertexCount / 3);
+            GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(vertexCount / 3);
             b.ensureCapacity(12);
             IntBuffer buffer = b.getBuffer();
             buffer.put(computeBufferContext.totalDynamicVertices);
@@ -594,29 +597,12 @@ public class MainPassLegacy implements IPassBase {
         return -1;
     }
 
-    private GpuIntBuffer GetCorrectModelBufferForTriangleCount(int triangles) {
-        // Returns the appropriate model buffer based on the number of triangles.
-        if (triangles <= SMALL_TRIANGLE_COUNT)
-        {
-            computeBufferContext.numSmallModels++;
-            return computeBufferContext.smallModelBuffer;
-        }
-        else
-        {
-            computeBufferContext.numLargeModels++;
-            return computeBufferContext.largeModelBuffer;
-        }
-    }
-
     private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, int computeShader) {
+        if (numModels <= 0)  return;
         Uniforms uniforms = plugin.uniforms;
-        ShaderHandler shaders = plugin.shaders;
 
         // Bind uniforms for compute shaders | TODO:: this may not need to be done every frame. Also, move uniform buffers to uniform wrapper or something
-        glUniformBlockBinding(shaders.smallOrderedComputeShader.id(), uniforms.GetUniforms(shaders.smallOrderedComputeShader.id()).BlockSmall, CAMERA_BUFFER_BINDING_ID);
-        glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, uniforms.glCameraUniformBuffer.glBufferId);
-
-        glUniformBlockBinding(shaders.largeOrderedComputeShader.id(), uniforms.GetUniforms(shaders.largeOrderedComputeShader.id()).BlockLarge, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(computeShader, uniforms.GetUniforms(computeShader).BlockSmall, CAMERA_BUFFER_BINDING_ID);
         glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, uniforms.glCameraUniformBuffer.glBufferId);
 
         glUseProgram(computeShader);

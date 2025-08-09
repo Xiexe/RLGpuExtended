@@ -64,7 +64,7 @@ int count_prio_offset(int priority) {
   return total;
 }
 
-void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch, out int prio, out int dis, out Vertex o1, out Vertex o2, out Vertex o3) {
+void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch, out int dis, out Vertex o1, out Vertex o2, out Vertex o3) {
   int size = minfo.size;
   int offset = minfo.offset;
   int flags = minfo.flags;
@@ -98,7 +98,6 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
     vec4 thisrvB = rotate_vertex(vec4(thisB.pos, 0), orientation);
     vec4 thisrvC = rotate_vertex(vec4(thisC.pos, 0), orientation);
 
-    int thisPriority = (thisA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
     int thisDistance = face_distance(thisrvA.xyz, thisrvB.xyz, thisrvC.xyz, cameraYaw, cameraPitch);
 
     o1.pos = thisrvA.xyz;
@@ -110,7 +109,6 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
     o3.pos = thisrvC.xyz;
     o3.ahsl = thisC.ahsl;
 
-    prio = thisPriority;
     dis = thisDistance;
   } else {
     o1.pos = vec3(0);
@@ -121,17 +119,29 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
 
     o3.pos = vec3(0);
     o3.ahsl = 0;
-    prio = 0;
     dis = 0;
   }
 }
 
-void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC, int thisPriority, int thisDistance, ivec4 pos) {
+void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC, int thisDistance, ivec4 pos) {
   if (localId < minfo.size) {
+    int thisPriority = (thisrvA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
     // if the face is not culled, it is calculated into priority distance averages
     if (face_visible(thisrvA.pos, thisrvB.pos, thisrvC.pos, pos)) {
-      atomicAdd(totalNum[thisPriority], 1);
-      atomicAdd(totalDistance[thisPriority], thisDistance);
+      if (thisPriority == 1 || thisPriority == 2) {
+        atomicAdd(totalNum12, 1);
+        atomicAdd(totalDistance12, thisDistance);
+      }
+      else if (thisPriority == 3 || thisPriority == 4) {
+        atomicAdd(totalNum34, 1);
+        atomicAdd(totalDistance34, thisDistance);
+      }
+      else if (thisPriority == 6 || thisPriority == 8) {
+        atomicAdd(totalNum68, 1);
+        atomicAdd(totalDistance68, thisDistance);
+      }
+      //atomicAdd(totalNum[thisPriority], 1);
+      //atomicAdd(totalDistance[thisPriority], thisDistance);
 
       // calculate minimum distance to any face of priority 10 for positioning the 11 faces later
       if (thisPriority == 10) {
@@ -141,29 +151,21 @@ void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Verte
   }
 }
 
-int map_face_priority(uint localId, modelinfo minfo, int thisPriority, int thisDistance, out int prio) {
+int map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex thisrvA, out int prio) {
   int size = minfo.size;
 
   // Compute average distances for 0/2, 3/4, and 6/8
 
   if (localId < size) {
-    int avg1 = 0;
-    int avg2 = 0;
-    int avg3 = 0;
+    int thisPriority = (thisrvA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
+    float avg1 = float(totalDistance12) / float(totalNum12);
+    float avg2 = float(totalDistance34) / float(totalNum34);
+    float avg3 = float(totalDistance68) / float(totalNum68);
+    avg1 *= float(totalNum12 > 0);
+    avg2 *= float(totalNum34 > 0);
+    avg3 *= float(totalNum68 > 0);
 
-    if (totalNum[1] > 0 || totalNum[2] > 0) {
-      avg1 = (totalDistance[1] + totalDistance[2]) / (totalNum[1] + totalNum[2]);
-    }
-
-    if (totalNum[3] > 0 || totalNum[4] > 0) {
-      avg2 = (totalDistance[3] + totalDistance[4]) / (totalNum[3] + totalNum[4]);
-    }
-
-    if (totalNum[6] > 0 || totalNum[8] > 0) {
-      avg3 = (totalDistance[6] + totalDistance[8]) / (totalNum[6] + totalNum[8]);
-    }
-
-    int adjPrio = priority_map(thisPriority, thisDistance, min10, avg1, avg2, avg3);
+    int adjPrio = priority_map(thisPriority, thisDistance, min10, int(avg1), int(avg2), int(avg3));
     int prioIdx = atomicAdd(totalMappedNum[adjPrio], 1);
 
     prio = adjPrio;
@@ -235,7 +237,9 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   hsl = (hsl & ~0x7F) | lightness;
 }
 
-void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDistance, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
+void calculate_output_offsets(uint localId, modelinfo minfo, int thisPriority, int thisDistance,
+                              Vertex thisrvA, Vertex thisrvB, Vertex thisrvC,
+                              out int myOffset) {
   int size = minfo.size;
 
   if (localId < size) {
@@ -250,7 +254,7 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
     const int start = priorityOffset;                // index of first face with this priority
     const int end = priorityOffset + numOfPriority;  // index of last face with this priority
     const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
-    int myOffset = priorityOffset;
+    myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
     int plane = (flags >> BIT_ZHEIGHT) & 3;
     int hillskew = (flags >> BIT_HILLSKEW) & 1;
@@ -261,105 +265,110 @@ void sort_and_insert(uint localId, modelinfo minfo, int thisPriority, int thisDi
         ++myOffset;
       }
     }
+  }
+}
 
-    vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
+  int size = minfo.size;
+  vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+  if (localId < size) {
     vec4 vertA = vec4(thisrvA.pos, 0) + pos;
     vec4 vertB = vec4(thisrvB.pos, 0) + pos;
     vec4 vertC = vec4(thisrvC.pos, 0) + pos;
-    vec4 normA, normB, normC;
-    ivec4 flagsA, flagsB, flagsC;
 
-    if (flags < 0)
-    {
-        normA = normal[offset + localId * 3    ];
-        normB = normal[offset + localId * 3 + 1];
-        normC = normal[offset + localId * 3 + 2];
-
-        flagsA = flagsin[offset + localId * 3    ];
-        flagsB = flagsin[offset + localId * 3 + 1];
-        flagsC = flagsin[offset + localId * 3 + 2];
-    }
-    else
-    {
-        normA = tempnormal[offset + localId * 3    ];
-        normB = tempnormal[offset + localId * 3 + 1];
-        normC = tempnormal[offset + localId * 3 + 2];
-
-        flagsA = tempflags[offset + localId * 3    ];
-        flagsB = tempflags[offset + localId * 3 + 1];
-        flagsC = tempflags[offset + localId * 3 + 2];
-    }
-//
-//    // undo vanilla lighting
-//    undoVanillaShading(thisrvA.ahsl, normA.xyz);
-//    undoVanillaShading(thisrvB.ahsl, normB.xyz);
-//    undoVanillaShading(thisrvC.ahsl, normC.xyz);
-
-    normA = rotate_vertex(normA, orientation);
-    normB = rotate_vertex(normB, orientation);
-    normC = rotate_vertex(normC, orientation);
-
-    // apply hillskew
-    vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
-    vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
-    vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
-
-    normA = hillskew_vertexf(normA, hillskew, minfo.y, plane);
-    normB = hillskew_vertexf(normB, hillskew, minfo.y, plane);
-    normC = hillskew_vertexf(normC, hillskew, minfo.y, plane);
-
-    normalout[outOffset + myOffset * 3]     = normA;
-    normalout[outOffset + myOffset * 3 + 1] = normB;
-    normalout[outOffset + myOffset * 3 + 2] = normC;
-
-    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
-    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
-
-    // write to out buffer
+    int myOffset = int(localId);
+    int outOffset = minfo.idx;
     vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
     vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
     vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
 
-    if (toffset < 0)
-    {
-      uvout[outOffset + myOffset * 3] = vec4(0);
-      uvout[outOffset + myOffset * 3 + 1] = vec4(0);
-      uvout[outOffset + myOffset * 3 + 2] = vec4(0);
-    }
-    else
-    {
-      vec4 texA, texB, texC;
+    flagsout[outOffset + myOffset * 3]     = minfo.exFlags;
+    flagsout[outOffset + myOffset * 3 + 1] = minfo.exFlags;
+    flagsout[outOffset + myOffset * 3 + 2] = minfo.exFlags;
+  }
+}
 
+void gather_texture_attribute(uint localId, modelinfo minfo, uint vertexIndex, out vec4 tex) {
+  int size = minfo.size;
+
+  if (localId < size) {
+    int toffset = minfo.toffset;
+    int flags = minfo.flags;
+    int orientation = flags & 0x7ff;
+    int plane = (flags >> BIT_ZHEIGHT) & 3;
+    int hillskew = (flags >> BIT_HILLSKEW) & 1;
+    vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+
+    tex = vec4(0);
+    if (toffset >= 0)
+    {
       if (flags >= 0) {
-        texA = temptexb[toffset + localId * 3];
-        texB = temptexb[toffset + localId * 3 + 1];
-        texC = temptexb[toffset + localId * 3 + 2];
+        tex = temptexb[toffset + localId * 3 + vertexIndex];
       } else {
-        texA = texb[toffset + localId * 3];
-        texB = texb[toffset + localId * 3 + 1];
-        texC = texb[toffset + localId * 3 + 2];
+        tex = texb[toffset + localId * 3 + vertexIndex];
       }
 
       // swizzle from (tex,x,y,z) to (x,y,z,tex) for rotate and hillskew
-      texA = texA.yzwx;
-      texB = texB.yzwx;
-      texC = texC.yzwx;
+      tex = tex.yzwx;
       // rotate
-      texA = rotate_vertex(texA, orientation);
-      texB = rotate_vertex(texB, orientation);
-      texC = rotate_vertex(texC, orientation);
+      tex = rotate_vertex(tex, orientation);
       // position
-      texA += pos;
-      texB += pos;
-      texC += pos;
+      tex += pos;
       // hillskew
-      texA = hillskew_vertexf(texA, hillskew, minfo.y, plane);
-      texB = hillskew_vertexf(texB, hillskew, minfo.y, plane);
-      texC = hillskew_vertexf(texC, hillskew, minfo.y, plane);
-      uvout[outOffset + myOffset * 3] = texA.wxyz;
-      uvout[outOffset + myOffset * 3 + 1] = texB.wxyz;
-      uvout[outOffset + myOffset * 3 + 2] = texC.wxyz;
+      tex = hillskew_vertexf(tex, hillskew, minfo.y, plane);
+      tex = tex.wxyz; // back to (tex,x,y,z)
     }
+  }
+  else {
+    tex = vec4(0);
+  }
+}
+
+void output_uv(uint localId, modelinfo minfo, uint vertexIndex, vec4 tex) {
+  int size = minfo.size;
+  vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+  if (localId < size) {
+    int myOffset = int(localId);
+    int outOffset = minfo.idx;
+
+    uvout[outOffset + myOffset * 3 + vertexIndex] = tex;
+  }
+}
+
+void gather_normal_attribute(uint localId, modelinfo minfo, uint vertexIndex, out vec4 norm) {
+  int size = minfo.size;
+
+  if (localId < size) {
+    int offset = minfo.offset;
+    int flags = minfo.flags;
+    int orientation = flags & 0x7ff;
+    int plane = (flags >> BIT_ZHEIGHT) & 3;
+    int hillskew = (flags >> BIT_HILLSKEW) & 1;
+
+    if (flags < 0)
+    {
+      norm = normal[offset + localId * 3 + vertexIndex];
+    }
+    else
+    {
+      norm = tempnormal[offset + localId * 3 + vertexIndex];
+    }
+
+    norm = rotate_vertex(norm, orientation);
+    norm = hillskew_vertexf(norm, hillskew, minfo.y, plane);
+  }
+  else {
+    norm = vec4(0);
+  }
+}
+
+void output_normal(uint localId, modelinfo minfo, uint vertexIndex, vec4 norm) {
+  int size = minfo.size;
+  vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
+  if (localId < size) {
+    int myOffset = int(localId);
+    int outOffset = minfo.idx;
+
+    normalout[outOffset + myOffset * 3 + vertexIndex] = norm;
   }
 }
