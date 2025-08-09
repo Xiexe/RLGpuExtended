@@ -124,7 +124,7 @@ int combine16(int upper, int lower) {
 void ApplyTonemapping(inout vec3 image) {
     switch (tonemapper) {
         case TONEMAP_NEUTRAL:
-          image = neutral(image);
+          image = neutral(image, 4);
         break;
         case TONEMAP_ACES:
           image = aces(image);
@@ -142,7 +142,7 @@ void ApplyTonemapping(inout vec3 image) {
           image = lottes(image);
         break;
         default:
-          image = neutral(image);
+          image = image;
         break;
     }
 }
