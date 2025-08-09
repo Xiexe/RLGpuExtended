@@ -164,6 +164,48 @@ public class Uniforms
     public void UpdateUniformBlocks() {
         Client client = plugin.client;
         GpuExtendedConfig config = plugin.config;
+        final TextureProvider textureProvider = client.getTextureProvider();
+        Environment env = plugin.environmentManager.GetCurrentEnvironment();
+
+        // These two need to be updated, even on the login screen.
+        // <editor-fold defaultstate="collapsed" desc="Populate System Info Block">
+        bBufferSystemInfoBlock.clear();
+
+        bBufferSystemInfoBlock.putInt(client.getGameState() == GameState.LOGGED_IN ? (client.getGameCycle() & 127) : 0);
+        bBufferSystemInfoBlock.putInt(plugin.currentViewport[2]);
+        bBufferSystemInfoBlock.putInt(plugin.currentViewport[3]);
+        bBufferSystemInfoBlock.putFloat(plugin.DeltaTime);
+        bBufferSystemInfoBlock.putFloat(plugin.Time);
+
+        bBufferSystemInfoBlock.flip();
+
+        glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
+        glBufferData(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.size, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="Populate Config Block">
+        bBufferConfigBlock.clear();
+
+        bBufferConfigBlock.putFloat((float) textureProvider.getBrightness());
+        bBufferConfigBlock.putFloat(config.smoothBanding() ? 0 : 1);
+        bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
+        bBufferConfigBlock.putInt(plugin.getDrawDistance());
+        bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
+        bBufferConfigBlock.putInt(config.shadowMode().ordinal());
+        bBufferConfigBlock.putInt(config.shadowDistance());
+        bBufferConfigBlock.putInt(config.tonemapper().ordinal());
+        bBufferConfigBlock.putInt(config.brightness());
+        bBufferConfigBlock.putInt(config.saturation());
+        bBufferConfigBlock.putInt(config.contrast());
+        bBufferConfigBlock.putInt((config.showWireframe() ? 1 : 0));
+
+        bBufferConfigBlock.flip();
+
+        glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
+        glBufferData(GL_UNIFORM_BUFFER, glConfigUniformBuffer.size, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
+        // </editor-fold>
 
         if(client.getGameState().getState() != GameState.LOGGED_IN.getState())
         {
@@ -180,9 +222,6 @@ public class Uniforms
         int playerX = client.getLocalPlayer().getLocalLocation().getX();
         int playerY = client.getLocalPlayer().getLocalLocation().getY();
         int playerPlane = client.getPlane();
-
-        final TextureProvider textureProvider = client.getTextureProvider();
-        Environment env = plugin.environmentManager.GetCurrentEnvironment();
 
         Bounds currentBounds = plugin.environmentManager.currentBounds;
         boolean roofFadingEnabled = currentBounds != null ? currentBounds.isAllowRoofFading() : true;
@@ -434,45 +473,6 @@ public class Uniforms
         glBindBuffer(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.glBufferId);
         glBufferData(GL_UNIFORM_BUFFER, glTileMarkerUniformBuffer.size, GL_DYNAMIC_DRAW);
         glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferTileMarkerBlock);
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="Populate System Info Block">
-        bBufferSystemInfoBlock.clear();
-
-        bBufferSystemInfoBlock.putInt(client.getGameState() == GameState.LOGGED_IN ? (client.getGameCycle() & 127) : 0);
-        bBufferSystemInfoBlock.putInt(plugin.currentViewport[2]);
-        bBufferSystemInfoBlock.putInt(plugin.currentViewport[3]);
-        bBufferSystemInfoBlock.putFloat(plugin.DeltaTime);
-        bBufferSystemInfoBlock.putFloat(plugin.Time);
-
-        bBufferSystemInfoBlock.flip();
-
-        glBindBuffer(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.glBufferId);
-        glBufferData(GL_UNIFORM_BUFFER, glSystemInfoUniformBuffer.size, GL_DYNAMIC_DRAW);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferSystemInfoBlock);
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="Populate Config Block">
-        bBufferConfigBlock.clear();
-
-        bBufferConfigBlock.putFloat((float) textureProvider.getBrightness());
-        bBufferConfigBlock.putFloat(config.smoothBanding() ? 0 : 1);
-        bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
-        bBufferConfigBlock.putInt(plugin.getDrawDistance());
-        bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-        bBufferConfigBlock.putInt(config.shadowMode().ordinal());
-        bBufferConfigBlock.putInt(config.shadowDistance());
-        bBufferConfigBlock.putInt(config.tonemapper().ordinal());
-        bBufferConfigBlock.putInt(config.brightness());
-        bBufferConfigBlock.putInt(config.saturation());
-        bBufferConfigBlock.putInt(config.contrast());
-        bBufferConfigBlock.putInt((config.showWireframe() ? 1 : 0));
-
-        bBufferConfigBlock.flip();
-
-        glBindBuffer(GL_UNIFORM_BUFFER, glConfigUniformBuffer.glBufferId);
-        glBufferData(GL_UNIFORM_BUFFER, glConfigUniformBuffer.size, GL_DYNAMIC_DRAW);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, bBufferConfigBlock);
         // </editor-fold>
 
         int[] lightClearValue = new int[]{-1};

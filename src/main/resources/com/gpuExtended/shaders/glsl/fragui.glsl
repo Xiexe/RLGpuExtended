@@ -185,14 +185,6 @@ void main() {
       return;
     }
   #endif
-//
-//  #if TILE_MASK_OVERLAY
-//    vec2 uv = (gl_FragCoord.xy - tileMaskOverlayDimensions.xy) / tileMaskOverlayDimensions.zw;
-//    if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
-//      FragColor = texture(tileMask, uv);
-//      FragColor = vec4(1);
-//    }
-//  #endif
 
   vec4 mainColor = sampleMainColor();
   vec4 bloom = sampleBloom();
