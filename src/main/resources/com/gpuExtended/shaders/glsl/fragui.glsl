@@ -148,7 +148,7 @@ void main() {
       vec4 dynamicShadowMap = texture(dynamicShadowMap, uv);
       float depth = min(shadowMap.x, dynamicShadowMap.x);
 
-      FragColor = vec4(vec3(depth), 1);
+      FragColor = vec4(vec3(shadowMap), 1);
       return;
     }
   #endif

@@ -47,9 +47,8 @@ void main() {
     float alpha = fAlpha;
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
-        alpha *= texture(textures, vec3(fUv, float(textureIdx))).a;
+        alpha = fAlpha * texture(textures, vec3(fUv, float(textureIdx))).a;
     }
-
     clip(alpha - blueNoise);
 
     gl_FragDepth = gl_FragCoord.z;

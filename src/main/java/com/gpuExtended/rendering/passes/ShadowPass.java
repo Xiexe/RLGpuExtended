@@ -45,7 +45,6 @@ public class ShadowPass implements IPassBase {
 
     // TODO:: Figure out a way to do this without 2 framebuffer maybe.
     private FrameBuffer frameBuffer;
-    private FrameBuffer dynamicFrameBuffer;
 
     private int staticVertexArrayObjectId;
     private int staticVertexBufferObjectId;
@@ -81,7 +80,6 @@ public class ShadowPass implements IPassBase {
         textureSettings.wrapT = GL_CLAMP_TO_EDGE;
 
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
-        dynamicFrameBuffer = new FrameBuffer(fboSettings, textureSettings);
 
         staticVertexArrayObjectId = GL30.glGenVertexArrays();
         staticVertexBufferObjectId = GL30.glGenBuffers();
@@ -134,21 +132,6 @@ public class ShadowPass implements IPassBase {
                     if (shouldSkipTile)
                         continue;
 
-                    Point tilePoint = tile.getSceneLocation();
-                    SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
-                    if (sceneTilePaint != null)
-                    {
-                        TileContext tileContext = new TileContext(scene, tile);
-                        vertexCount += PushTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
-                    }
-
-                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
-                    if (sceneTileModel != null)
-                    {
-                        TileContext tileContext = new TileContext(scene, tile);
-                        vertexCount += PushComplexTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
-                    }
-//
                     Tile bridge = tile.getBridge();
                     if (bridge != null)
                     {
@@ -193,8 +176,23 @@ public class ShadowPass implements IPassBase {
                         vertexCount += PushRenderable(r2ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
                     }
 
-                    // We only want gameobjects that are above the player. (so things like trees get handled by the dynamic map)
+                    // Some objects we only want to populate if its above the player, like trees,
+                    // because otherwise we'd need to re-populate the buffers when the tree is cut down or re-grows.
                     if (z > plugin.client.getLocalPlayer().getWorldLocation().getPlane()) {
+                        SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
+                        if (sceneTilePaint != null)
+                        {
+                            TileContext tileContext = new TileContext(scene, tile);
+                            vertexCount += PushTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
+                        }
+
+                        SceneTileModel sceneTileModel = tile.getSceneTileModel();
+                        if (sceneTileModel != null)
+                        {
+                            TileContext tileContext = new TileContext(scene, tile);
+                            vertexCount += PushComplexTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
+                        }
+
                         GroundObject groundObject = tile.getGroundObject();
                         if (groundObject != null)
                         {
@@ -292,7 +290,7 @@ public class ShadowPass implements IPassBase {
     @Override
     public void OnRenderFrame() {
         OnRenderStaticShadowMap();
-        OnRenderDynamicShadowMap();
+//        OnRenderDynamicShadowMap();
     }
 
     @Override
@@ -344,9 +342,13 @@ public class ShadowPass implements IPassBase {
         glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        GL30.glBindVertexArray(staticVertexArrayObjectId);
 
+        GL30.glBindVertexArray(staticVertexArrayObjectId);
         glDrawArrays(GL_TRIANGLES, 0, numStaticVertices);
+
+        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
+        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
+
         GL30.glBindVertexArray(lastVertexArray);
 
         glCullFace(GL_BACK);
@@ -357,49 +359,6 @@ public class ShadowPass implements IPassBase {
         glUseProgram(0);
 
 //        log.info("Rendering Shadow Map: numModels={} numVertices={}", numModels, numVertices);
-    }
-
-    public void OnRenderDynamicShadowMap() {
-//        log.info("[Shadow Pass] Rendering dynamic shadow map from offset: {} from buffer with length: {}", plugin.tempOffset, plugin.vertexBuffer.getBuffer());
-        glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
-        dynamicFrameBuffer.bind();
-
-        glClearDepthf(1);
-        glClear(GL_DEPTH_BUFFER_BIT);
-        glDepthFunc(GL_LEQUAL);
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-
-        int shaderProgram = plugin.shaders.shadowPassShader.id();
-        glUseProgram(shaderProgram);
-        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(shaderProgram);
-
-        glActiveTexture(GL_TEXTURE8);
-        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
-        glUniform1i(shaderVars.BlueNoiseTexture, 8);
-
-        glUniformBlockBinding(shaderProgram, shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, shaderVars.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-        glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-
-        glUniform1i(shaderVars.Textures, 1); // texture sampler array is bound to texture1
-
-        int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
-
-        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
-        GL30.glBindVertexArray(lastVertexArray);
-
-        glDisable(GL_CULL_FACE);
-        glDisable(GL_DEPTH_TEST);
-
-        dynamicFrameBuffer.unbind();
-        glUseProgram(0);
     }
 
     private int PushTile(TileContext context, GpuFloatBuffer vertexBuffer, GpuFloatBuffer uvBuffer) {
@@ -657,19 +616,12 @@ public class ShadowPass implements IPassBase {
         return frameBuffer;
     }
 
-    public FrameBuffer GetDynamicFramebuffer() {
-        return dynamicFrameBuffer;
-    }
-
     public void Dispose() {
         GL30.glDeleteVertexArrays(staticVertexArrayObjectId);
         staticVertexArrayObjectId = -1;
 
         frameBuffer.dispose();
         frameBuffer = null;
-
-        dynamicFrameBuffer.dispose();
-        dynamicFrameBuffer = null;
 
         workingShadowVertexBuffer = null;
         currentShadowVertexBuffer = null;

@@ -68,9 +68,7 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
-    float shadowMapSampled = GetShadowMap(shadowMap, fPosition, ndl);
-    float shadowMapSampledDynamic = GetShadowMap(dynamicShadowMap, fPosition, ndl);
-    float shadowMap = min(shadowMapSampledDynamic, shadowMapSampled);
+    float shadowMap = GetShadowMap(shadowMap, fPosition, ndl);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);

@@ -76,7 +76,7 @@ float GetShadowMap(sampler2D shadowTex, vec3 fragPos, float ndl) {
 
     if (fadeOut >= 1.0)
         return 1.0;
-
+    
     switch (envType)
     {
         case ENV_TYPE_DEFAULT:

@@ -129,10 +129,6 @@ public class CompositePass implements IPassBase {
         glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
         glUniform1i(shaderVars.ShadowMap, 4);
 
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetDynamicFramebuffer().getTexture().getId());
-        glUniform1i(shaderVars.DynamicShadowMap, 5);
-
         glUniform1i(shaderVars.TexSamplingMode, uiScalingMode.getMode());
         glUniform2i(shaderVars.TexSourceDimensions, canvasWidth, canvasHeight);
         glUniform1i(shaderVars.UiColorBlindMode, plugin.config.colorBlindMode().ordinal());

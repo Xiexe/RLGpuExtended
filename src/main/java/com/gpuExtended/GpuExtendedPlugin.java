@@ -486,14 +486,12 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				clientThread.invokeLater(() ->
 				{
 					// TODO:: Move resizing to ShadowPass.java
-					if (shadowPass.GetFramebuffer().isInitialized() && shadowPass.GetDynamicFramebuffer().isInitialized()) {
+					if (shadowPass.GetFramebuffer().isInitialized()) {
 						int res = config.shadowResolution().getValue();
 						if (config.shadowResolution() == ShadowResolution.RES_OFF) {
 							shadowPass.GetFramebuffer().resize(1, 1);
-							shadowPass.GetDynamicFramebuffer().resize(1, 1);
 						} else {
 							shadowPass.GetFramebuffer().resize(res, res);
-							shadowPass.GetDynamicFramebuffer().resize(res, res);
 						}
 					}
 				});
