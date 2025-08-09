@@ -24,6 +24,7 @@ public class FrameBuffer {
 
     @Getter
     private Texture2D texture;
+
     @Getter
     private Texture2D[] mipChain;
 

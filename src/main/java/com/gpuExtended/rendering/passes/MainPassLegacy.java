@@ -99,9 +99,12 @@ public class MainPassLegacy implements IPassBase {
 
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
         depthTexture = new Texture2D(depthTextureSettings);
-        frameBuffer.bind();
-        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, depthTexture.getId(), 0);
-        frameBuffer.unbind();
+//        frameBuffer.bind();
+//        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, depthTexture.getId(), 0);
+//        if (GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
+//            throw new RuntimeException("Framebuffer Main is not complete!");
+//        }
+//        frameBuffer.unbind();
     }
 
     private void InitVAO() {
