@@ -314,6 +314,8 @@ public class ShadowPass implements IPassBase {
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
     public void OnRenderShadowMap() {
+        if (!frameBuffer.isComplete()) return;
+
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
 
@@ -329,6 +331,11 @@ public class ShadowPass implements IPassBase {
         glUseProgram(shaderProgram);
         ShaderVariables shaderVars = plugin.uniforms.GetUniforms(shaderProgram);
 
+        glUniform1i(shaderVars.Textures, 1);
+        if (plugin.texAnims != null) {
+            glUniform2fv(shaderVars.TextureAnimations, plugin.texAnims);
+        }
+
         glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
         glUniform1i(shaderVars.BlueNoiseTexture, 8);
@@ -339,6 +346,8 @@ public class ShadowPass implements IPassBase {
         glUniformBlockBinding(shaderProgram, shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+
 
         int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
 

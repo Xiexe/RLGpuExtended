@@ -139,12 +139,15 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnPreRenderFrame() {
+        if (!frameBuffer.isComplete()) return;
 //        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
         frameBuffer.clearFramebuffer();
     }
 
     @Override
     public void OnRenderFrame() {
+        if (!frameBuffer.isComplete()) return;
+
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glDisable(GL_DEPTH_TEST);
@@ -161,6 +164,9 @@ public class MainPassLegacy implements IPassBase {
         ShaderVariables shaderVars = plugin.uniforms.GetUniforms(plugin.shaders.mainPassShader.id());
 
         glUniform1i(shaderVars.Textures, 1); // texture sampler array is bound to texture1
+        if (plugin.texAnims != null) {
+            glUniform2fv(shaderVars.TextureAnimations, plugin.texAnims);
+        }
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
@@ -196,19 +202,6 @@ public class MainPassLegacy implements IPassBase {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, plugin.lightBinsBuffer.glBufferId);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, plugin.lightBinsBuffer.glBufferId);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-        // TODO:: if the shaders get recompiled, this uniform never gets set back to the shader.
-        final TextureProvider textureProvider = plugin.client.getTextureProvider();
-        if (plugin.textureArrayId == -1) {
-            // lazy init textures as they may not be loaded at plugin start.
-            // this will return -1 and retry if not all textures are loaded yet, too.
-            plugin.textureArrayId = plugin.textureManager.initTextureArray(textureProvider);
-            if (plugin.textureArrayId > -1) {
-                // if texture upload is successful, compute and set texture animations
-                float[] texAnims = plugin.textureManager.computeTextureAnimations(textureProvider);
-                glUniform2fv(shaderVars.TextureAnimations, texAnims);
-            }
-        }
 
         glEnable(GL_CULL_FACE);
         glEnable(GL_BLEND);

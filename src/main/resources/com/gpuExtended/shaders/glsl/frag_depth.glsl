@@ -43,13 +43,15 @@ float saturate(float value) {
 
 void main() {
     float blueNoise = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0)).a;
+    float dither = Dither(gl_FragCoord.xy);
 
     float alpha = fAlpha;
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
         alpha = fAlpha * texture(textures, vec3(fUv, float(textureIdx))).a;
     }
-    clip(alpha - blueNoise);
+
+    clip(alpha - dither);
 
     gl_FragDepth = gl_FragCoord.z;
 }

@@ -17,6 +17,7 @@ public class TextureManager
 	private static final int TEXTURE_COUNT = 256;
 	private static final int TEXTURE_SIZE = 128;
 
+
 	public int initTextureArray(TextureProvider textureProvider)
 	{
 		if (!allTexturesLoaded(textureProvider))
@@ -201,8 +202,8 @@ public class TextureManager
 	public float[] computeTextureAnimations(TextureProvider textureProvider)
 	{
 		Texture[] textures = textureProvider.getTextures();
-
-		log.info("[TEXTURE MANAGER] Textures Length {}, Texture Count {}", textures.length, TEXTURE_COUNT);
+//
+//		log.info("[TEXTURE MANAGER] Textures Length {}, Texture Count {}", textures.length, TEXTURE_COUNT);
 
 		if (textures.length > TEXTURE_COUNT)
 		{
@@ -244,6 +245,7 @@ public class TextureManager
 			anims[i * 2] = u;
 			anims[i * 2 + 1] = v;
 		}
+
 		return anims;
 	}
 }

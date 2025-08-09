@@ -198,6 +198,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	private int currentPlane = 0;
 	private long frameTime = 0;
 
+	public float[] texAnims;
+
 	public long staticDrawCallTimeTotal = 0;
 
 	public boolean roofFading = false;
@@ -827,6 +829,17 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 				log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
+			}
+
+			final TextureProvider textureProvider = client.getTextureProvider();
+			if (textureArrayId == -1) {
+				// lazy init textures as they may not be loaded at plugin start.
+				// this will return -1 and retry if not all textures are loaded yet, too.
+				textureArrayId = textureManager.initTextureArray(textureProvider);
+				if (textureArrayId > -1) {
+					// if texture upload is successful, compute and set texture animations
+					texAnims = textureManager.computeTextureAnimations(textureProvider);
+				}
 			}
 
 			long currentTime = System.currentTimeMillis();
