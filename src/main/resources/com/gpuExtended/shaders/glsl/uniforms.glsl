@@ -15,10 +15,6 @@ layout(std140, binding = PLAYER_BUFFER_BINDING_ID) uniform PlayerBlock {
     int sceneOffsetZ;                   // 4 bytes
 };                                      // 24 bytes
 
-layout(std430, binding = 0) readonly buffer LightBinningBlock {
-    int lightBinIndicies[];
-};
-
 layout(std140, binding = ENVIRONMENT_BUFFER_BINDING_ID) uniform EnvironmentBlock {
     vec4 ambientColor;                  // 16 bytes
     vec4 skyColor;                      // 16 bytes
@@ -57,11 +53,12 @@ layout(std140, binding = CONFIG_BUFFER_BINDING_ID) uniform ConfigBlock {
     int drawDistance;                   // 4 bytes
     int colorBlindMode;                 // 4 bytes
     int shadowMode;                     // 4 bytes
-    int shadowDistance;               // 4 bytes
-    bool showWireframe; // 1 byte
-    bool pad; // 1 byte
-    bool pad1; // 1 byte
-    bool pad2; // 1 byte
+    int shadowDistance;                 // 4 bytes
+    int tonemapper;                     // 4 bytes
+    int configBrightness;                       // 4 bytes
+    int configSaturation;                     // 4 bytes
+    int configContrast;                       // 4 bytes
+    int showWireframe;                  // 4 bytes
 };
 
 uniform sampler2DArray textures;

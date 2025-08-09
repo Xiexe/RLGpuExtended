@@ -13,12 +13,14 @@ import java.awt.*;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
+import static com.gpuExtended.util.constants.Variables.CONFIG_BUFFER_BINDING_ID;
 import static org.lwjgl.opengl.GL11C.GL_FLOAT;
 import static org.lwjgl.opengl.GL15C.*;
 import static org.lwjgl.opengl.GL15C.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL20C.glEnableVertexAttribArray;
 import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30C.*;
+import static org.lwjgl.opengl.GL31C.glUniformBlockBinding;
 
 // Composites the rendering, post processing, and UI passes together.
 @Slf4j
@@ -138,6 +140,8 @@ public class CompositePass implements IPassBase {
                 (overlayColor & 0xFF) / 255f,
                 (overlayColor >>> 24) / 255f
         );
+
+        glUniformBlockBinding(plugin.shaders.uiShader.id(), shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
         if (plugin.client.isStretchedEnabled())
         {

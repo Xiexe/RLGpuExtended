@@ -18,7 +18,7 @@ import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
 import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.*;
-import com.gpuExtended.util.config.ShadowResolution;
+import com.gpuExtended.config.ShadowResolution;
 import com.gpuExtended.util.deserializers.AreaDeserializer;
 import com.gpuExtended.util.deserializers.ColorDeserializer;
 import com.gpuExtended.util.deserializers.LightDeserializer;
@@ -717,64 +717,51 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		tileInspectorOverlay.setActive(config.showTileInspectorOverlay());
 
 		// Setup anti-aliasing
-		final AntiAliasingMode antiAliasingMode = config.antiAliasingMode();
-		final boolean aaEnabled = antiAliasingMode != AntiAliasingMode.DISABLED;
+//		final AntiAliasingMode antiAliasingMode = config.antiAliasingMode();
+//		final boolean aaEnabled = antiAliasingMode != AntiAliasingMode.DISABLED;
+//
+//		if (aaEnabled)
+//		{
+//			glEnable(GL_MULTISAMPLE);
+//
+//			final Dimension stretchedDimensions = client.getStretchedDimensions();
+//
+//			final int stretchedCanvasWidth = client.isStretchedEnabled() ? stretchedDimensions.width : canvasWidth;
+//			final int stretchedCanvasHeight = client.isStretchedEnabled() ? stretchedDimensions.height : canvasHeight;
+//
+//			// Re-create fbo
+//			if (lastStretchedCanvasWidth != stretchedCanvasWidth
+//				|| lastStretchedCanvasHeight != stretchedCanvasHeight
+//				|| lastAntiAliasingMode != antiAliasingMode)
+//			{
+//				shutdownAAFbo();
+//
+//				// Bind default FBO to check whether anti-aliasing is forced
+//				glBindFramebuffer(GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
+//				final int forcedAASamples = glGetInteger(GL_SAMPLES);
+//				final int maxSamples = glGetInteger(GL_MAX_SAMPLES);
+//				final int samples = forcedAASamples != 0 ? forcedAASamples :
+//					Math.min(antiAliasingMode.getSamples(), maxSamples);
+//
+//				log.debug("AA samples: {}, max samples: {}, forced samples: {}", samples, maxSamples, forcedAASamples);
+//
+//				initAAFbo(stretchedCanvasWidth, stretchedCanvasHeight, samples);
+//
+//				lastStretchedCanvasWidth = stretchedCanvasWidth;
+//				lastStretchedCanvasHeight = stretchedCanvasHeight;
+//			}
+//
+//			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboSceneHandle);
+//		}
+//		else
+//		{
+//			glDisable(GL_MULTISAMPLE);
+//			shutdownAAFbo();
+//		}
+//
+//		lastAntiAliasingMode = antiAliasingMode;
 
-		if (aaEnabled)
-		{
-			glEnable(GL_MULTISAMPLE);
-
-			final Dimension stretchedDimensions = client.getStretchedDimensions();
-
-			final int stretchedCanvasWidth = client.isStretchedEnabled() ? stretchedDimensions.width : canvasWidth;
-			final int stretchedCanvasHeight = client.isStretchedEnabled() ? stretchedDimensions.height : canvasHeight;
-
-			// Re-create fbo
-			if (lastStretchedCanvasWidth != stretchedCanvasWidth
-				|| lastStretchedCanvasHeight != stretchedCanvasHeight
-				|| lastAntiAliasingMode != antiAliasingMode)
-			{
-				shutdownAAFbo();
-
-				// Bind default FBO to check whether anti-aliasing is forced
-				glBindFramebuffer(GL_FRAMEBUFFER, awtContext.getFramebuffer(false));
-				final int forcedAASamples = glGetInteger(GL_SAMPLES);
-				final int maxSamples = glGetInteger(GL_MAX_SAMPLES);
-				final int samples = forcedAASamples != 0 ? forcedAASamples :
-					Math.min(antiAliasingMode.getSamples(), maxSamples);
-
-				log.debug("AA samples: {}, max samples: {}, forced samples: {}", samples, maxSamples, forcedAASamples);
-
-				initAAFbo(stretchedCanvasWidth, stretchedCanvasHeight, samples);
-
-				lastStretchedCanvasWidth = stretchedCanvasWidth;
-				lastStretchedCanvasHeight = stretchedCanvasHeight;
-			}
-
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboSceneHandle);
-		}
-		else
-		{
-			glDisable(GL_MULTISAMPLE);
-			shutdownAAFbo();
-		}
-
-		lastAntiAliasingMode = antiAliasingMode;
-
-		glClearColor(0, 0, 0, 1f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		shadowPass.OnPreRenderFrame();
-		mainPassLegacy.OnPreRenderFrame();
-		postProcessingPass.OnPreRenderFrame();
-		compositePass.OnPreRenderFrame();
-
-		if (gameState.getState() >= GameState.LOADING.getState()
-				&& viewportHeight > 0
-				&& viewportWidth > 0
-		)
-		{
-			//<editor-fold defaultstate="collapsed" desc="Set up misc frame data">
+		if (viewportHeight > 0 && viewportWidth > 0) {
 			int renderWidthOff = viewportOffsetX;
 			int renderHeightOff = viewportOffsetY;
 			int renderCanvasHeight = canvasHeight;
@@ -810,15 +797,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				renderWidthOff = (int) Math.floor(scaleFactorX * (renderWidthOff)) - padding;
 			}
 
-			if(client.getPlane() != currentPlane)
-			{
-				tileMarkerManager.Reset();
-				tileMarkerManager.LoadTileMarkers();
-				tileMarkerManager.InitializeSceneRoofMask(client.getScene());
-				environmentManager.LoadSceneLights(client.getScene());
-			}
-			// </editor-fold>
-
 			glDpiAwareViewport(renderWidthOff, renderCanvasHeight - renderViewportHeight - renderHeightOff, renderViewportWidth, renderViewportHeight);
 			glGetIntegerv(GL_VIEWPORT, currentViewport);
 
@@ -829,6 +807,22 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 				log.info("Resizing Color Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
 				log.info("Resizing Bloom Framebuffers: {}x{}", currentViewport[2], currentViewport[3]);
+			}
+		}
+
+		shadowPass.OnPreRenderFrame();
+		mainPassLegacy.OnPreRenderFrame();
+		postProcessingPass.OnPreRenderFrame();
+		compositePass.OnPreRenderFrame();
+
+		if (gameState.getState() >= GameState.LOADING.getState())
+		{
+			if(client.getPlane() != currentPlane)
+			{
+				tileMarkerManager.Reset();
+				tileMarkerManager.LoadTileMarkers();
+				tileMarkerManager.InitializeSceneRoofMask(client.getScene());
+				environmentManager.LoadSceneLights(client.getScene());
 			}
 
 			final TextureProvider textureProvider = client.getTextureProvider();

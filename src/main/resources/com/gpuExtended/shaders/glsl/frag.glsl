@@ -1,5 +1,9 @@
 #version 430
 
+layout(std430, binding = 0) readonly buffer LightBinningBlock {
+    int lightBinIndicies[];
+};
+
 in vec4 fColor;
 in vec4 fNormal;
 in vec4 fFlatNormal;
@@ -98,7 +102,7 @@ void main() {
     vec4 outColor = vec4(finalColor, s.albedo.a);
 
     float wireFrame = GetWireframe(fBarycentricCoordinate, 0.25, 1);
-    float wireAlpha = showWireframe ? wireFrame : 0.0;
+    float wireAlpha = showWireframe == 1 ? wireFrame : 0.0;
 
     outColor = mix(outColor, vec4(vec3(0.25), 1.0), wireAlpha);
     FragColor = outColor;

@@ -71,6 +71,8 @@ public class PostProcessingPass implements IPassBase {
 
     @Override
     public void OnPreRenderFrame() {
+        if (!bloomFramebuffer.isComplete()) return;
+
         bloomFramebuffer.clearFramebuffer();
     }
 
@@ -80,6 +82,8 @@ public class PostProcessingPass implements IPassBase {
     }
 
     private void RenderBloom(FrameBuffer primaryFramebuffer) {
+        if (!bloomFramebuffer.isComplete()) return;
+
         primaryFramebuffer.generateMipmaps();
         primaryFramebuffer.blit(bloomFramebuffer, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT0, GL_LINEAR);
 

@@ -1,4 +1,4 @@
-package com.gpuExtended.util.config;
+package com.gpuExtended.config;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

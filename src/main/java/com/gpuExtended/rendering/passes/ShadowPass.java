@@ -314,8 +314,6 @@ public class ShadowPass implements IPassBase {
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
     public void OnRenderShadowMap() {
-        if (!frameBuffer.isComplete()) return;
-
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
 

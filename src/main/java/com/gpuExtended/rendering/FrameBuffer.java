@@ -124,13 +124,14 @@ public class FrameBuffer {
 
     public void clearFramebuffer()
     {
-        bind();
+        this.bind();
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        unbind();
+        this.unbind();
     }
 
     public boolean isComplete() {
-        return GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE;
+        boolean isComplete = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE;
+        return isComplete;
     }
 }

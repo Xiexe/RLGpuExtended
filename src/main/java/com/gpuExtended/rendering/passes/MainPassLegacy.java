@@ -139,15 +139,12 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnPreRenderFrame() {
-        if (!frameBuffer.isComplete()) return;
 //        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
         frameBuffer.clearFramebuffer();
     }
 
     @Override
     public void OnRenderFrame() {
-        if (!frameBuffer.isComplete()) return;
-
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glDisable(GL_DEPTH_TEST);

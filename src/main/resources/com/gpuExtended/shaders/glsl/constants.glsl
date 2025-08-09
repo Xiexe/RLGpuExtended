@@ -87,6 +87,13 @@
 #define SHADOW_MODE_PCF 1
 #define SHADOW_MODE_PCSS 2
 
+#define TONEMAP_NEUTRAL 0
+#define TONEMAP_ACES 1
+#define TONEMAP_AGX 2
+#define TONEMAP_FILMIC 3
+#define TONEMAP_REINHARD 4
+#define TONEMAP_LOTTES 5
+
 #define LIGHT_COUNT 500
 #define LIGHTS_PER_TILE 16 // 16 lights per tile maximum, buffer size is +1 for the number of lights in the tile (last index)
 #define LIGHTS_BIN_NUM_LIGHTS_INDEX LIGHTS_PER_TILE

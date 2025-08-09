@@ -29,6 +29,15 @@ public class Vector4 extends Vector3
         );
     }
 
+    public Vector4 Lerp(Vector4 other, float t) {
+        return new Vector4(
+            this.x + (other.x - this.x) * t,
+            this.y + (other.y - this.y) * t,
+            this.z + (other.z - this.z) * t,
+            this.w + (other.w - this.w) * t
+        );
+    }
+
     public Vector4 Normalize()
     {
         float length = (float) Math.sqrt(x*x + y*y + z*z);

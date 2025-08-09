@@ -149,7 +149,7 @@ public class Uniforms
         bBufferEnvironmentBlock = InitBufferBlock(glEnvironmentUniformBuffer, 16 + 16 + 4 + 4 + 4 + 4 + 128 + (64 * MAX_LIGHTS));
         bBufferTileMarkerBlock = InitBufferBlock(glTileMarkerUniformBuffer, 144);
         bBufferSystemInfoBlock = InitBufferBlock(glSystemInfoUniformBuffer, 24);
-        bBufferConfigBlock = InitBufferBlock(glConfigUniformBuffer, 8 * Float.BYTES);
+        bBufferConfigBlock = InitBufferBlock(glConfigUniformBuffer, 12 * Float.BYTES);
 
         glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, glCameraUniformBuffer.glBufferId);
         glBindBufferBase(GL_UNIFORM_BUFFER, PLAYER_BUFFER_BINDING_ID, glPlayerUniformBuffer.glBufferId);
@@ -460,12 +460,13 @@ public class Uniforms
         bBufferConfigBlock.putInt(config.expandedMapLoadingChunks());
         bBufferConfigBlock.putInt(plugin.getDrawDistance());
         bBufferConfigBlock.putInt(config.colorBlindMode().ordinal());
-        bBufferConfigBlock.putInt(config.shadowMode().getValue());
+        bBufferConfigBlock.putInt(config.shadowMode().ordinal());
         bBufferConfigBlock.putInt(config.shadowDistance());
-        bBufferConfigBlock.put((byte) (config.showWireframe() ? 1 : 0));
-        bBufferConfigBlock.put((byte) (0));
-        bBufferConfigBlock.put((byte) (0));
-        bBufferConfigBlock.put((byte) (0));
+        bBufferConfigBlock.putInt(config.tonemapper().ordinal());
+        bBufferConfigBlock.putInt(config.brightness());
+        bBufferConfigBlock.putInt(config.saturation());
+        bBufferConfigBlock.putInt(config.contrast());
+        bBufferConfigBlock.putInt((config.showWireframe() ? 1 : 0));
 
         bBufferConfigBlock.flip();
 

@@ -1,15 +1,10 @@
 
 package com.gpuExtended;
 
-import com.gpuExtended.util.config.ShadowMode;
-import com.gpuExtended.util.config.ShadowResolution;
+import com.gpuExtended.config.*;
 import net.runelite.client.config.*;
 
 import static com.gpuExtended.util.constants.Variables.*;
-
-import com.gpuExtended.config.AntiAliasingMode;
-import com.gpuExtended.config.ColorBlindMode;
-import com.gpuExtended.config.UIScalingMode;
 
 import java.awt.*;
 
@@ -550,6 +545,55 @@ public interface GpuExtendedConfig extends Config
 				closedByDefault = true
 		)
 		String experimentalSettings = "experimental";
+
+		@ConfigItem(
+				keyName = "tonemapper",
+				name = "Tonemapper",
+				description = "Chooses which tonemapper to use when post processing is applied to the image. This can *drastically* change colors in some cases.",
+				position = 0,
+				section = experimentalSettings
+		)
+		default Tonemapper tonemapper()
+		{
+			return Tonemapper.TONEMAPPER_LOTTES;
+		}
+
+		@ConfigItem(
+				keyName = "brightness",
+				name = "Brightness",
+				description = "Changes the brightness of the image. Defaults to 255.",
+				position = 0,
+				section = experimentalSettings
+		)
+		default int brightness()
+		{
+			return 127;
+		}
+
+		@ConfigItem(
+				keyName = "saturation",
+				name = "Saturation",
+				description = "Changes the saturation of the image. Defaults to 255.",
+				position = 0,
+				section = experimentalSettings
+		)
+		default int saturation()
+		{
+			return 255;
+		}
+
+		@ConfigItem(
+				keyName = "contrast",
+				name = "Contrast",
+				description = "Changes the contrast of the image. Defaults to 255.",
+				position = 0,
+				section = experimentalSettings
+		)
+		default int contrast()
+		{
+			return 255;
+		}
+
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="Debugging Settings">

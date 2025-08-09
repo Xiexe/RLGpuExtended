@@ -1473,7 +1473,8 @@
     "radius": 5,
     "projectiles": [
       178,
-      2853
+      2853,
+      2855
     ]
   },
   {
@@ -1576,6 +1577,21 @@
     "animation": "pulse",
     "npcs": [
       5435
+    ]
+  },
+  {
+    "name": "NPC_TORMENTED_DEMON",
+    "type": "point",
+    "color": [1, 0.4, 0.0],
+    "offset": [0, 0, -450],
+    "intensity": 5,
+    "radius": 6,
+    "animation": "flicker",
+    "npcs": [
+      13599,
+      13600,
+      13603,
+      13604
     ]
   },
   {

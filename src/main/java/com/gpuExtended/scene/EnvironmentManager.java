@@ -4,17 +4,15 @@ import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
-import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
-import com.gpuExtended.util.config.ShadowResolution;
+import com.gpuExtended.config.ShadowResolution;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -23,7 +21,6 @@ import java.util.*;
 import java.util.List;
 
 import static com.gpuExtended.scene.Environment.lerpColor;
-import static com.gpuExtended.util.Mathmatics.lerp;
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.Utils.GenerateTileHash;
 
@@ -177,12 +174,25 @@ public class EnvironmentManager
             }
 
             float tileHeight = Perspective.getTileHeight(client, localPoint, npc.getWorldLocation().getPlane());
-            light.position = new Vector4(
-                    (float) localPoint.getX() + light.offset.x,
-                    (float) localPoint.getY() + light.offset.y,
-                    (float) tileHeight - (npc.getModelHeight() / 2f) + light.offset.z,
+            Vector4 oldPosition = light.position;
+
+//            float newZ = 0;
+//            if (oldPosition.z != 0) {
+//                float targetZ = tileHeight - (npc.getModelHeight() / 2f) + light.offset.z;
+//                float currentZ = oldPosition.z;
+//                newZ = currentZ + (targetZ - currentZ) * plugin.DeltaTime * 10; // Smoothly transition the Z position
+//            }
+//            else {
+//                newZ = tileHeight - (npc.getModelHeight() / 2f) + light.offset.z;
+//            }
+
+            Vector4 newPosition = new Vector4(
+                    localPoint.getX() + light.offset.x,
+                    localPoint.getY() + light.offset.y,
+                    tileHeight + light.offset.z,
                     0
             );
+            light.position = newPosition;
         }
     }
 
