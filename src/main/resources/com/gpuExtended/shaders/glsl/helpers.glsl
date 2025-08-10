@@ -70,7 +70,7 @@ void PopulateSurfaceColor(inout Surface s)
         textureColor.rgb *= 0.7297;
         if(CheckIsUnlitTexture(fTextureId))
         {
-            textureColor.rgb *= 1.5;
+            textureColor.rgb *= 1.25;
         }
 
         textureColor.rgb = gammaToLinear(textureColor.rgb);
