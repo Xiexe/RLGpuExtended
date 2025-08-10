@@ -15,7 +15,6 @@ layout(triangle_strip, max_vertices = 3) out;
 in vec3 gVertex[3];
 in int gTextureId[3];
 in vec3 gTexPos[3];
-in mat4 gProjMatrix[3];
 in float gAlpha[3];
 
 flat out int fTextureId;
@@ -55,7 +54,7 @@ void main() {
     fUv = uv[i];
     fAlpha = gAlpha[i];
     fPosition = vertex;
-    gl_Position = gProjMatrix[0] * vec4(vertex, 1);
+    gl_Position = mainLight.projectionMatrix * vec4(vertex, 1);
     EmitVertex();
   }
 

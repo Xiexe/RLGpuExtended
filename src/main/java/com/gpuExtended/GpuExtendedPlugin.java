@@ -15,6 +15,7 @@ import com.gpuExtended.scene.EnvironmentManager;
 import com.gpuExtended.scene.Light;
 import com.gpuExtended.scene.Skybox;
 import com.gpuExtended.scene.TileMarkers.TileMarkerManager;
+import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.*;
@@ -67,6 +68,7 @@ import static java.lang.Character.getType;
 import static net.runelite.api.Constants.EXTENDED_SCENE_SIZE;
 import static net.runelite.api.Constants.MAX_Z;
 import static org.lwjgl.opengl.GL43C.*;
+import static org.lwjgl.opengl.GL43C.glPushDebugGroup;
 import static org.lwjgl.opengl.GLDebugMessageCallback.getMessage;
 
 @Slf4j
@@ -697,6 +699,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void draw(int overlayColor)
 	{
+		debugId = 0;
 		final GameState gameState = client.getGameState();
 		if (gameState == GameState.STARTING)
 		{
@@ -962,6 +965,18 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		nextSceneId = sceneUploader.sceneId;
 	}
 
+	static int debugId = 0;
+	public void PushDebug(Shader shader) {
+		// NOTE: Not checking Props.DEVELOPMENT here because we capture the shader jar in NSight. TODO: For plugin release probably don't include glPushDebugGroup?
+		String name = shader.shaderName;
+		if (name == null) name = "UNKNOWN SHADER (name is null)";
+		org.lwjgl.opengl.GL43C.glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, debugId++, name);
+	}
+
+	public void PopDebug() {
+		org.lwjgl.opengl.GL43C.glPopDebugGroup();
+	}
+
 	private void uploadTileHeights(Scene scene)
 	{
 		if (tileHeightTex != 0)
@@ -1193,6 +1208,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void createGlDebugCallback()
 	{
 		glDebugCallback = GLDebugMessageCallback.create((source, type, id, severity, length, message, userParam) -> {
+			if (type == GL_DEBUG_TYPE_POP_GROUP || type == GL_DEBUG_TYPE_PUSH_GROUP) return;
 			String msg = getMessage(length, message);
 
 			System.err.printf(
@@ -1206,7 +1222,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 		});
 
 		glEnable(GL_DEBUG_OUTPUT);
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Make callback synchronous for debugging
+		if (Props.DEVELOPMENT)
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Make callback synchronous for debugging
 
 		glDebugMessageCallback(glDebugCallback, 0);
 	}

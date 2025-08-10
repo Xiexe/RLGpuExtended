@@ -36,6 +36,7 @@ import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30C.*;
 import static org.lwjgl.opengl.GL31C.glUniformBlockBinding;
 import static org.lwjgl.opengl.GL41C.glClearDepthf;
+import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
 @Singleton
@@ -314,6 +315,7 @@ public class ShadowPass implements IPassBase {
 
     /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
     public void OnRenderShadowMap() {
+        plugin.PushDebug(plugin.shaders.shadowPassShader);
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
 
@@ -363,7 +365,7 @@ public class ShadowPass implements IPassBase {
 
         frameBuffer.unbind();
         glUseProgram(0);
-
+        plugin.PopDebug();
 //        log.info("Rendering Shadow Map: numModels={} numVertices={}", numModels, numVertices);
     }
 

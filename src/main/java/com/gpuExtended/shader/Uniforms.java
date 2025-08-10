@@ -480,12 +480,14 @@ public class Uniforms
         glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32I, GL_RED_INTEGER, GL_INT, lightClearValue);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, plugin.lightBinsBuffer.glBufferId);
 
+        plugin.PushDebug(plugin.shaders.lightBinningComputeShader);
         glUseProgram(plugin.shaders.lightBinningComputeShader.id());
         ShaderVariables shaderVars = GetUniforms(plugin.shaders.lightBinningComputeShader.id());
         glUniformBlockBinding(plugin.shaders.lightBinningComputeShader.id(), shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
 
         glDispatchCompute(EXTENDED_SCENE_SIZE / 8, EXTENDED_SCENE_SIZE / 8, MAX_Z);
         glUseProgram(0);
+        plugin.PopDebug();
     }
 
     private ByteBuffer InitBufferBlock(GLBuffer glBuffer, int blockSizeBytes)

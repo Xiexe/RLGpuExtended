@@ -40,8 +40,7 @@ import org.lwjgl.opengl.GL43C;
 public class Shader
 {
 	private int id;
-
-	private String shaderResourcePath;
+	public String shaderName;
 
 	@VisibleForTesting
 	final List<Unit> units = new ArrayList<>();
@@ -60,6 +59,7 @@ public class Shader
 	public Shader add(int type, String name)
 	{
 		units.add(new Unit(type, "shaders/glsl/" + name));
+		this.shaderName = name;
 		return this;
 	}
 

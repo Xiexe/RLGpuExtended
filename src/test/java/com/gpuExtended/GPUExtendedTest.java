@@ -22,6 +22,8 @@ public class GPUExtendedTest
 				System.out.println("Built-By-Shadow=" + value);
 				if (!builtByShadow){
 					Props.set("resource-path", "src/main/resources");
+				} else {
+					Props.DEVELOPMENT = false;
 				}
 			}
 		}

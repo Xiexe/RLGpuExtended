@@ -9,6 +9,7 @@ import com.gpuExtended.rendering.Texture2D;
 import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.rendering.camera.Camera;
+import com.gpuExtended.shader.Shader;
 import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
@@ -148,6 +149,7 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnRenderFrame() {
+        plugin.PushDebug(plugin.shaders.mainPassShader);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glDisable(GL_DEPTH_TEST);
@@ -215,6 +217,7 @@ public class MainPassLegacy implements IPassBase {
         glActiveTexture(GL_TEXTURE0);
         frameBuffer.unbind();
         glUseProgram(0);
+        plugin.PopDebug();
     }
 
     @Override
@@ -320,16 +323,17 @@ public class MainPassLegacy implements IPassBase {
         plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
         plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
-        DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader.id());
 
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[0], cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[1], cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[2], cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[3], cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[4], cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[5], cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[6], cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096.id());
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES.id());
+        DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader);
+
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[0], cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[1], cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[2], cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[3], cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[4], cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[5], cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[6], cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096);
+        DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES);
 
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
     }
@@ -609,15 +613,15 @@ public class MainPassLegacy implements IPassBase {
         return -1;
     }
 
-    private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, int computeShader) {
+    private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, Shader computeShader) {
         if (numModels <= 0)  return;
+        plugin.PushDebug(computeShader);
         Uniforms uniforms = plugin.uniforms;
-
         // Bind uniforms for compute shaders | TODO:: this may not need to be done every frame. Also, move uniform buffers to uniform wrapper or something
-        glUniformBlockBinding(computeShader, uniforms.GetUniforms(computeShader).BlockSmall, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(computeShader.id(), uniforms.GetUniforms(computeShader.id()).BlockSmall, CAMERA_BUFFER_BINDING_ID);
         glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_BUFFER_BINDING_ID, uniforms.glCameraUniformBuffer.glBufferId);
 
-        glUseProgram(computeShader);
+        glUseProgram(computeShader.id());
 
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelBuffer.glBufferId); // modelbuffer_in
 
@@ -637,6 +641,7 @@ public class MainPassLegacy implements IPassBase {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEMP_FLAGS_BUFFER_IN_BINDING_ID, computeBufferContext.dynamicFlagsBuffer.glBufferId); // tempflagsbuffer_in
 
         glDispatchCompute(numModels, 1, 1);
+        plugin.PopDebug();
     }
 
     private boolean CalculateModelBoundsAndClickbox(Projection projection, Model model, int orientation, int x, int y, int z, long hash) {
