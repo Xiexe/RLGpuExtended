@@ -10,7 +10,6 @@ import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.rendering.camera.Camera;
 import com.gpuExtended.shader.ShaderVariables;
-import com.gpuExtended.shader.ShaderHandler;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
@@ -19,8 +18,6 @@ import com.gpuExtended.util.contexts.VertexBufferContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameStateChanged;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
 
@@ -143,7 +140,10 @@ public class MainPassLegacy implements IPassBase {
     @Override
     public void OnPreRenderFrame() {
 //        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
-        frameBuffer.clearFramebuffer();
+        final GameState gameState = plugin.client.getGameState();
+        if (gameState.getState() < GameState.LOGGED_IN.getState()) {
+            frameBuffer.clearFramebuffer();
+        }
     }
 
     @Override

@@ -73,7 +73,10 @@ public class PostProcessingPass implements IPassBase {
     public void OnPreRenderFrame() {
         if (!bloomFramebuffer.isComplete()) return;
 
-        bloomFramebuffer.clearFramebuffer();
+        final GameState gameState = plugin.client.getGameState();
+        if (gameState.getState() < GameState.LOGGED_IN.getState()) {
+            bloomFramebuffer.clearFramebuffer();
+        }
     }
 
     @Override
