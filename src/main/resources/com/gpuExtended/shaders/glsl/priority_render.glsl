@@ -272,9 +272,19 @@ void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Ve
   int size = minfo.size;
   vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
   if (localId < size) {
+    int toffset = minfo.toffset;
+    int flags = minfo.flags;
+    int orientation = flags & 0x7ff;
+    int plane = (flags >> BIT_ZHEIGHT) & 3;
+    int hillskew = (flags >> BIT_HILLSKEW) & 1;
     vec4 vertA = vec4(thisrvA.pos, 0) + pos;
     vec4 vertB = vec4(thisrvB.pos, 0) + pos;
     vec4 vertC = vec4(thisrvC.pos, 0) + pos;
+
+
+    vertA = hillskew_vertexf(vertA, hillskew, minfo.y, plane);
+    vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
+    vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
 
     int myOffset = int(localId);
     int outOffset = minfo.idx;
