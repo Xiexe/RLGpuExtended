@@ -30,19 +30,19 @@ void main() {
   vec3 pos = vec3(minfo.x, minfo.y, minfo.z);
   ivec4 texPos = ivec4(0, pos);
 
-  thisA = vb[offset + ssboOffset * 3];
+  thisA = vb[offset + ssboOffset * 3 + 0];
   thisB = vb[offset + ssboOffset * 3 + 1];
   thisC = vb[offset + ssboOffset * 3 + 2];
 
-  normA = normal[offset + ssboOffset * 3];
+  normA = normal[offset + ssboOffset * 3 + 0];
   normB = normal[offset + ssboOffset * 3 + 1];
   normC = normal[offset + ssboOffset * 3 + 2];
 
-  texA = texPos + texb[toffset + localId * 3];
+  texA = texPos + texb[toffset + localId * 3 + 0];
   texB = texPos + texb[toffset + localId * 3 + 1];
   texC = texPos + texb[toffset + localId * 3 + 2];
 
-  flagsA = flagsin[toffset + localId * 3];
+  flagsA = flagsin[toffset + localId * 3 + 0];
   flagsB = flagsin[toffset + localId * 3 + 1];
   flagsC = flagsin[toffset + localId * 3 + 2];
 
