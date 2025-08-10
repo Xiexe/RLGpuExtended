@@ -106,6 +106,7 @@ public class CompositePass implements IPassBase {
 
     @Override
     public void OnPostRenderFrame() {
+        plugin.PushDebug(plugin.shaders.uiShader);
         final int canvasHeight = plugin.client.getCanvasHeight();
         final int canvasWidth = plugin.client.getCanvasWidth();
 
@@ -173,6 +174,7 @@ public class CompositePass implements IPassBase {
         glActiveTexture(GL_TEXTURE0);
         glBindVertexArray(0);
         glUseProgram(0);
+        plugin.PopDebug();
     }
 
     public void SetOverlayColor(int overlayColor) {

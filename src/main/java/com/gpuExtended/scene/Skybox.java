@@ -90,6 +90,7 @@ public class Skybox {
     }
 
     public void Render() {
+        plugin.PushDebug(plugin.shaders.skyboxShader);
         glDepthMask(false);
         int skyboxShader = plugin.shaders.skyboxShader.id();
         ShaderVariables shaderVars = plugin.uniforms.GetUniforms(skyboxShader);
@@ -112,5 +113,6 @@ public class Skybox {
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 36);
         GL30.glBindVertexArray(lastVertexArray);
         glDepthMask(true);
+        plugin.PopDebug();
     }
 }
