@@ -289,53 +289,56 @@ void main() {
     output_vertices_and_flags(localId + i, minfo, vA[i], vB[i], vC[i]);
   }
 
-  // Same for textures/normals, but we do it one component at a time to reduce register usage
-  // Unable to do the same for vertices because we need to read the 3 vertices at the start to calculate distance.
-  vec4 tex[FACES_PER_THREAD];
-  // a
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    gather_texture_attribute(localId + i, minfo, 0, tex[i]);
-  }
-  shuffle_vec4(localId, tex, whoSendsMeVertices);
-  //b
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    output_uv(localId + i, minfo, 0, tex[i]);
-    gather_texture_attribute(localId + i, minfo, 1, tex[i]);
-  }
-  shuffle_vec4(localId, tex, whoSendsMeVertices);
-  //c
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    output_uv(localId + i, minfo, 1, tex[i]);
-    gather_texture_attribute(localId + i, minfo, 2, tex[i]);
-  }
-  shuffle_vec4(localId, tex, whoSendsMeVertices);
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    output_uv(localId + i, minfo, 2, tex[i]);
+  {
+    // Same for textures/normals, but we do it one component at a time to reduce register usage
+    // Unable to do the same for vertices because we need to read the 3 vertices at the start to calculate distance.
+    vec4 tex[FACES_PER_THREAD];
+    // a
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      gather_texture_attribute(localId + i, minfo, 0, tex[i]);
+    }
+    shuffle_vec4(localId, tex, whoSendsMeVertices);
+    //b
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      output_uv(localId + i, minfo, 0, tex[i]);
+      gather_texture_attribute(localId + i, minfo, 1, tex[i]);
+    }
+    shuffle_vec4(localId, tex, whoSendsMeVertices);
+    //c
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      output_uv(localId + i, minfo, 1, tex[i]);
+      gather_texture_attribute(localId + i, minfo, 2, tex[i]);
+    }
+    shuffle_vec4(localId, tex, whoSendsMeVertices);
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      output_uv(localId + i, minfo, 2, tex[i]);
+    }
   }
 
+  {
+    vec4 normal[FACES_PER_THREAD];
+    //a
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      gather_normal_attribute(localId + i, minfo, 0, normal[i]);
+    }
+    shuffle_vec4(localId, normal, whoSendsMeVertices);
 
-  vec4 normal[FACES_PER_THREAD];
-  //a
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    gather_normal_attribute(localId + i, minfo, 0, normal[i]);
-  }
-  shuffle_vec4(localId, normal, whoSendsMeVertices);
+    //b
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      output_normal(localId + i, minfo, 0, normal[i]);
+      gather_normal_attribute(localId + i, minfo, 1, normal[i]);
+    }
+    shuffle_vec4(localId, normal, whoSendsMeVertices);
 
-  //b
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    output_normal(localId + i, minfo, 0, normal[i]);
-    gather_normal_attribute(localId + i, minfo, 1, normal[i]);
-  }
-  shuffle_vec4(localId, normal, whoSendsMeVertices);
+    //c
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      output_normal(localId + i, minfo, 1, normal[i]);
+      gather_normal_attribute(localId + i, minfo, 2, normal[i]);
+    }
+    shuffle_vec4(localId, normal, whoSendsMeVertices);
 
-  //c
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    output_normal(localId + i, minfo, 1, normal[i]);
-    gather_normal_attribute(localId + i, minfo, 2, normal[i]);
-  }
-  shuffle_vec4(localId, normal, whoSendsMeVertices);
-
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    output_normal(localId + i, minfo, 2, normal[i]);
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      output_normal(localId + i, minfo, 2, normal[i]);
+    }
   }
 }
