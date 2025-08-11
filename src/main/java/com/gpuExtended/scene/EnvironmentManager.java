@@ -209,6 +209,10 @@ public class EnvironmentManager
         else {
             timeOfDay = plugin.config.customTimeOfDay();
         }
+
+        // Do projection from the center of the scene instead of the camera.
+        int sceneCenter = ((Constants.EXTENDED_SCENE_SIZE / 2) - Variables.SCENE_OFFSET) * 128; // TODO:: make this a constant (128 is TILE_SIZE)
+        mainLight.UpdateProjectionViewMatrix(sceneCenter, sceneCenter, plugin.config.shadowResolution().getValue(), Constants.EXTENDED_SCENE_SIZE);
     }
 
     public void RenderSkybox()
@@ -766,10 +770,6 @@ public class EnvironmentManager
         mainLight.plane = 0;
         mainLight.position = new Vector4(lightPitch, lightYaw, 0, 0);
         mainLight.isDynamic = false;
-
-        // Do projection from the center of the scene instead of the camera.
-        int sceneCenter = ((Constants.EXTENDED_SCENE_SIZE / 2) - Variables.SCENE_OFFSET) * 128; // TODO:: make this a constant (128 is TILE_SIZE)
-        mainLight.UpdateProjectionViewMatrix(sceneCenter, sceneCenter, plugin.config.shadowResolution().getValue(), Constants.EXTENDED_SCENE_SIZE);
 
         int playerPosX = (int) client.getLocalPlayer().getLocalLocation().getX();
         int playerPosY = (int) client.getLocalPlayer().getLocalLocation().getY() + 128;
