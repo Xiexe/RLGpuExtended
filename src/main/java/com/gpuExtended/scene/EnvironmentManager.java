@@ -153,15 +153,6 @@ public class EnvironmentManager
             currentEnvironment.SwitchToEnvironment(newEnvironment, deltaTime * 0.5f);
         }
 
-        if (plugin.config.customTimeOfDay() <= 0) {
-            timeOfDay += (24f / timeOfDayCycleLength) * deltaTime; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
-            if (timeOfDay >= 24f)
-                timeOfDay -= 24f;
-        }
-        else {
-            timeOfDay = plugin.config.customTimeOfDay();
-        }
-
         UpdateMainLightSettings();
         UpdateNpcLights();
     }
@@ -210,14 +201,14 @@ public class EnvironmentManager
         CleanupOldProjectiles();
         CheckRegion();
 
-//        if (plugin.config.customTimeOfDay() <= 0) {
-//            timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
-//            if (timeOfDay >= 24f)
-//                timeOfDay -= 24f;
-//        }
-//        else {
-//            timeOfDay = plugin.config.customTimeOfDay();
-//        }
+        if (plugin.config.customTimeOfDay() <= 0) {
+            timeOfDay += (24f / timeOfDayCycleLength) * 0.6; // 24 hours in 45 minutes, 0.6 is the game tick rate (600ms)
+            if (timeOfDay >= 24f)
+                timeOfDay -= 24f;
+        }
+        else {
+            timeOfDay = plugin.config.customTimeOfDay();
+        }
     }
 
     public void RenderSkybox()
