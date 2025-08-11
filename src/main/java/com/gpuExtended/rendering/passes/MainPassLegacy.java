@@ -171,28 +171,32 @@ public class MainPassLegacy implements IPassBase {
         }
 
         glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.GetFramebuffer().getTexture().getId());
+        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.getFrameBuffer().getTexture().getId());
         glUniform1i(shaderVars.ShadowMap, 2);
 
         glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileFillColorTexture.getId());
-        glUniform1i(shaderVars.TileMarkerFillColorMap, 3);
+        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.getDynamicFrameBuffer().getTexture().getId());
+        glUniform1i(shaderVars.DynamicShadowMap, 3);
 
         glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileBorderColorTexture.getId());
-        glUniform1i(shaderVars.TileMarkerBorderColorMap, 4);
+        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileFillColorTexture.getId());
+        glUniform1i(shaderVars.TileMarkerFillColorMap, 4);
 
         glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileSettingsTexture.getId());
-        glUniform1i(shaderVars.TileMarkerSettingsMap, 5);
+        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileBorderColorTexture.getId());
+        glUniform1i(shaderVars.TileMarkerBorderColorMap, 5);
 
         glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
-        glUniform1i(shaderVars.TileHeightMap, 6);
+        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileSettingsTexture.getId());
+        glUniform1i(shaderVars.TileMarkerSettingsMap, 6);
 
         glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
+        glUniform1i(shaderVars.TileHeightMap, 7);
+
+        glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
-        glUniform1i(shaderVars.BlueNoiseTexture, 7);
+        glUniform1i(shaderVars.BlueNoiseTexture, 8);
 
         glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
         glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
@@ -200,6 +204,8 @@ public class MainPassLegacy implements IPassBase {
         glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
         glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
         glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+        glUniformMatrix4fv(shaderVars.DepthProjectionMatrix, false, plugin.environmentManager.mainLight.projectionMatrixClose);
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, plugin.lightBinsBuffer.glBufferId);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, plugin.lightBinsBuffer.glBufferId);

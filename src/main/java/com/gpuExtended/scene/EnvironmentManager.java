@@ -7,6 +7,7 @@ import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.util.*;
 import com.gpuExtended.config.ShadowResolution;
+import com.gpuExtended.util.constants.Variables;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -774,7 +775,14 @@ public class EnvironmentManager
         mainLight.plane = 0;
         mainLight.position = new Vector4(lightPitch, lightYaw, 0, 0);
         mainLight.isDynamic = false;
-        mainLight.UpdateProjectionViewMatrix(camX, camY, plugin.config.shadowResolution().getValue(), plugin.config.shadowDistance());
+
+        // Do projection from the center of the scene instead of the camera.
+        int sceneCenter = ((Constants.EXTENDED_SCENE_SIZE / 2) - Variables.SCENE_OFFSET) * 128; // TODO:: make this a constant (128 is TILE_SIZE)
+        mainLight.UpdateProjectionViewMatrix(sceneCenter, sceneCenter, plugin.config.shadowResolution().getValue(), Constants.EXTENDED_SCENE_SIZE);
+
+        int playerPosX = (int) client.getLocalPlayer().getLocalLocation().getX();
+        int playerPosY = (int) client.getLocalPlayer().getLocalLocation().getY() + 128;
+        mainLight.UpdateCloseProjectionViewMatrix(playerPosX, playerPosY, plugin.config.shadowResolution().getValue(), config.shadowDistance());
 
         ambientColor = ambient;
         skyColor = sky;

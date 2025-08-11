@@ -66,16 +66,18 @@ float PCFShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shad
     return shadow * (1.0 - fadeOut);
 }
 
-float GetShadowMap(sampler2D shadowTex, vec3 fragPos, float ndl) {
-    vec4 projCoords = mainLight.projectionMatrix * vec4(fragPos, 1);
+float GetShadowMap(sampler2D shadowTex, mat4 projection, vec3 fragPos, float ndl) {
+    vec4 projCoords = projection * vec4(fragPos, 1);
     projCoords = projCoords / projCoords.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    vec2 uv = projCoords.xy * 2.0 - 1.0;
+    vec2 uv = projCoords.xy * 2.0 - 1.0; // range [-1, 1]
+//    float dist = max(abs(uv.x), abs(uv.y)); // square distance metric
+//    float fadeOut = smoothstep(0.99, 1.0, dist);
     float fadeOut = smoothstep(0.85, 1.0, dot(uv, uv));
 
     if (fadeOut >= 1.0)
-        return 1.0;
+    return 1.0;
 
     switch (envType)
     {

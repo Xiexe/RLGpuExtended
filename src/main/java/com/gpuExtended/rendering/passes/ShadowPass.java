@@ -12,6 +12,7 @@ import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.util.GpuFloatBuffer;
 import com.gpuExtended.util.contexts.RenderableContext;
 import com.gpuExtended.util.contexts.TileContext;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -45,7 +46,10 @@ public class ShadowPass implements IPassBase {
     public GpuExtendedPlugin plugin;
 
     // TODO:: Figure out a way to do this without 2 framebuffer maybe.
+    @Getter
     private FrameBuffer frameBuffer;
+    @Getter
+    private FrameBuffer dynamicFrameBuffer;
 
     private int staticVertexArrayObjectId;
     private int staticVertexBufferObjectId;
@@ -53,7 +57,6 @@ public class ShadowPass implements IPassBase {
     private GpuFloatBuffer currentShadowVertexBuffer;
     private GpuFloatBuffer workingShadowUvBuffer;
     private GpuFloatBuffer currentShadowUvBuffer;
-
 
     private int textureArrayId = -1;
     private int numStaticModels = 0;
@@ -81,6 +84,7 @@ public class ShadowPass implements IPassBase {
         textureSettings.wrapT = GL_CLAMP_TO_EDGE;
 
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
+        dynamicFrameBuffer = new FrameBuffer(fboSettings, textureSettings);
 
         staticVertexArrayObjectId = GL30.glGenVertexArrays();
         staticVertexBufferObjectId = GL30.glGenBuffers();
@@ -281,6 +285,9 @@ public class ShadowPass implements IPassBase {
         workingShadowVertexBuffer = null;
         currentShadowUvBuffer = null;
         workingShadowUvBuffer = null;
+
+        // immediately render the static shadow map
+        OnRenderStaticShadowMap();
     }
 
     @Override
@@ -290,7 +297,7 @@ public class ShadowPass implements IPassBase {
 
     @Override
     public void OnRenderFrame() {
-        OnRenderShadowMap();
+        OnRenderDynamicShadowMap();
     }
 
     @Override
@@ -313,8 +320,15 @@ public class ShadowPass implements IPassBase {
     @Override
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {}
 
-    /** Called anywhere in the render loop, but probably after {@link GpuExtendedPlugin#drawMainPass}*/
-    public void OnRenderShadowMap() {
+    public void OnTick() {
+        OnRenderStaticShadowMap();
+    }
+
+    public void OnRenderStaticShadowMap() {
+        if (plugin.client.getGameState().getState() > GameState.LOGGED_IN.getState()) {
+            return;
+        }
+
         plugin.PushDebug(plugin.shaders.shadowPassShader);
         glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
         frameBuffer.bind();
@@ -347,17 +361,10 @@ public class ShadowPass implements IPassBase {
         glUniformBlockBinding(shaderProgram, shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
         glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
 
-
-
-        int lastVertexArray = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        glUniformMatrix4fv(shaderVars.DepthProjectionMatrix, false, plugin.environmentManager.mainLight.projectionMatrix);
 
         GL30.glBindVertexArray(staticVertexArrayObjectId);
         glDrawArrays(GL_TRIANGLES, 0, numStaticVertices);
-
-        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
-        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
-
-        GL30.glBindVertexArray(lastVertexArray);
 
         glCullFace(GL_BACK);
         glDisable(GL_CULL_FACE);
@@ -365,8 +372,60 @@ public class ShadowPass implements IPassBase {
 
         frameBuffer.unbind();
         glUseProgram(0);
+        GL30.glBindVertexArray(0);
         plugin.PopDebug();
-//        log.info("Rendering Shadow Map: numModels={} numVertices={}", numModels, numVertices);
+    }
+
+    public void OnRenderDynamicShadowMap() {
+        if (plugin.client.getGameState().getState() > GameState.LOGGED_IN.getState()) {
+            return;
+        }
+
+        plugin.PushDebug(plugin.shaders.shadowPassShader);
+        glViewport(0, 0, dynamicFrameBuffer.getTexture().getWidth(), dynamicFrameBuffer.getTexture().getHeight());
+        dynamicFrameBuffer.bind();
+
+        glClearDepthf(1);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glDepthFunc(GL_LEQUAL);
+
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+
+        int shaderProgram = plugin.shaders.shadowPassShader.id();
+        glUseProgram(shaderProgram);
+        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(shaderProgram);
+
+        glUniform1i(shaderVars.Textures, 1);
+        if (plugin.texAnims != null) {
+            glUniform2fv(shaderVars.TextureAnimations, plugin.texAnims);
+        }
+
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+        glUniform1i(shaderVars.BlueNoiseTexture, 8);
+
+        glUniformBlockBinding(shaderProgram, shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.PlayerBlock,  PLAYER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+        glUniformBlockBinding(shaderProgram, shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+        glUniformMatrix4fv(shaderVars.DepthProjectionMatrix, false, plugin.environmentManager.mainLight.projectionMatrixClose);
+
+        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
+        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
+
+        glCullFace(GL_BACK);
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_DEPTH_TEST);
+
+        dynamicFrameBuffer.unbind();
+        glUseProgram(0);
+        GL30.glBindVertexArray(0);
+        plugin.PopDebug();
     }
 
     private int PushTile(TileContext context, GpuFloatBuffer vertexBuffer, GpuFloatBuffer uvBuffer) {
@@ -618,10 +677,6 @@ public class ShadowPass implements IPassBase {
         for (int i = 0; i < numPaddedVertices; i++) {
             buffer.put(0, 0, 0, 0); // x, y, z, w
         }
-    }
-
-    public FrameBuffer GetFramebuffer() {
-        return frameBuffer;
     }
 
     public void Dispose() {

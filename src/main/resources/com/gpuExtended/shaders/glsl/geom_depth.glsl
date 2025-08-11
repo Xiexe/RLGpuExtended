@@ -12,6 +12,8 @@ layout(triangle_strip, max_vertices = 3) out;
 #include "shaders/glsl/uniforms.glsl"
 #include "shaders/glsl/uv.glsl"
 
+uniform mat4 depthProjectionMatrix;
+
 in vec3 gVertex[3];
 in int gTextureId[3];
 in vec3 gTexPos[3];
@@ -54,7 +56,7 @@ void main() {
     fUv = uv[i];
     fAlpha = gAlpha[i];
     fPosition = vertex;
-    gl_Position = mainLight.projectionMatrix * vec4(vertex, 1);
+    gl_Position = depthProjectionMatrix * vec4(vertex, 1);
     EmitVertex();
   }
 

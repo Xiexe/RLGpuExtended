@@ -72,13 +72,15 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
-    float shadowMap = GetShadowMap(shadowMap, fPosition, ndl);
+    float shadowMap = GetShadowMap(shadowMap, mainLight.projectionMatrix, fPosition, ndl);
+    float dynamicShadowMap = GetShadowMap(dynamicShadowMap, mainLight.projectionMatrixClose, fPosition, ndl);
+    float combinedShadowMap = min(shadowMap, dynamicShadowMap);
 
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
     vec3 diffuse = s.albedo.rgb * ndl;
-    vec3 lighting = diffuse * mainLight.color.rgb * shadowMap;
+    vec3 lighting = diffuse * mainLight.color.rgb * combinedShadowMap;
     vec3 litFragment = lighting.rgb + ambientColor.rgb * s.albedo.rgb;
     ApplyAdditiveLighting(litFragment, flags, s.albedo.rgb, s.normal.xyz, fPosition, tileHeightmap);
 
@@ -106,4 +108,6 @@ void main() {
 
     outColor = mix(outColor, vec4(vec3(0.25), 1.0), wireAlpha);
     FragColor = outColor;
+
+//    FragColor = vec4(vec3(combinedShadowMap), 1);
 }

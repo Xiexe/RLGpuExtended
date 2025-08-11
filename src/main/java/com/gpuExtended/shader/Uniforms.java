@@ -86,7 +86,8 @@ public class Uniforms
 
         ShaderVariables shaderVariables = new ShaderVariables();
         shaderVariables.ShadowMap = glGetUniformLocation(shader, "shadowMap");
-        shaderVariables.DepthMap = glGetUniformLocation(shader, "depthMap");
+        shaderVariables.DynamicShadowMap = glGetUniformLocation(shader, "dynamicShadowMap");
+        shaderVariables.DepthProjectionMatrix = glGetUniformLocation(shader, "depthProjectionMatrix");
 
         shaderVariables.TileMarkerFillColorMap = glGetUniformLocation(shader, "tileFillColorMap");
         shaderVariables.TileMarkerBorderColorMap = glGetUniformLocation(shader, "tileBorderColorMap");
@@ -146,7 +147,7 @@ public class Uniforms
 
         bBufferCameraBlock = InitBufferBlock(glCameraUniformBuffer, 128);
         bBufferPlayerBlock = InitBufferBlock(glPlayerUniformBuffer, 24);
-        bBufferEnvironmentBlock = InitBufferBlock(glEnvironmentUniformBuffer, 16 + 16 + 4 + 4 + 4 + 4 + 128 + (64 * MAX_LIGHTS));
+        bBufferEnvironmentBlock = InitBufferBlock(glEnvironmentUniformBuffer, 16 + 16 + 4 + 4 + 4 + 4 + 192 + (64 * MAX_LIGHTS));
         bBufferTileMarkerBlock = InitBufferBlock(glTileMarkerUniformBuffer, 144);
         bBufferSystemInfoBlock = InitBufferBlock(glSystemInfoUniformBuffer, 24);
         bBufferConfigBlock = InitBufferBlock(glConfigUniformBuffer, 12 * Float.BYTES);
@@ -222,9 +223,6 @@ public class Uniforms
         int playerX = client.getLocalPlayer().getLocalLocation().getX();
         int playerY = client.getLocalPlayer().getLocalLocation().getY();
         int playerPlane = client.getPlane();
-
-        Bounds currentBounds = plugin.environmentManager.currentBounds;
-        boolean roofFadingEnabled = currentBounds != null ? currentBounds.isAllowRoofFading() : true;
 
         // <editor-fold defaultstate="collapsed" desc="Populate Camera Buffer Block">
         bBufferCameraBlock.clear();
@@ -328,6 +326,11 @@ public class Uniforms
         for(int i = 0; i < mainLight.projectionMatrix.length; i++)
         {
             bBufferEnvironmentBlock.putFloat(mainLight.projectionMatrix[i]);
+        }
+
+        for(int i = 0; i < mainLight.projectionMatrixClose.length; i++)
+        {
+            bBufferEnvironmentBlock.putFloat(mainLight.projectionMatrixClose[i]);
         }
 
         // Pack Lights

@@ -19,7 +19,8 @@ struct MainLight
     int animation; // 4 bytes
     int type; // 4 bytes
     mat4 projectionMatrix; // 64 bytes
-}; // 128 bytes
+    mat4 projectionMatrixClose; // 64 bytes
+}; // 192 bytes
 
 struct Surface
 {

@@ -119,6 +119,12 @@ public class Light
     public float[] viewMatrix = Mat4.identity();
 
     @Nullable
+    public float[] projectionMatrixClose = Mat4.identity();
+
+    @Nullable
+    public float[] viewMatrixClose = Mat4.identity();
+
+    @Nullable
     public boolean isDynamic = false;
 
     @Nullable
@@ -299,6 +305,61 @@ public class Light
         this.projectionMatrix = lightProjection;
         Mat4.mul(this.projectionMatrix, this.viewMatrix);
         Mat4.mul(this.projectionMatrix, lightTranslation);
+    }
+
+    public void UpdateCloseProjectionViewMatrix(int camX, int camY, int shadowResolution, int shadowDistance)
+    {
+        if (this.type != LightType.Directional)
+            return;
+
+        // This defines the direction the light is "looking".
+        this.viewMatrixClose = Mat4.rotateX((float) Math.PI + this.position.x);
+        Mat4.mul(this.viewMatrixClose, Mat4.rotateY((float) Math.PI + this.position.y));
+
+        // This defines the size of the area we want to cover with shadows.
+        int shadowDrawDistance = shadowDistance;
+        int drawDistanceSceneUnits = shadowDrawDistance * LOCAL_TILE_SIZE / 2;
+        int west = camX - drawDistanceSceneUnits;
+        int east = camX + drawDistanceSceneUnits;
+        int north = camY + drawDistanceSceneUnits;
+        int south = camY - drawDistanceSceneUnits;
+
+        // The total width and height of the shadowable area.
+        int orthoWidth = east - west;
+        int orthoHeight = north - south;
+        int farPlane = 10000; // Should be large enough to contain all scene geometry within the ortho box.
+
+        // Calculate the size of one shadow map texel in world-space units. This is our "snap" interval.
+        float worldUnitsPerTexel = (float)orthoWidth / shadowResolution; // Assuming square ortho box for simplicity
+
+        // Transform the camera's world position into the light's view space.
+        // The camera's world position is our initial, un-snapped center point.
+        float[] worldCenter = {camX, 0, camY, 1.0f};
+        float[] lightSpaceCenter = new float[4];
+        Mat4.mulVec(lightSpaceCenter, this.viewMatrixClose, worldCenter);
+
+        // Snap the light-space coordinates to the texel grid.
+        // We floor the coordinates in texel-space, effectively aligning them to the grid.
+        lightSpaceCenter[0] = (float)Math.floor(lightSpaceCenter[0] / worldUnitsPerTexel) * worldUnitsPerTexel;
+        lightSpaceCenter[1] = (float)Math.floor(lightSpaceCenter[1] / worldUnitsPerTexel) * worldUnitsPerTexel;
+        // We don't snap the Z coordinate, as that's the depth.
+
+        // Transform the snapped light-space center back into world space.
+        // This gives us a new, stabilized world-space center point to aim our projection at.
+        float[] invViewMatrix = Mat4.inverse(this.viewMatrixClose);
+        float[] snappedWorldCenter = new float[4];
+        Mat4.mulVec(snappedWorldCenter, invViewMatrix, lightSpaceCenter);
+
+        // Create the orthographic projection. It's always centered at the origin.
+        float[] lightProjection = Mat4.ortho(orthoWidth, orthoHeight, 0, farPlane);
+
+        // Create a translation matrix that moves the new, snapped world center to the origin.
+        // This effectively aims the light's "camera" at our stabilized point.
+        float[] lightTranslation = Mat4.translate(-snappedWorldCenter[0], 0, -snappedWorldCenter[2]);
+
+        this.projectionMatrixClose = lightProjection;
+        Mat4.mul(this.projectionMatrixClose, this.viewMatrixClose);
+        Mat4.mul(this.projectionMatrixClose, lightTranslation);
     }
 
     private void InitShadowMap(AWTContext awtContext)

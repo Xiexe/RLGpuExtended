@@ -490,12 +490,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 				clientThread.invokeLater(() ->
 				{
 					// TODO:: Move resizing to ShadowPass.java
-					if (shadowPass.GetFramebuffer().isInitialized()) {
+					if (shadowPass.getFrameBuffer().isInitialized()) {
 						int res = config.shadowResolution().getValue();
 						if (config.shadowResolution() == ShadowResolution.RES_OFF) {
-							shadowPass.GetFramebuffer().resize(1, 1);
+							shadowPass.getFrameBuffer().resize(1, 1);
+							shadowPass.getDynamicFrameBuffer().resize(1, 1);
 						} else {
-							shadowPass.GetFramebuffer().resize(res, res);
+							shadowPass.getFrameBuffer().resize(res, res);
+							shadowPass.getDynamicFrameBuffer().resize(res, res);
 						}
 					}
 				});
@@ -846,8 +848,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 			LastTime = currentTime;
 			environmentManager.Update(DeltaTime);
 
-			shadowPass.OnRenderFrame();
 			mainPassLegacy.OnRenderFrame();
+			shadowPass.OnRenderFrame();
 			postProcessingPass.OnRenderFrame();
 			compositePass.OnRenderFrame();
 
@@ -952,6 +954,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void onGameTick(GameTick event)
 	{
 		environmentManager.OnTick();
+		shadowPass.OnTick();
 	}
 
 	public boolean loadingScene = false;

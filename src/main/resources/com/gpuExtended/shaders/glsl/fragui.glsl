@@ -17,7 +17,6 @@ uniform ivec2 targetDimensions;
 uniform vec4 alphaOverlay;
 
 #if SHADOW_MAP_OVERLAY
-uniform sampler2D shadowMap;
 uniform ivec4 shadowMapOverlayDimensions;
 #endif
 #if TILE_MASK_OVERLAY
@@ -180,9 +179,10 @@ void main() {
   #if SHADOW_MAP_OVERLAY
     vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
     if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
-      vec4 shadowMap = texture(shadowMap, uv);
-      FragColor = vec4(vec3(shadowMap), 1);
-      return;
+        vec4 shadowMap = texture(shadowMap, uv);
+        vec4 dynamicShadowMap = texture(dynamicShadowMap, uv * 2 - 0.5);
+        FragColor = vec4(vec3(min(shadowMap, dynamicShadowMap)), 1);
+        return;
     }
   #endif
 
