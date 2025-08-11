@@ -9,9 +9,25 @@ shared int totalDistance34;
 shared uint totalNum68;
 shared int totalDistance68;
 shared int min10;                                         // minimum distance to a face of priority 10
+shared uint renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face
 
-shared uint totalMappedNum[18];  // number of faces with a given adjusted priority
-shared uint renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face id
+#define BITS_PER_PASS 4 // TODO: Lower 2 3 if <32k shared memory
+#define RADIX_PASS_COUNT ((32 + BITS_PER_PASS - 1) / BITS_PER_PASS)
+#define NUM_BUCKETS (1 << BITS_PER_PASS)
+#define NUM_BITFIELDS ((THREAD_COUNT*FACES_PER_THREAD)/32)
+
+shared uint radixDigitCounts[NUM_BUCKETS];
+shared uint radixBitmasks[NUM_BUCKETS][NUM_BITFIELDS];
+
+uint get_bitfield_index(uint n) {
+  return n/32;
+}
+
+uint get_bitfield_bit(uint n) {
+  uint bit = n & 31;
+  return (1 << bit);
+}
+
 
 #include "shaders/glsl/constants.glsl"
 #include "shaders/glsl/comp_common.glsl"
@@ -111,9 +127,6 @@ void main() {
     totalDistance34 = 0;
     totalNum68 = 0;
     totalDistance68 = 0;
-    for (uint i = 0; i < 18; ++i) {
-      totalMappedNum[i] = 0;
-    }
   }
 
   int dis[FACES_PER_THREAD];
@@ -134,62 +147,130 @@ void main() {
   barrier();
 
   uint prioAdj[FACES_PER_THREAD];
-  uint idx[FACES_PER_THREAD];
   for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    idx[i] = map_face_priority(localId + i, minfo, dis[i], vA[i], prioAdj[i]);
+    map_face_priority(localId + i, minfo, dis[i], vA[i], prioAdj[i]);
   }
 
   barrier();
 
   for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    insert_face(localId + i, minfo, prioAdj[i], dis[i], idx[i]);
+    insert_face(localId + i, minfo, prioAdj[i], dis[i]);
   }
 
   barrier();
 
-  uint outputOffsets[FACES_PER_THREAD];
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    calculate_output_offsets(localId + i, minfo, prioAdj[i], dis[i],
-                             vA[i], vB[i], vC[i],
-                             outputOffsets[i]);
-  }
+  const uint MAX_BITFIELD = min(NUM_BITFIELDS, get_bitfield_index(minfo.size)+1);
 
-  /*
-outputOffsets = o // outArray[o]
-renderPris[o] = i
-whoSendsMeVerts = renderPris[i]
-
-If i sort i get
-o = renderPris[i] & localIdMask
-renderPris[o] = i
-whoSendsMeVerts = renderPris[i]
-
-*/
-
-  barrier();
-
-  // Scatter localIds from renderPris to the thread they're relevant to
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    uint size = minfo.size;
-
-    if ((localId+i) < size) {
-      renderPris[outputOffsets[i]] = localId+i;
+  for (uint passNumber = 0; passNumber < RADIX_PASS_COUNT; passNumber++) {
+    if (gl_LocalInvocationID.x < NUM_BUCKETS) {
+      radixDigitCounts[gl_LocalInvocationID.x] = 0;
     }
+    #define ITERATIONS ((NUM_BITFIELDS*NUM_BUCKETS + THREAD_COUNT - 1) / THREAD_COUNT)
+    for (int i = 0; i < ITERATIONS; i++) {
+      uint baseIndex = gl_LocalInvocationID.x * ITERATIONS;
+      uint index = baseIndex + i;
+      uint bucketIndex = index % NUM_BUCKETS;
+      uint bitfieldIndex = index / NUM_BUCKETS;
+      if (bitfieldIndex < MAX_BITFIELD) {
+        radixBitmasks[bucketIndex][bitfieldIndex] = 0;
+      }
+    }
+
+    // We read the values now so we can do a read->barrier->write later, which gets rid of the need for a second temporary array
+    uint value[FACES_PER_THREAD];
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      if ((localId + i) < minfo.size) {
+        value[i] = renderPris[localId + i];
+      }
+    }
+
+    barrier();
+
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      if ((localId + i) < minfo.size) {
+        uint digit = (value[i] >> (passNumber * BITS_PER_PASS)) & (NUM_BUCKETS - 1);
+        atomicAdd(radixDigitCounts[digit], 1);
+        uint bitfieldIndex = get_bitfield_index(localId + i);
+        uint bit = get_bitfield_bit(localId + i);
+        atomicOr(radixBitmasks[digit][bitfieldIndex], bit);
+      }
+    }
+
+    barrier();
+
+    // Read the masked bit counts for the last bitfield because we'll need it later and we're about to overwrite the bitfields with a prefix sum of bitcounts
+    uint maskedBitcounts[FACES_PER_THREAD];
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      uint digit = (value[i] >> (passNumber * BITS_PER_PASS)) & (NUM_BUCKETS - 1);
+      uint endBitfield = get_bitfield_index(localId + i);
+      // Only count digits to the left of this one by masking out bits to the left
+      uint bit = get_bitfield_bit(localId + i);
+      uint mask = bit == 0 ? 0 : bit - 1;
+      maskedBitcounts[i] = bitCount(radixBitmasks[digit][endBitfield] & mask);
+    }
+
+    barrier();
+
+    // Inclusive prefix sum of digit counts gives us the digit start index
+    if (gl_LocalInvocationID.x == 0) {
+      uint sum = 0;
+      for (int i = 0; i < NUM_BUCKETS; i++) {
+        sum += radixDigitCounts[i];
+        radixDigitCounts[i] = sum;
+      }
+    }
+
+    // Exclusive prefix sum of bitcounts for the bitfields for each digit gives us the number of same digits that appear before a given digit
+    if (gl_LocalInvocationID.x < NUM_BUCKETS) {
+      uint bucketIndex = gl_LocalInvocationID.x;
+      uint sum = 0;
+      for (uint bitfieldIndex = 0; bitfieldIndex < MAX_BITFIELD; bitfieldIndex++) {
+        uint temp = bitCount(radixBitmasks[bucketIndex][bitfieldIndex]);
+        radixBitmasks[bucketIndex][bitfieldIndex] = sum;
+        sum += temp;
+      }
+    }
+
+    barrier();
+
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      if ((localId + i) < minfo.size) {
+        uint digit = (value[i] >> (passNumber * BITS_PER_PASS)) & (NUM_BUCKETS - 1);
+        uint endBitfield = get_bitfield_index(localId + i);
+        // digitRelativeIndex is the index of the digit relative to other values with the same digit
+        // For example with [1,2,2,2,3], there are three 2s, and if we convert the digits to letters we get
+        // [A, B, B, B, C]
+        // Now to differentiate the same letters, we give them a number in the order they appear
+        // [A0, B0, B1, B2, C0]
+        // digitRelativeIndex is the number given to each letter in the example
+        // So for the third 2 digit to appear in the array, digitRelativeIndex = 2
+        // It's obtained by doing a prefix sum on a bitmask for each digit
+        // the bitmask for digit 2 in the example is [0,1,1,1,0]
+        uint digitRelativeIndex = radixBitmasks[digit][endBitfield] + maskedBitcounts[i];
+        uint digitStartIndex = digit == 0 ? 0 : radixDigitCounts[digit-1]; // -1 because we did an inclusive prefix sum
+        uint outputIndex = digitStartIndex + digitRelativeIndex;
+        renderPris[outputIndex] = value[i];
+      }
+    }
+
+    barrier();
   }
 
   barrier();
-  // Now each thread knows which localId to look up in shared memory to get info about a vertex
-  // For example if thread0 has renderPri[0] == 5, this means that thread 5 tells thread 0 what vertex to write out. IE. whoSendsMeVertices[0] = 5
+
   uint whoSendsMeVertices[FACES_PER_THREAD];
   for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    uint size = minfo.size;
+    uint output_index = localId + i;
+    if (output_index < minfo.size) {
+      // Get the sorted key that belongs in my output slot.
+      uint sorted_key = renderPris[output_index];
 
-    if ((localId+i) < size) {
-      whoSendsMeVertices[i] = renderPris[localId+i];
+      // Unpack the original localId. The tilde (~) is the inverse of how it was packed.
+      whoSendsMeVertices[i] = (~sorted_key) & LOCALID_MASK;
     } else {
-      // For out of bounds vertices, we make them look at their own index to remove the if check for size each time
-      // The index into shared memory is in bounds, it's just not going to have any valid data
-      whoSendsMeVertices[i] = localId + i;
+      // For out of bounds vertices, make them look at their own index.
+      // The shuffle will read harmless data that is never written to the final output.
+      whoSendsMeVertices[i] = output_index;
     }
   }
 

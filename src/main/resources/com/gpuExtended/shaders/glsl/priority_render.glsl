@@ -52,18 +52,6 @@ uint priority_map(uint p, int distance, int _min10, int avg1, int avg2, int avg3
   }
 }
 
-// calculate the number of faces with a lower adjusted priority than
-// the given adjusted priority
-uint count_prio_offset(uint priority) {
-  // this shouldn't ever be outside of (0, 17) because it is the return value from priority_map
-  priority = clamp(priority, 0u, 17u);
-  uint total = 0;
-  for (uint i = 0; i < priority; i++) {
-    total += totalMappedNum[i];
-  }
-  return total;
-}
-
 void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch, out int dis, out Vertex o1, out Vertex o2, out Vertex o3) {
   uint size = minfo.size;
   uint offset = minfo.offset;
@@ -151,7 +139,7 @@ void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Verte
   }
 }
 
-uint map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex thisrvA, out uint prio) {
+void map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex thisrvA, out uint prio) {
   uint size = minfo.size;
 
   // Compute average distances for 0/2, 3/4, and 6/8
@@ -166,14 +154,11 @@ uint map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex t
     avg3 *= float(totalNum68 > 0);
 
     uint adjPrio = priority_map(thisPriority, thisDistance, min10, int(avg1), int(avg2), int(avg3));
-    uint prioIdx = atomicAdd(totalMappedNum[adjPrio], 1);
-
     prio = adjPrio;
-    return prioIdx;
   }
-
-  prio = 0;
-  return 0;
+  else {
+    prio = 0;
+  }
 }
 
 uint calculate_priority(int distance, uint localId, uint adjustedPriority) {
@@ -189,24 +174,25 @@ uint calculate_priority(int distance, uint localId, uint adjustedPriority) {
   #define LOCALID_MASK ((1 << LOCALID_BITS) - 1)
 
 
-  distance = clamp(distance, -8192, 8191);
+  distance = clamp(-distance, -8192, 8191);
 
   uint p = adjustedPriority & PRIOIRTY_MASK;
   uint d = uint(distance + DISTANCE_ADD) & DISTANCE_MASK;
-  uint l = localId & LOCALID_MASK;
+  uint l = (~localId) & LOCALID_MASK;
   return (p << (DISTANCE_BITS + LOCALID_BITS)) | (d << LOCALID_BITS) | l;
 }
 
-void insert_face(uint localId, modelinfo minfo, uint adjPrio, int distance, uint prioIdx) {
+void insert_face(uint localId, modelinfo minfo, uint adjPrio, int distance) {
   uint size = minfo.size;
 
   if (localId < size) {
     // calculate base offset into renderPris based on number of faces with a lower priority
-    uint baseOff = count_prio_offset(adjPrio);
     // the furthest faces draw first, and have the highest value
     // if two faces have the same distance, the one with the
     // lower id draws first
-    renderPris[baseOff + prioIdx] = calculate_priority(distance, localId, adjPrio);
+    renderPris[localId] = calculate_priority(distance, localId, adjPrio);
+  } else {
+    renderPris[localId] = 0xFFFFFFFF;
   }
 }
 
@@ -256,37 +242,6 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   lightness = min(lightness, maxLightness);
 
   hsl = (hsl & ~0x7F) | lightness;
-}
-
-void calculate_output_offsets(uint localId, modelinfo minfo, uint thisPriority, int thisDistance,
-                              Vertex thisrvA, Vertex thisrvB, Vertex thisrvC,
-                              out uint myOffset) {
-  uint size = minfo.size;
-
-  if (localId < size) {
-    uint outOffset = minfo.idx;
-    int toffset = minfo.toffset;
-    int flags = minfo.flags;
-    uint offset = minfo.offset;
-
-    // we only have to order faces against others of the same priority
-    const uint priorityOffset = count_prio_offset(thisPriority);
-    const uint numOfPriority = totalMappedNum[thisPriority];
-    const uint start = priorityOffset;                // index of first face with this priority
-    const uint end = priorityOffset + numOfPriority;  // index of last face with this priority
-    uint renderPriority = calculate_priority(thisDistance, localId, thisPriority);
-    myOffset = priorityOffset;
-    int orientation = flags & 0x7ff;
-    int plane = (flags >> BIT_ZHEIGHT) & 3;
-    int hillskew = (flags >> BIT_HILLSKEW) & 1;
-
-    // calculate position this face will be in
-    for (uint i = start; i < end; ++i) {
-      if (renderPriority < renderPris[i]) {
-        ++myOffset;
-      }
-    }
-  }
 }
 
 void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
