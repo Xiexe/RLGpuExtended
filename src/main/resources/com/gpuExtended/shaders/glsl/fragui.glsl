@@ -178,10 +178,28 @@ void PostProcessImage(inout vec3 image, vec3 bloom, int colorBlindMode, float fo
 void main() {
   #if SHADOW_MAP_OVERLAY
     vec2 uv = (gl_FragCoord.xy - shadowMapOverlayDimensions.xy) / shadowMapOverlayDimensions.zw;
-    if (0 <= uv.x && uv.x <= 1 && 0 <= uv.y && uv.y <= 1) {
-        vec4 shadowMap = texture(shadowMap, uv);
-        vec4 dynamicShadowMap = texture(dynamicShadowMap, uv * 2 - 0.5);
-        FragColor = vec4(vec3(min(shadowMap, dynamicShadowMap)), 1);
+
+    uv.y -= 0.25;
+    // Only proceed if inside overlay bounds
+    if (uv.x >= 0.0 && uv.x <= 0.5 && uv.y >= 0.0 && uv.y <= 1.0) {
+        // Optional horizontal divider line between the two squares
+        float py = 1.0 / float(shadowMapOverlayDimensions.w);
+        if (abs(uv.y - 0.5) < py) {
+            FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+
+        if (uv.y < 0.5) {
+            // Bottom square: static shadow map
+            vec2 luv = vec2(uv.x * 2.0, uv.y * 2.0);
+            vec4 s = texture(shadowMap, luv);
+            FragColor = vec4(s.rgb, 1.0);
+        } else {
+            // Top square: dynamic shadow map
+            vec2 ruv = vec2(uv.x * 2.0, (uv.y - 0.5) * 2.0);
+            vec4 d = texture(dynamicShadowMap, ruv); // apply prior transform if needed
+            FragColor = vec4(d.rgb, 1.0);
+        }
         return;
     }
   #endif
