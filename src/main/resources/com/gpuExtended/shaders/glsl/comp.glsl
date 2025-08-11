@@ -21,7 +21,7 @@ shared uint renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and
 #define NUM_BUCKETS (1 << BITS_PER_PASS)
 #define NUM_BITFIELDS ((THREAD_COUNT*FACES_PER_THREAD)/32)
 
-shared uint radixDigitCounts[NUM_BUCKETS];
+shared uint radixDigitStartIndices[RADIX_PASS_COUNT][NUM_BUCKETS];
 shared uint radixBitmasks[NUM_BUCKETS][NUM_BITFIELDS];
 
 uint get_bitfield_index(uint n) {
@@ -165,11 +165,29 @@ void main() {
   barrier();
 
   const uint MAX_BITFIELD = min(NUM_BITFIELDS, get_bitfield_index(minfo.size)+1);
-
   for (uint passNumber = 0; passNumber < RADIX_PASS_COUNT; passNumber++) {
     if (gl_LocalInvocationID.x < NUM_BUCKETS) {
-      radixDigitCounts[gl_LocalInvocationID.x] = 0;
+      radixDigitStartIndices[passNumber][gl_LocalInvocationID.x] = 0;
     }
+    barrier();
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      uint digit = (renderPris[localId + i] >> (passNumber * BITS_PER_PASS)) & (NUM_BUCKETS - 1);
+      atomicAdd(radixDigitStartIndices[passNumber][digit], 1);
+    }
+    barrier();
+    // Exclusive prefix sum of digit counts gives us the digit start index
+    if (gl_LocalInvocationID.x == 0) {
+      uint sum = 0;
+      for (int i = 0; i < NUM_BUCKETS; i++) {
+        uint temp = radixDigitStartIndices[passNumber][i];
+        radixDigitStartIndices[passNumber][i] = sum;
+        sum += temp;
+      }
+    }
+  }
+  barrier();
+
+  for (uint passNumber = 0; passNumber < RADIX_PASS_COUNT; passNumber++) {
     #define ITERATIONS ((NUM_BITFIELDS*NUM_BUCKETS + THREAD_COUNT - 1) / THREAD_COUNT)
     for (int i = 0; i < ITERATIONS; i++) {
       uint baseIndex = gl_LocalInvocationID.x * ITERATIONS;
@@ -194,7 +212,6 @@ void main() {
     for (uint i = 0; i < FACES_PER_THREAD; i++) {
       if ((localId + i) < minfo.size) {
         uint digit = (value[i] >> (passNumber * BITS_PER_PASS)) & (NUM_BUCKETS - 1);
-        atomicAdd(radixDigitCounts[digit], 1);
         uint bitfieldIndex = get_bitfield_index(localId + i);
         uint bit = get_bitfield_bit(localId + i);
         atomicOr(radixBitmasks[digit][bitfieldIndex], bit);
@@ -215,16 +232,6 @@ void main() {
     }
 
     barrier();
-
-    // Exclusive prefix sum of digit counts gives us the digit start index
-    if (gl_LocalInvocationID.x == 0) {
-      uint sum = 0;
-      for (int i = 0; i < NUM_BUCKETS; i++) {
-        uint temp = radixDigitCounts[i];
-        radixDigitCounts[i] = sum;
-        sum += temp;
-      }
-    }
 
     // Exclusive prefix sum of bitcounts for the bitfields for each digit gives us the number of same digits that appear before a given digit
     if (gl_LocalInvocationID.x < NUM_BUCKETS) {
@@ -253,7 +260,7 @@ void main() {
         // It's obtained by doing a prefix sum on a bitmask for each digit
         // the bitmask for digit 2 in the example is [0,1,1,1,0]
         uint digitRelativeIndex = radixBitmasks[digit][endBitfield] + maskedBitcounts[i];
-        uint digitStartIndex = radixDigitCounts[digit];
+        uint digitStartIndex = radixDigitStartIndices[passNumber][digit];
         uint outputIndex = digitStartIndex + digitRelativeIndex;
         renderPris[outputIndex] = value[i];
       }
@@ -261,8 +268,6 @@ void main() {
 
     barrier();
   }
-
-  barrier();
 
   uint whoSendsMeVertices[FACES_PER_THREAD];
   for (uint i = 0; i < FACES_PER_THREAD; i++) {
