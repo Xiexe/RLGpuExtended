@@ -286,8 +286,9 @@ public class ShadowPass implements IPassBase {
         currentShadowUvBuffer = null;
         workingShadowUvBuffer = null;
 
-        // immediately render the static shadow map
+        // Update shadows immediately after scene load to prevent flicker
         OnRenderStaticShadowMap();
+        OnRenderDynamicShadowMap();
     }
 
     @Override
