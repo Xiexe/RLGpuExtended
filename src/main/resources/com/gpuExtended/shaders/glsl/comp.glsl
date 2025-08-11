@@ -134,7 +134,7 @@ void main() {
     totalDistance68 = 0;
   }
 
-  barrier();
+  barrier(); // For zeroing shared memory
 
   Vertex vA[FACES_PER_THREAD];
   Vertex vB[FACES_PER_THREAD];
@@ -148,7 +148,7 @@ void main() {
       add_face_prio_distance(localId + i, minfo, vA[i], vB[i], vC[i], dis[i], pos);
     }
 
-    barrier();
+    barrier(); // Wait for atomics
 
     for (uint i = 0; i < FACES_PER_THREAD; i++) {
       uint prioAdj;
@@ -156,9 +156,10 @@ void main() {
       insert_face(localId + i, minfo, prioAdj, dis[i]);
     }
 
-    barrier();
+    barrier(); // Wait for writes to renderPris
   }
 
+  // Radix sort all renderPris
   const uint MAX_BITFIELD = min(NUM_BITFIELDS, get_bitfield_index(minfo.size)+1);
   for (uint passNumber = 0; passNumber < RADIX_PASS_COUNT; passNumber++) {
     if (gl_LocalInvocationID.x < NUM_BUCKETS) {
@@ -264,18 +265,14 @@ void main() {
     barrier();
   }
 
+  // Grab who to listen to for vertex shuffle by grabbing the localId from the sorted renderPris at this position
   uint whoSendsMeVertices[FACES_PER_THREAD];
   for (uint i = 0; i < FACES_PER_THREAD; i++) {
     uint output_index = localId + i;
     if (output_index < minfo.size) {
-      // Get the sorted key that belongs in my output slot.
       uint sorted_key = renderPris[output_index];
-
-      // Unpack the original localId. The tilde (~) is the inverse of how it was packed.
       whoSendsMeVertices[i] = (~sorted_key) & LOCALID_MASK;
     } else {
-      // For out of bounds vertices, make them look at their own index.
-      // The shuffle will read harmless data that is never written to the final output.
       whoSendsMeVertices[i] = output_index;
     }
   }
