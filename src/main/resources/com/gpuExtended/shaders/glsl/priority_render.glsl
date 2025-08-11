@@ -2,7 +2,7 @@
 // model global min10 and face distance averages. This allows positioning faces
 // with priorities 10/11 into the correct 'slots' resulting in 18 possible
 // adjusted priorities
-int priority_map(int p, int distance, int _min10, int avg1, int avg2, int avg3) {
+uint priority_map(uint p, int distance, int _min10, int avg1, int avg2, int avg3) {
   // (10, 11)  0  1  2  (10, 11)  3  4  (10, 11)  5  6  7  8  9  (10, 11)
   //   0   1   2  3  4    5   6   7  8    9  10  11 12 13 14 15   16  17
   switch (p) {
@@ -54,19 +54,19 @@ int priority_map(int p, int distance, int _min10, int avg1, int avg2, int avg3) 
 
 // calculate the number of faces with a lower adjusted priority than
 // the given adjusted priority
-int count_prio_offset(int priority) {
+uint count_prio_offset(uint priority) {
   // this shouldn't ever be outside of (0, 17) because it is the return value from priority_map
-  priority = clamp(priority, 0, 17);
-  int total = 0;
-  for (int i = 0; i < priority; i++) {
+  priority = clamp(priority, 0u, 17u);
+  uint total = 0;
+  for (uint i = 0; i < priority; i++) {
     total += totalMappedNum[i];
   }
   return total;
 }
 
 void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch, out int dis, out Vertex o1, out Vertex o2, out Vertex o3) {
-  int size = minfo.size;
-  int offset = minfo.offset;
+  uint size = minfo.size;
+  uint offset = minfo.offset;
   int flags = minfo.flags;
   uint ssboOffset;
 
@@ -125,7 +125,7 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
 
 void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC, int thisDistance, ivec4 pos) {
   if (localId < minfo.size) {
-    int thisPriority = (thisrvA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
+    uint thisPriority = uint((thisrvA.ahsl >> 16) & 0xff);// all vertices on the face have the same priority
     // if the face is not culled, it is calculated into priority distance averages
     if (face_visible(thisrvA.pos, thisrvB.pos, thisrvC.pos, pos)) {
       if (thisPriority == 1 || thisPriority == 2) {
@@ -151,13 +151,13 @@ void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Verte
   }
 }
 
-int map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex thisrvA, out int prio) {
-  int size = minfo.size;
+uint map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex thisrvA, out uint prio) {
+  uint size = minfo.size;
 
   // Compute average distances for 0/2, 3/4, and 6/8
 
   if (localId < size) {
-    int thisPriority = (thisrvA.ahsl >> 16) & 0xff;// all vertices on the face have the same priority
+    uint thisPriority = uint((thisrvA.ahsl >> 16) & 0xff);// all vertices on the face have the same priority
     float avg1 = float(totalDistance12) / float(totalNum12);
     float avg2 = float(totalDistance34) / float(totalNum34);
     float avg3 = float(totalDistance68) / float(totalNum68);
@@ -165,8 +165,8 @@ int map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex th
     avg2 *= float(totalNum34 > 0);
     avg3 *= float(totalNum68 > 0);
 
-    int adjPrio = priority_map(thisPriority, thisDistance, min10, int(avg1), int(avg2), int(avg3));
-    int prioIdx = atomicAdd(totalMappedNum[adjPrio], 1);
+    uint adjPrio = priority_map(thisPriority, thisDistance, min10, int(avg1), int(avg2), int(avg3));
+    uint prioIdx = atomicAdd(totalMappedNum[adjPrio], 1);
 
     prio = adjPrio;
     return prioIdx;
@@ -176,16 +176,21 @@ int map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex th
   return 0;
 }
 
-void insert_face(uint localId, modelinfo minfo, int adjPrio, int distance, int prioIdx) {
-  int size = minfo.size;
+uint calculate_priority(int distance, uint localId) {
+  distance = clamp(distance, -32768, 32767);
+  return uint((distance + 32768)) << 16 | (~localId & 0xffffu);
+}
+
+void insert_face(uint localId, modelinfo minfo, uint adjPrio, int distance, uint prioIdx) {
+  uint size = minfo.size;
 
   if (localId < size) {
     // calculate base offset into renderPris based on number of faces with a lower priority
-    int baseOff = count_prio_offset(adjPrio);
+    uint baseOff = count_prio_offset(adjPrio);
     // the furthest faces draw first, and have the highest value
     // if two faces have the same distance, the one with the
     // lower id draws first
-    renderPris[baseOff + prioIdx] = distance << 16 | int(~localId & 0xffffu);
+    renderPris[baseOff + prioIdx] = calculate_priority(distance, localId);
   }
 }
 
@@ -237,30 +242,30 @@ void undoVanillaShading(inout int hsl, vec3 unrotatedNormal) {
   hsl = (hsl & ~0x7F) | lightness;
 }
 
-void calculate_output_offsets(uint localId, modelinfo minfo, int thisPriority, int thisDistance,
+void calculate_output_offsets(uint localId, modelinfo minfo, uint thisPriority, int thisDistance,
                               Vertex thisrvA, Vertex thisrvB, Vertex thisrvC,
-                              out int myOffset) {
-  int size = minfo.size;
+                              out uint myOffset) {
+  uint size = minfo.size;
 
   if (localId < size) {
-    int outOffset = minfo.idx;
+    uint outOffset = minfo.idx;
     int toffset = minfo.toffset;
     int flags = minfo.flags;
-    int offset = minfo.offset;
+    uint offset = minfo.offset;
 
     // we only have to order faces against others of the same priority
-    const int priorityOffset = count_prio_offset(thisPriority);
-    const int numOfPriority = totalMappedNum[thisPriority];
-    const int start = priorityOffset;                // index of first face with this priority
-    const int end = priorityOffset + numOfPriority;  // index of last face with this priority
-    const int renderPriority = thisDistance << 16 | int(~localId & 0xffffu);
+    const uint priorityOffset = count_prio_offset(thisPriority);
+    const uint numOfPriority = totalMappedNum[thisPriority];
+    const uint start = priorityOffset;                // index of first face with this priority
+    const uint end = priorityOffset + numOfPriority;  // index of last face with this priority
+    uint renderPriority = calculate_priority(thisDistance, localId);
     myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
     int plane = (flags >> BIT_ZHEIGHT) & 3;
     int hillskew = (flags >> BIT_HILLSKEW) & 1;
 
     // calculate position this face will be in
-    for (int i = start; i < end; ++i) {
+    for (uint i = start; i < end; ++i) {
       if (renderPriority < renderPris[i]) {
         ++myOffset;
       }
@@ -269,7 +274,7 @@ void calculate_output_offsets(uint localId, modelinfo minfo, int thisPriority, i
 }
 
 void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC) {
-  int size = minfo.size;
+  uint size = minfo.size;
   vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
   if (localId < size) {
     int toffset = minfo.toffset;
@@ -286,8 +291,8 @@ void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Ve
     vertB = hillskew_vertexf(vertB, hillskew, minfo.y, plane);
     vertC = hillskew_vertexf(vertC, hillskew, minfo.y, plane);
 
-    int myOffset = int(localId);
-    int outOffset = minfo.idx;
+    uint myOffset = localId;
+    uint outOffset = minfo.idx;
     vout[outOffset + myOffset * 3]     = Vertex(vertA.xyz, thisrvA.ahsl);
     vout[outOffset + myOffset * 3 + 1] = Vertex(vertB.xyz, thisrvB.ahsl);
     vout[outOffset + myOffset * 3 + 2] = Vertex(vertC.xyz, thisrvC.ahsl);
@@ -299,7 +304,7 @@ void output_vertices_and_flags(uint localId, modelinfo minfo, Vertex thisrvA, Ve
 }
 
 void gather_texture_attribute(uint localId, modelinfo minfo, uint vertexIndex, out vec4 tex) {
-  int size = minfo.size;
+  uint size = minfo.size;
 
   if (localId < size) {
     int toffset = minfo.toffset;
@@ -335,21 +340,21 @@ void gather_texture_attribute(uint localId, modelinfo minfo, uint vertexIndex, o
 }
 
 void output_uv(uint localId, modelinfo minfo, uint vertexIndex, vec4 tex) {
-  int size = minfo.size;
+  uint size = minfo.size;
   vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
   if (localId < size) {
-    int myOffset = int(localId);
-    int outOffset = minfo.idx;
+    uint myOffset = localId;
+    uint outOffset = minfo.idx;
 
     uvout[outOffset + myOffset * 3 + vertexIndex] = tex;
   }
 }
 
 void gather_normal_attribute(uint localId, modelinfo minfo, uint vertexIndex, out vec4 norm) {
-  int size = minfo.size;
+  uint size = minfo.size;
 
   if (localId < size) {
-    int offset = minfo.offset;
+    uint offset = minfo.offset;
     int flags = minfo.flags;
     int orientation = flags & 0x7ff;
     int plane = (flags >> BIT_ZHEIGHT) & 3;
@@ -373,11 +378,11 @@ void gather_normal_attribute(uint localId, modelinfo minfo, uint vertexIndex, ou
 }
 
 void output_normal(uint localId, modelinfo minfo, uint vertexIndex, vec4 norm) {
-  int size = minfo.size;
+  uint size = minfo.size;
   vec4 pos = vec4(minfo.x, minfo.y, minfo.z, 0);
   if (localId < size) {
-    int myOffset = int(localId);
-    int outOffset = minfo.idx;
+    uint myOffset = localId;
+    uint outOffset = minfo.idx;
 
     normalout[outOffset + myOffset * 3 + vertexIndex] = norm;
   }

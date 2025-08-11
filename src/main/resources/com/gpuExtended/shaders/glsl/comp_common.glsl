@@ -1,8 +1,8 @@
 struct modelinfo {
-  int offset;   // offset into vertex buffer
+  uint offset;   // offset into vertex buffer
   int toffset;  // offset into texture buffer
-  int size;     // length in faces
-  int idx;      // write idx in target buffer
+  uint size;     // length in faces
+  uint idx;      // write idx in target buffer
   int flags;    // buffer, hillskew, plane, radius, orientation
   int x;        // scene position x
   int y;        // scene position y

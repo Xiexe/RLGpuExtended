@@ -2,16 +2,16 @@
 #include "THREAD_COUNT"
 #include "FACES_PER_THREAD"
 
-shared int totalNum12;
+shared uint totalNum12;
 shared int totalDistance12;
-shared int totalNum34;
+shared uint totalNum34;
 shared int totalDistance34;
-shared int totalNum68;
+shared uint totalNum68;
 shared int totalDistance68;
 shared int min10;                                         // minimum distance to a face of priority 10
 
-shared int totalMappedNum[18];  // number of faces with a given adjusted priority
-shared int renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face id
+shared uint totalMappedNum[18];  // number of faces with a given adjusted priority
+shared uint renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face id
 
 #include "shaders/glsl/constants.glsl"
 #include "shaders/glsl/comp_common.glsl"
@@ -21,78 +21,78 @@ layout(local_size_x = THREAD_COUNT) in;
 #include "shaders/glsl/common.glsl"
 #include "shaders/glsl/priority_render.glsl"
 
-void shuffle_vertex(int localId, inout Vertex v[FACES_PER_THREAD], in int whoSendsMeVertices[FACES_PER_THREAD]) {
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].pos.x);
+void shuffle_vertex(uint localId, inout Vertex v[FACES_PER_THREAD], in uint whoSendsMeVertices[FACES_PER_THREAD]) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].pos.x);
   }
   barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].pos.x = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
-  }
-  barrier();
-
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].pos.y);
-  }
-  barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].pos.y = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].pos.x = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
   barrier();
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].pos.z);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].pos.y);
   }
   barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].pos.z = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].pos.y = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
   barrier();
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = v[i].ahsl;
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].pos.z);
   }
   barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].ahsl = renderPris[whoSendsMeVertices[i]];
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].pos.z = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  barrier();
+
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = uint(v[i].ahsl);
+  }
+  barrier();
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].ahsl = int(renderPris[whoSendsMeVertices[i]]);
   }
   barrier();
 }
 
-void shuffle_vec4(int localId, inout vec4 v[FACES_PER_THREAD], in int whoSendsMeVertices[FACES_PER_THREAD]) {
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].x);
+void shuffle_vec4(uint localId, inout vec4 v[FACES_PER_THREAD], in uint whoSendsMeVertices[FACES_PER_THREAD]) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].x);
   }
   barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].x = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
-  }
-  barrier();
-
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].y);
-  }
-  barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].y = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].x = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
   barrier();
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].z);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].y);
   }
   barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].z = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].y = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
   barrier();
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    renderPris[localId + i] = floatBitsToInt(v[i].w);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].z);
   }
   barrier();
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    v[i].w = intBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].z = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
+  }
+  barrier();
+
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    renderPris[localId + i] = floatBitsToUint(v[i].w);
+  }
+  barrier();
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    v[i].w = uintBitsToFloat(renderPris[whoSendsMeVertices[i]]);
   }
   barrier();
 }
@@ -111,7 +111,7 @@ void main() {
     totalDistance34 = 0;
     totalNum68 = 0;
     totalDistance68 = 0;
-    for (int i = 0; i < 18; ++i) {
+    for (uint i = 0; i < 18; ++i) {
       totalMappedNum[i] = 0;
     }
   }
@@ -121,63 +121,75 @@ void main() {
   Vertex vB[FACES_PER_THREAD];
   Vertex vC[FACES_PER_THREAD];
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     get_face(localId + i, minfo, cameraYaw, cameraPitch, dis[i], vA[i], vB[i], vC[i]);
   }
 
   barrier();
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     add_face_prio_distance(localId + i, minfo, vA[i], vB[i], vC[i], dis[i], pos);
   }
 
   barrier();
 
-  int prioAdj[FACES_PER_THREAD];
-  int idx[FACES_PER_THREAD];
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  uint prioAdj[FACES_PER_THREAD];
+  uint idx[FACES_PER_THREAD];
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     idx[i] = map_face_priority(localId + i, minfo, dis[i], vA[i], prioAdj[i]);
   }
 
   barrier();
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     insert_face(localId + i, minfo, prioAdj[i], dis[i], idx[i]);
   }
 
   barrier();
 
-  int outputOffsets[FACES_PER_THREAD];
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  uint outputOffsets[FACES_PER_THREAD];
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     calculate_output_offsets(localId + i, minfo, prioAdj[i], dis[i],
                              vA[i], vB[i], vC[i],
                              outputOffsets[i]);
   }
 
+  /*
+outputOffsets = o // outArray[o]
+renderPris[o] = i
+whoSendsMeVerts = renderPris[i]
+
+If i sort i get
+o = renderPris[i] & localIdMask
+renderPris[o] = i
+whoSendsMeVerts = renderPris[i]
+
+*/
+
   barrier();
 
   // Scatter localIds from renderPris to the thread they're relevant to
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    int size = minfo.size;
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    uint size = minfo.size;
 
     if ((localId+i) < size) {
-      renderPris[outputOffsets[i]] = int(localId+i);
+      renderPris[outputOffsets[i]] = localId+i;
     }
   }
 
   barrier();
   // Now each thread knows which localId to look up in shared memory to get info about a vertex
   // For example if thread0 has renderPri[0] == 5, this means that thread 5 tells thread 0 what vertex to write out. IE. whoSendsMeVertices[0] = 5
-  int whoSendsMeVertices[FACES_PER_THREAD];
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
-    int size = minfo.size;
+  uint whoSendsMeVertices[FACES_PER_THREAD];
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    uint size = minfo.size;
 
     if ((localId+i) < size) {
       whoSendsMeVertices[i] = renderPris[localId+i];
     } else {
       // For out of bounds vertices, we make them look at their own index to remove the if check for size each time
       // The index into shared memory is in bounds, it's just not going to have any valid data
-      whoSendsMeVertices[i] = int(localId) + i;
+      whoSendsMeVertices[i] = localId + i;
     }
   }
 
@@ -185,11 +197,11 @@ void main() {
 
   // Shuffle vertices from threads who've already read them to threads who share the same output index
   // This way the thread who read verts[i] writes to outverts[i] making the writes coalesced
-  shuffle_vertex(int(localId), vA, whoSendsMeVertices);
-  shuffle_vertex(int(localId), vB, whoSendsMeVertices);
-  shuffle_vertex(int(localId), vC, whoSendsMeVertices);
+  shuffle_vertex(localId, vA, whoSendsMeVertices);
+  shuffle_vertex(localId, vB, whoSendsMeVertices);
+  shuffle_vertex(localId, vC, whoSendsMeVertices);
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_vertices_and_flags(localId + i, minfo, vA[i], vB[i], vC[i]);
   }
 
@@ -197,49 +209,49 @@ void main() {
   // Unable to do the same for vertices because we need to read the 3 vertices at the start to calculate distance.
   vec4 tex[FACES_PER_THREAD];
   // a
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     gather_texture_attribute(localId + i, minfo, 0, tex[i]);
   }
-  shuffle_vec4(int(localId), tex, whoSendsMeVertices);
+  shuffle_vec4(localId, tex, whoSendsMeVertices);
   //b
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_uv(localId + i, minfo, 0, tex[i]);
     gather_texture_attribute(localId + i, minfo, 1, tex[i]);
   }
-  shuffle_vec4(int(localId), tex, whoSendsMeVertices);
+  shuffle_vec4(localId, tex, whoSendsMeVertices);
   //c
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_uv(localId + i, minfo, 1, tex[i]);
     gather_texture_attribute(localId + i, minfo, 2, tex[i]);
   }
-  shuffle_vec4(int(localId), tex, whoSendsMeVertices);
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  shuffle_vec4(localId, tex, whoSendsMeVertices);
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_uv(localId + i, minfo, 2, tex[i]);
   }
 
 
   vec4 normal[FACES_PER_THREAD];
   //a
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     gather_normal_attribute(localId + i, minfo, 0, normal[i]);
   }
-  shuffle_vec4(int(localId), normal, whoSendsMeVertices);
+  shuffle_vec4(localId, normal, whoSendsMeVertices);
 
   //b
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_normal(localId + i, minfo, 0, normal[i]);
     gather_normal_attribute(localId + i, minfo, 1, normal[i]);
   }
-  shuffle_vec4(int(localId), normal, whoSendsMeVertices);
+  shuffle_vec4(localId, normal, whoSendsMeVertices);
 
   //c
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_normal(localId + i, minfo, 1, normal[i]);
     gather_normal_attribute(localId + i, minfo, 2, normal[i]);
   }
-  shuffle_vec4(int(localId), normal, whoSendsMeVertices);
+  shuffle_vec4(localId, normal, whoSendsMeVertices);
 
-  for (int i = 0; i < FACES_PER_THREAD; i++) {
+  for (uint i = 0; i < FACES_PER_THREAD; i++) {
     output_normal(localId + i, minfo, 2, normal[i]);
   }
 }

@@ -10,9 +10,9 @@ void main() {
   uint localId = gl_LocalInvocationID.x;
   modelinfo minfo = ol[groupId];
 
-  int offset = minfo.offset;
-  int size = minfo.size;
-  int outOffset = minfo.idx;
+  uint offset = minfo.offset;
+  uint size = minfo.size;
+  uint outOffset = minfo.idx;
   int toffset = minfo.toffset;
   int flags = minfo.flags;
 
@@ -70,7 +70,7 @@ void main() {
     texC = vec4(0);
   }
 
-  uvout[outOffset + myOffset * 3]       = texA;
+  uvout[outOffset + myOffset * 3 + 0]       = texA;
   uvout[outOffset + myOffset * 3 + 1]   = texB;
   uvout[outOffset + myOffset * 3 + 2]   = texC;
 }
