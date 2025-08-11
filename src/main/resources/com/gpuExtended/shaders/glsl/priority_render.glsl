@@ -111,34 +111,6 @@ void get_face(uint localId, modelinfo minfo, float cameraYaw, float cameraPitch,
   }
 }
 
-void add_face_prio_distance(uint localId, modelinfo minfo, Vertex thisrvA, Vertex thisrvB, Vertex thisrvC, int thisDistance, ivec4 pos) {
-  if (localId < minfo.size) {
-    uint thisPriority = uint((thisrvA.ahsl >> 16) & 0xff);// all vertices on the face have the same priority
-    // if the face is not culled, it is calculated into priority distance averages
-    if (face_visible(thisrvA.pos, thisrvB.pos, thisrvC.pos, pos)) {
-      if (thisPriority == 1 || thisPriority == 2) {
-        atomicAdd(totalNum12, 1);
-        atomicAdd(totalDistance12, thisDistance);
-      }
-      else if (thisPriority == 3 || thisPriority == 4) {
-        atomicAdd(totalNum34, 1);
-        atomicAdd(totalDistance34, thisDistance);
-      }
-      else if (thisPriority == 6 || thisPriority == 8) {
-        atomicAdd(totalNum68, 1);
-        atomicAdd(totalDistance68, thisDistance);
-      }
-      //atomicAdd(totalNum[thisPriority], 1);
-      //atomicAdd(totalDistance[thisPriority], thisDistance);
-
-      // calculate minimum distance to any face of priority 10 for positioning the 11 faces later
-      if (thisPriority == 10) {
-        atomicMin(min10, thisDistance);
-      }
-    }
-  }
-}
-
 void map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex thisrvA, out uint prio) {
   uint size = minfo.size;
 
@@ -146,12 +118,9 @@ void map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex t
 
   if (localId < size) {
     uint thisPriority = uint((thisrvA.ahsl >> 16) & 0xff);// all vertices on the face have the same priority
-    float avg1 = float(totalDistance12) / float(totalNum12);
-    float avg2 = float(totalDistance34) / float(totalNum34);
-    float avg3 = float(totalDistance68) / float(totalNum68);
-    avg1 *= float(totalNum12 > 0);
-    avg2 *= float(totalNum34 > 0);
-    avg3 *= float(totalNum68 > 0);
+    float avg1 = (totalNum12 > 0) ? (float(totalDistance12) / float(totalNum12)) : 0.0f;
+    float avg2 = (totalNum34 > 0) ? (float(totalDistance34) / float(totalNum34)) : 0.0f;
+    float avg3 = (totalNum68 > 0) ? (float(totalDistance68) / float(totalNum68)) : 0.0f;
 
     uint adjPrio = priority_map(thisPriority, thisDistance, min10, int(avg1), int(avg2), int(avg3));
     prio = adjPrio;
@@ -163,7 +132,7 @@ void map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex t
 
 uint calculate_priority(int distance, uint localId, uint adjustedPriority) {
   #define PRIORITY_BITS 5  // 18 priorities
-  #define DISTANCE_BITS 14 // arbitrary amount of distance bits. Needs to at least fit -2048 to 2048 ints converted to uints, so at least 4096
+  #define DISTANCE_BITS 14 // arbitrary amount of distance bits.
   #define LOCALID_BITS 13  // 6144 maximum triangles
 
   #define PRIOIRTY_MASK ((1 << PRIORITY_BITS) - 1)

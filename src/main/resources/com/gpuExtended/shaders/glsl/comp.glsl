@@ -25,7 +25,7 @@ shared uint radixDigitStartIndices[RADIX_PASS_COUNT][NUM_BUCKETS];
 shared uint radixBitmasks[NUM_BUCKETS][NUM_BITFIELDS];
 
 uint get_bitfield_index(uint n) {
-  return n/32;
+  return n >> 5; // n/32
 }
 
 uint get_bitfield_bit(uint n) {
@@ -122,7 +122,6 @@ void main() {
   uint groupId = gl_WorkGroupID.x;
   uint localId = gl_LocalInvocationID.x * FACES_PER_THREAD;
   modelinfo minfo = ol[groupId];
-  ivec4 pos = ivec4(minfo.x, minfo.y, minfo.z, 0);
 
   if (localId == 0) {
     min10 = 6000;
@@ -143,10 +142,34 @@ void main() {
   {
     int dis[FACES_PER_THREAD];
 
-    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+    uint _totalNum12 = 0;
+    uint _totalNum34 = 0;
+    uint _totalNum68 = 0;
+    int _totalDistance12 = 0;
+    int _totalDistance34 = 0;
+    int _totalDistance68 = 0;
+    int _min10 = 6000;
+
+    for (uint i = 0; i < FACES_PER_THREAD; ++i) {
       get_face(localId + i, minfo, cameraYaw, cameraPitch, dis[i], vA[i], vB[i], vC[i]);
-      add_face_prio_distance(localId + i, minfo, vA[i], vB[i], vC[i], dis[i], pos);
+
+      if (localId + i < minfo.size) {
+        ivec4 pos = ivec4(minfo.x, minfo.y, minfo.z, 0);
+        uint thisPrio = uint((vA[i].ahsl >> 16) & 0xff);
+        if (face_visible(vA[i].pos, vB[i].pos, vC[i].pos, pos)) {
+          // buckets 1/2, 3/4, 6/8
+          if (thisPrio == 1 || thisPrio == 2) { ++_totalNum12; totalDistance12 += dis[i]; }
+          else if (thisPrio == 3 || thisPrio == 4) { ++_totalNum34; _totalDistance34 += dis[i]; }
+          else if (thisPrio == 6 || thisPrio == 8) { ++_totalNum68; _totalDistance68 += dis[i]; }
+          if (thisPrio == 10) { _min10 = min(_min10, dis[i]); }
+        }
+      }
     }
+
+    if (_totalNum12 > 0) { atomicAdd(totalNum12, _totalNum12); atomicAdd(totalDistance12, _totalDistance12); }
+    if (_totalNum34 > 0) { atomicAdd(totalNum34, _totalNum34); atomicAdd(totalDistance34, _totalDistance34); }
+    if (_totalNum68 > 0) { atomicAdd(totalNum68, _totalNum68); atomicAdd(totalDistance68, _totalDistance68); }
+    if (_min10 != 6000) { atomicMin(min10, _min10); }
 
     barrier(); // Wait for atomics
 
@@ -188,8 +211,8 @@ void main() {
     for (int i = 0; i < ITERATIONS; i++) {
       uint baseIndex = gl_LocalInvocationID.x * ITERATIONS;
       uint index = baseIndex + i;
-      uint bucketIndex = index % NUM_BUCKETS;
-      uint bitfieldIndex = index / NUM_BUCKETS;
+      uint bucketIndex = index & (NUM_BUCKETS-1); // index % NUM_BUCKETS
+      uint bitfieldIndex = index >> uint(log2(NUM_BUCKETS)); // index / NUM_BUCKETS
       if (bitfieldIndex < MAX_BITFIELD) {
         radixBitmasks[bucketIndex][bitfieldIndex] = 0;
       }
