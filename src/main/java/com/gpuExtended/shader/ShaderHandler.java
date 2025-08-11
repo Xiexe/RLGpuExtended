@@ -16,8 +16,10 @@ import java.util.ArrayList;
 import static com.gpuExtended.util.ResourcePath.path;
 import static org.lwjgl.opengl.GL11C.glFinish;
 import static org.lwjgl.opengl.GL20C.*;
+import static org.lwjgl.opengl.GL30C.glGetIntegeri;
 import static org.lwjgl.opengl.GL32C.GL_GEOMETRY_SHADER;
 import static org.lwjgl.opengl.GL43C.GL_COMPUTE_SHADER;
+import static org.lwjgl.opengl.GL43C.GL_MAX_COMPUTE_SHARED_MEMORY_SIZE;
 
 @Slf4j
 public class ShaderHandler {
@@ -150,6 +152,7 @@ public class ShaderHandler {
     private Template createTemplate(int threadCount, int facesPerThread)
     {
         //log.debug("Creating shader template with path: {}", SHADER_PATH.toPath().toAbsolutePath());
+        int sharedMemorySize = glGetInteger(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE);
         String versionHeader = OSType.getOSType() == OSType.Linux ? LINUX_VERSION_HEADER : WINDOWS_VERSION_HEADER;
         Template template = new Template()
                 .addInclude("VERSION_HEADER", versionHeader)
@@ -157,6 +160,7 @@ public class ShaderHandler {
                 .define("FACES_PER_THREAD", facesPerThread)
                 .define("SHADOW_MAP_OVERLAY", plugin.enableShadowMapOverlay)
                 .define("TILE_MASK_OVERLAY", plugin.enableTileMaskOverlay)
+                .define("SHARED_MEMORY_SIZE", sharedMemorySize)
                 .addIncludePath(SHADER_PATH);
 
         return template;

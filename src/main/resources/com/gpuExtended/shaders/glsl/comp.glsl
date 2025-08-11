@@ -11,7 +11,12 @@ shared int totalDistance68;
 shared int min10;                                         // minimum distance to a face of priority 10
 shared uint renderPris[THREAD_COUNT * FACES_PER_THREAD];  // packed distance and face
 
-#define BITS_PER_PASS 4 // TODO: Lower 2 3 if <32k shared memory
+#if SHARED_MEMORY_SIZE < 36864 // renderPris + radixBitmasks = 36864
+#define BITS_PER_PASS 3
+#else
+#define BITS_PER_PASS 4
+#endif
+// TODO: can reuse renderPris in the radix sort
 #define RADIX_PASS_COUNT ((32 + BITS_PER_PASS - 1) / BITS_PER_PASS)
 #define NUM_BUCKETS (1 << BITS_PER_PASS)
 #define NUM_BITFIELDS ((THREAD_COUNT*FACES_PER_THREAD)/32)
@@ -211,12 +216,13 @@ void main() {
 
     barrier();
 
-    // Inclusive prefix sum of digit counts gives us the digit start index
+    // Exclusive prefix sum of digit counts gives us the digit start index
     if (gl_LocalInvocationID.x == 0) {
       uint sum = 0;
       for (int i = 0; i < NUM_BUCKETS; i++) {
-        sum += radixDigitCounts[i];
+        uint temp = radixDigitCounts[i];
         radixDigitCounts[i] = sum;
+        sum += temp;
       }
     }
 
@@ -247,7 +253,7 @@ void main() {
         // It's obtained by doing a prefix sum on a bitmask for each digit
         // the bitmask for digit 2 in the example is [0,1,1,1,0]
         uint digitRelativeIndex = radixBitmasks[digit][endBitfield] + maskedBitcounts[i];
-        uint digitStartIndex = digit == 0 ? 0 : radixDigitCounts[digit-1]; // -1 because we did an inclusive prefix sum
+        uint digitStartIndex = radixDigitCounts[digit];
         uint outputIndex = digitStartIndex + digitRelativeIndex;
         renderPris[outputIndex] = value[i];
       }
