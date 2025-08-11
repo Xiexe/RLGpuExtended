@@ -134,35 +134,30 @@ void main() {
     totalDistance68 = 0;
   }
 
-  int dis[FACES_PER_THREAD];
+  barrier();
+
   Vertex vA[FACES_PER_THREAD];
   Vertex vB[FACES_PER_THREAD];
   Vertex vC[FACES_PER_THREAD];
 
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    get_face(localId + i, minfo, cameraYaw, cameraPitch, dis[i], vA[i], vB[i], vC[i]);
+  {
+    int dis[FACES_PER_THREAD];
+
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      get_face(localId + i, minfo, cameraYaw, cameraPitch, dis[i], vA[i], vB[i], vC[i]);
+      add_face_prio_distance(localId + i, minfo, vA[i], vB[i], vC[i], dis[i], pos);
+    }
+
+    barrier();
+
+    for (uint i = 0; i < FACES_PER_THREAD; i++) {
+      uint prioAdj;
+      map_face_priority(localId + i, minfo, dis[i], vA[i], prioAdj);
+      insert_face(localId + i, minfo, prioAdj, dis[i]);
+    }
+
+    barrier();
   }
-
-  barrier();
-
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    add_face_prio_distance(localId + i, minfo, vA[i], vB[i], vC[i], dis[i], pos);
-  }
-
-  barrier();
-
-  uint prioAdj[FACES_PER_THREAD];
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    map_face_priority(localId + i, minfo, dis[i], vA[i], prioAdj[i]);
-  }
-
-  barrier();
-
-  for (uint i = 0; i < FACES_PER_THREAD; i++) {
-    insert_face(localId + i, minfo, prioAdj[i], dis[i]);
-  }
-
-  barrier();
 
   const uint MAX_BITFIELD = min(NUM_BITFIELDS, get_bitfield_index(minfo.size)+1);
   for (uint passNumber = 0; passNumber < RADIX_PASS_COUNT; passNumber++) {
