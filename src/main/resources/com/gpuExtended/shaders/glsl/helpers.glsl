@@ -85,6 +85,11 @@ void PopulateSurfaceColor(inout Surface s)
         rgb = gammaToLinear(rgb);
         color = vec4(rgb, fColor.a);
     }
+    /* // TODO: do effectively this but for the above
+    float textureIdx = max(float(fTextureId-1), 0);
+    float alpha = fAlpha * texture(textures, vec3(fUv, float(textureIdx))).a;
+    alpha = mix(fAlpha, alpha, float(fTextureId > 0));
+*/
 
     s.albedo = color;
 }

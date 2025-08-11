@@ -45,11 +45,15 @@ void main() {
     float blueNoise = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0)).a;
     float dither = Dither(gl_FragCoord.xy);
 
-    float alpha = fAlpha;
+    /*float alpha = fAlpha;
     if (fTextureId > 0) {
         int textureIdx = fTextureId - 1;
         alpha = fAlpha * texture(textures, vec3(fUv, float(textureIdx))).a;
-    }
+    }*/
+
+    float textureIdx = max(float(fTextureId-1), 0);
+    float alpha = fAlpha * texture(textures, vec3(fUv, float(textureIdx))).a;
+    alpha = mix(fAlpha, alpha, float(fTextureId > 0));
 
     clip(alpha - dither);
 
