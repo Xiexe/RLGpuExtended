@@ -176,9 +176,25 @@ uint map_face_priority(uint localId, modelinfo minfo, int thisDistance, Vertex t
   return 0;
 }
 
-uint calculate_priority(int distance, uint localId) {
-  distance = clamp(distance, -32768, 32767);
-  return uint((distance + 32768)) << 16 | (~localId & 0xffffu);
+uint calculate_priority(int distance, uint localId, uint adjustedPriority) {
+  #define PRIORITY_BITS 5  // 18 priorities
+  #define DISTANCE_BITS 14 // arbitrary amount of distance bits. Needs to at least fit -2048 to 2048 ints converted to uints, so at least 4096
+  #define LOCALID_BITS 13  // 6144 maximum triangles
+
+  #define PRIOIRTY_MASK ((1 << PRIORITY_BITS) - 1)
+
+  #define DISTANCE_MASK ((1 << DISTANCE_BITS) - 1)
+  #define DISTANCE_ADD (1 << (DISTANCE_BITS - 1)) // Adding the minimum signed integer value to convert to uint
+
+  #define LOCALID_MASK ((1 << LOCALID_BITS) - 1)
+
+
+  distance = clamp(distance, -8192, 8191);
+
+  uint p = adjustedPriority & PRIOIRTY_MASK;
+  uint d = uint(distance + DISTANCE_ADD) & DISTANCE_MASK;
+  uint l = localId & LOCALID_MASK;
+  return (p << (DISTANCE_BITS + LOCALID_BITS)) | (d << LOCALID_BITS) | l;
 }
 
 void insert_face(uint localId, modelinfo minfo, uint adjPrio, int distance, uint prioIdx) {
@@ -190,7 +206,7 @@ void insert_face(uint localId, modelinfo minfo, uint adjPrio, int distance, uint
     // the furthest faces draw first, and have the highest value
     // if two faces have the same distance, the one with the
     // lower id draws first
-    renderPris[baseOff + prioIdx] = calculate_priority(distance, localId);
+    renderPris[baseOff + prioIdx] = calculate_priority(distance, localId, adjPrio);
   }
 }
 
@@ -258,7 +274,7 @@ void calculate_output_offsets(uint localId, modelinfo minfo, uint thisPriority, 
     const uint numOfPriority = totalMappedNum[thisPriority];
     const uint start = priorityOffset;                // index of first face with this priority
     const uint end = priorityOffset + numOfPriority;  // index of last face with this priority
-    uint renderPriority = calculate_priority(thisDistance, localId);
+    uint renderPriority = calculate_priority(thisDistance, localId, thisPriority);
     myOffset = priorityOffset;
     int orientation = flags & 0x7ff;
     int plane = (flags >> BIT_ZHEIGHT) & 3;
