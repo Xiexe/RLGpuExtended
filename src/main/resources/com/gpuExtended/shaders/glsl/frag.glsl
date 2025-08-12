@@ -37,17 +37,16 @@ void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
     float normalizedFogDistance = (fogDepth / drawDistance);
     float maxDistance = drawDistance * TILE_SIZE;
     float fogStart = maxDistance * (1.0 - normalizedFogDistance);
-    float fogFalloff = maxDistance * (1.0 - normalizedFogDistance) * normalizedFogDistance * 2;
-    float fogEnd = fogStart + fogFalloff;
-    float distanceFog = smoothstep(fogStart, fogEnd, distanceToCamera);
+    float fogFalloff = maxDistance * (1.0 - normalizedFogDistance) * normalizedFogDistance;
+    float distanceFog = smoothstep(fogStart - fogFalloff, fogStart + fogFalloff, distanceToCamera);
 
     float fog = mix(0, max(distanceFog, fFogAmount), distanceFogHeightFalloff);
 
     float fogSpeed = time / 1000;
     float noise0 = 0.5 * snoise(vec4(fragPos / (TILE_SIZE), fogSpeed), 1 * 0.25);
     float noise1 = 0.25 * snoise(vec4(fragPos / (TILE_SIZE), -fogSpeed), 2 * 0.25);
-    float noise2 = 0.125 * snoise(vec4(fragPos / (TILE_SIZE), fogSpeed), 4 * 0.25);
-    float noise = (noise0 + noise1 + noise2) * 0.5 + 0.5;
+//    float noise2 = 0.125 * snoise(vec4(fragPos / (TILE_SIZE), fogSpeed), 4 * 0.25);
+    float noise = (noise0 + noise1) * 0.5 + 0.5;
 
     if(smoothBanding > 0)
     {
