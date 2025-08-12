@@ -68,11 +68,11 @@ void main() {
     float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
     float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
-    if (flags.objectType == TYPE_GROUND_OBJECT) {
-        float MAX_DISTANCE_IN_TILES = 32.0 * TILE_SIZE;
-        float fade = smoothstep(MAX_DISTANCE_IN_TILES * 0.8, MAX_DISTANCE_IN_TILES, distanceToPlayer);
-        s.albedo.a *= 1-fade;
-    }
+//    if (flags.objectType == TYPE_GROUND_OBJECT) {
+//        float MAX_DISTANCE_IN_TILES = 32.0 * TILE_SIZE;
+//        float fade = smoothstep(MAX_DISTANCE_IN_TILES * 0.8, MAX_DISTANCE_IN_TILES, distanceToPlayer);
+//        s.albedo.a *= 1-fade;
+//    }
 
     vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
     float tileHeightmap = GetTileHeight(vec3(sceneUV, flags.plane));

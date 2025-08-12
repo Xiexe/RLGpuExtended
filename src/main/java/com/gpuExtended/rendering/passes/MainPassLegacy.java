@@ -476,22 +476,21 @@ public class MainPassLegacy implements IPassBase {
 
         int objectType = offsetModel.getSceneId() & 0xF;
 
-        if (objectType == OBJECT_TYPE.TYPE_GROUND_OBJECT.ordinal()) {
-            LocalPoint playerPos = plugin.client.getLocalPlayer().getLocalLocation();
-            int tileDistanceX = Math.abs(playerPos.getX() - x);
-            int tileDistanceY = Math.abs(playerPos.getY() - z);
-            // Calculate the squared distance to avoid expensive sqrt()
-            long squaredDistance = (long) tileDistanceX * tileDistanceX + (long) tileDistanceY * tileDistanceY;
-
-            // Define the max distance in tiles and square it for comparison
-            final int MAX_DISTANCE_IN_TILES = 32;
-            final long MAX_SQUARED_DISTANCE = (long) MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE * MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE;
-
-            if (squaredDistance > MAX_SQUARED_DISTANCE) {
-                return;
-            }
-        }
-
+//        if (objectType == OBJECT_TYPE.TYPE_GROUND_OBJECT.ordinal()) {
+//            LocalPoint playerPos = plugin.client.getLocalPlayer().getLocalLocation();
+//            int tileDistanceX = Math.abs(playerPos.getX() - x);
+//            int tileDistanceY = Math.abs(playerPos.getY() - z);
+//            // Calculate the squared distance to avoid expensive sqrt()
+//            long squaredDistance = (long) tileDistanceX * tileDistanceX + (long) tileDistanceY * tileDistanceY;
+//
+//            // Define the max distance in tiles and square it for comparison
+//            final int MAX_DISTANCE_IN_TILES = 32;
+//            final long MAX_SQUARED_DISTANCE = (long) MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE * MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE;
+//
+//            if (squaredDistance > MAX_SQUARED_DISTANCE) {
+//                return;
+//            }
+//        }
 
         if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
             if (offsetModel.getFaceCount() <= 0) return;
@@ -531,6 +530,20 @@ public class MainPassLegacy implements IPassBase {
         {
             renderable.setModelHeight(model.getModelHeight());
         }
+
+//        LocalPoint playerPos = plugin.client.getLocalPlayer().getLocalLocation();
+//        int tileDistanceX = Math.abs(playerPos.getX() - x);
+//        int tileDistanceY = Math.abs(playerPos.getY() - z);
+//        // Calculate the squared distance to avoid expensive sqrt()
+//        long squaredDistance = (long) tileDistanceX * tileDistanceX + (long) tileDistanceY * tileDistanceY;
+//
+//        // Define the max distance in tiles and square it for comparison
+//        final int MAX_DISTANCE_IN_TILES = 32;
+//        final long MAX_SQUARED_DISTANCE = (long) MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE * MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE;
+//
+//        if (squaredDistance > MAX_SQUARED_DISTANCE) {
+//            return;
+//        }
 
         int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
         int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
