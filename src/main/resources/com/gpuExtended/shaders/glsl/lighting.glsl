@@ -33,19 +33,17 @@ float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float
         vec2 offset = poissonDisk[i] * penumbraSize;
         float depth = texture(shadowTex, projCoords.xy + offset).r;
 
-        if (currentDepth > depth)
-            shadow += 1.0;
+        shadow += currentDepth > depth ? 1.0 : 0.0;
     }
 
     return shadow / float(shadowSamples);
 }
 
-float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shadowBias) {
-    float fudgeFactor = 4;
+float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shadowBias, float spread) {
     vec2 shadowRes = textureSize(shadowTex, 0);
     float currentDepth = projCoords.z - shadowBias;
-    float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * fudgeFactor;
-    float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize + 0.0008);
+    float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * spread;
+    float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize);
 
     return shadow * (1.0 - fadeOut);
 }
@@ -66,7 +64,7 @@ float PCFShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shad
     return shadow * (1.0 - fadeOut);
 }
 
-float GetShadowMap(sampler2D shadowTex, mat4 projection, vec3 fragPos, float ndl) {
+float GetShadowMap(sampler2D shadowTex, mat4 projection, vec3 fragPos, float ndl, float spread, bool dynamic) {
     vec4 projCoords = projection * vec4(fragPos, 1);
     projCoords = projCoords / projCoords.w;
     projCoords = projCoords * 0.5 + 0.5;
@@ -83,12 +81,12 @@ float GetShadowMap(sampler2D shadowTex, mat4 projection, vec3 fragPos, float ndl
     {
         case ENV_TYPE_DEFAULT:
         if (shadowMode == SHADOW_MODE_PCSS)
-            return 1.0 - PCSSShadows(shadowTex, projCoords, fadeOut, bias);
+            return 1.0 - PCSSShadows(shadowTex, projCoords, fadeOut, bias, spread);
         else
-            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.001);
+            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, spread);
 
         case ENV_TYPE_UNDERGROUND:
-            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.0025);
+            return 1.0 - PCFShadows(shadowTex, projCoords, fadeOut, bias, 0.002 * (MAX_SHADOW_DISTANCE/shadowDistance));
         default:
             return 0.0;
     }

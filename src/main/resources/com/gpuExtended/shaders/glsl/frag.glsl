@@ -80,9 +80,13 @@ void main() {
     float dither = Dither(gl_FragCoord.xy);
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
-    float shadowMap = GetShadowMap(shadowMap, mainLight.projectionMatrix, fPosition, ndl);
-    float dynamicShadowMap = GetShadowMap(dynamicShadowMap, mainLight.projectionMatrixClose, fPosition, ndl);
-    float combinedShadowMap = min(shadowMap, dynamicShadowMap);
+
+    float staticShadowSpread = mix(0.0004, 4.0, shadowMode == SHADOW_MODE_PCSS);
+    float dynamicShadowSpread = mix(0.0004, 4.0, shadowMode == SHADOW_MODE_PCSS) * (MAX_SHADOW_DISTANCE/shadowDistance);
+
+    float staticShadowMap = GetShadowMap(shadowMap, mainLight.projectionMatrix, fPosition, ndl, staticShadowSpread, false);
+    float dynamicShadowMap = GetShadowMap(dynamicShadowMap, mainLight.projectionMatrixClose, fPosition, ndl, dynamicShadowSpread, true);
+    float combinedShadowMap = min(staticShadowMap, dynamicShadowMap);
 
     vec3 diffuse = s.albedo.rgb * ndl;
     vec3 lighting = diffuse * mainLight.color.rgb * combinedShadowMap;

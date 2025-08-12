@@ -80,7 +80,7 @@
 #define TYPE_GRAPHICS_OBJECT 9
 #define TYPE_WALL 10
 
-#define MAX_SHADOW_DISTANCE 100 // 100 tiles.
+#define MAX_SHADOW_DISTANCE 184 // 100 tiles.
 
 #define ENV_TYPE_DEFAULT 0
 #define ENV_TYPE_UNDERGROUND 1
