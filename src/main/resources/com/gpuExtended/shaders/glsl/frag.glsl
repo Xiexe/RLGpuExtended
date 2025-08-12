@@ -65,6 +65,14 @@ void main() {
     PopulateVertexFlags(flags, fFlags);
     PopulateSurfaceColor(s);
     PopulateSurfaceNormal(s, flags, fNormal, fFlatNormal);
+    float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
+    float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
+
+    if (flags.objectType == TYPE_GROUND_OBJECT) {
+        float MAX_DISTANCE_IN_TILES = 32.0 * TILE_SIZE;
+        float fade = smoothstep(MAX_DISTANCE_IN_TILES * 0.8, MAX_DISTANCE_IN_TILES, distanceToPlayer);
+        s.albedo.a *= 1-fade;
+    }
 
     vec2 sceneUV = (fPosition.xz + (SCENE_OFFSET * TILE_SIZE)) / (TILE_SIZE * EXTENDED_SCENE_SIZE);
     float tileHeightmap = GetTileHeight(vec3(sceneUV, flags.plane));
@@ -75,9 +83,6 @@ void main() {
     float shadowMap = GetShadowMap(shadowMap, mainLight.projectionMatrix, fPosition, ndl);
     float dynamicShadowMap = GetShadowMap(dynamicShadowMap, mainLight.projectionMatrixClose, fPosition, ndl);
     float combinedShadowMap = min(shadowMap, dynamicShadowMap);
-
-    float distanceToPlayer = length(playerPosition.xy - fPosition.xz);
-    float distanceToCamera = length(cameraPosition.xyz - fPosition.xyz);
 
     vec3 diffuse = s.albedo.rgb * ndl;
     vec3 lighting = diffuse * mainLight.color.rgb * combinedShadowMap;
@@ -109,5 +114,7 @@ void main() {
     outColor = mix(outColor, vec4(vec3(0.25), 1.0), wireAlpha);
     FragColor = outColor;
 
+//    bool matches = (flags.objectType == TYPE_OBJECT);
+//    FragColor = vec4(vec3(flags.objectType == TYPE_GROUND_OBJECT), 1.0);
 //    FragColor = vec4(vec3(combinedShadowMap), 1);
 }

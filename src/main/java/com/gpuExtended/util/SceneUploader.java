@@ -92,7 +92,8 @@ public class SceneUploader
 	{
 		Stopwatch stopwatchEntire = Stopwatch.createStarted();
 		Stopwatch stopwatch = Stopwatch.createStarted();
-		sceneId++;
+		sceneId = (int) System.nanoTime();
+
 		offset = 0;
 		uvoffset = 0;
 		uniqueModels = 0;
@@ -118,6 +119,7 @@ public class SceneUploader
 
 		stopwatchEntire.stop();
 		log.debug("Scene Upload Total Time: {}", stopwatchEntire);
+		log.info("Scene ID: {}", sceneId);
 	}
 
 	private void PopulateSceneGeometry(Scene scene, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
@@ -163,7 +165,7 @@ public class SceneUploader
 				sceneTilePaint.setUvBufferOffset(-1);
 			}
 
-			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, bridge != null, isUnderBridge, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
+			int vertexCount = PushTerrainTile(scene, sceneTilePaint, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, tile.getRenderLevel(), tilePoint.getX(), tilePoint.getY(), 0, 0);
 			int realPlane = GetTileRealPlane(tilePoint.getX() + SCENE_OFFSET, tilePoint.getY() + SCENE_OFFSET, tile.getRenderLevel(), scene);
 			int isBridge = bridge != null ? 1 : 0;
 			int isUnderneathBridge = isUnderBridge ? 1 : 0;
@@ -222,13 +224,13 @@ public class SceneUploader
 			Renderable renderable1 = wallObject.getRenderable1();
 			if (renderable1 instanceof Model)
 			{
-				PushStaticModel((Model) renderable1, tile, wallConfig, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+				PushStaticModel((Model) renderable1, tile, OBJECT_TYPE.TYPE_WALL, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 
 			Renderable renderable2 = wallObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				PushStaticModel((Model) renderable2, tile, wallConfig, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+				PushStaticModel((Model) renderable2, tile, OBJECT_TYPE.TYPE_WALL, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -238,7 +240,7 @@ public class SceneUploader
 			Renderable renderable = groundObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				PushStaticModel((Model) renderable, tile, groundObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+				PushStaticModel((Model) renderable, tile, OBJECT_TYPE.TYPE_GROUND_OBJECT, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -248,13 +250,13 @@ public class SceneUploader
 			Renderable renderable = decorativeObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				PushStaticModel((Model) renderable, tile, decorativeObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+				PushStaticModel((Model) renderable, tile, OBJECT_TYPE.TYPE_DECORATION, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 
 			Renderable renderable2 = decorativeObject.getRenderable2();
 			if (renderable2 instanceof Model)
 			{
-				PushStaticModel((Model) renderable2, tile, decorativeObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+				PushStaticModel((Model) renderable2, tile, OBJECT_TYPE.TYPE_DECORATION, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 
@@ -270,20 +272,25 @@ public class SceneUploader
 			Renderable renderable = gameObject.getRenderable();
 			if (renderable instanceof Model)
 			{
-				PushStaticModel((Model) gameObject.getRenderable(), tile, gameObject.getConfig(), vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
+				PushStaticModel((Model) gameObject.getRenderable(), tile, OBJECT_TYPE.TYPE_GAME_OBJECT, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer);
 			}
 		}
 	}
 
-	private void PushStaticModel(Model model, Tile tile, int modelConfig, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
+	private void PushStaticModel(Model model, Tile tile, OBJECT_TYPE type, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
+		// Pack the object type into the last 4 bits of sceneId. We use this in the shader, and this is the only place we have access to it.
+		// Scene ID itself is just any reasonably random number. In this case, its System.nanoTime, along with the object type squished into the last 4 bits.
+		int packedSceneId = (sceneId & ~0xF) | (type.ordinal() & 0xF);
+//		log.info("Type: {}", type.ordinal());
+
 		// deduplicate hillskewed models
 		if (model.getUnskewedModel() != null)
 		{
 			model = model.getUnskewedModel();
 		}
 
-		if (model.getSceneId() == sceneId)
+		if (model.getSceneId() == packedSceneId)
 		{
 			return; // model has already been uploaded
 		}
@@ -297,11 +304,14 @@ public class SceneUploader
 		{
 			model.setUvBufferOffset(-1);
 		}
-		model.setSceneId(sceneId);
+
+		// Set the new packed ID on the model. This is used to make sure we don't upload the same model multiple times.
+		// and will be passed to the shader.
+		model.setSceneId(packedSceneId);
 		uniqueModels++;
 
 		Point tilePoint = tile.getSceneLocation();
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, tilePoint.getX(), tilePoint.getY(), modelConfig, false, true, staticSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, false);
 		offset += vertexCount;
 		if (model.getFaceTextures() != null)
 		{
@@ -311,12 +321,12 @@ public class SceneUploader
 
 	public int PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, 0, 0, modelConfig, isNPC, false, dynamicSharedVertexMap);
+		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, isNPC);
 		return vertexCount;
 	}
 
 	// Map Tiles
-	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, boolean hasBridge, boolean isUnderBridge, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
+	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
 	{
 		final int[][][] tileHeights = scene.getTileHeights();
 
@@ -562,12 +572,7 @@ public class SceneUploader
 									  GpuFloatBuffer uvBuffer,
 									  GpuFloatBuffer normalBuffer,
 									  GpuIntBuffer flagsBuffer,
-									  int tileX,
-									  int tileY,
-									  int modelConfig,
-									  boolean isNPC,
-									  boolean isStatic,
-									  ArrayListMultimap<Vector3, Integer> sharedVertexMap)
+									  boolean isNPC)
 	{
 		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
 		vertexBuffer.ensureCapacity(triCount * 12);

@@ -21,6 +21,9 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.gpuExtended.util.SceneUploader.*;
@@ -106,6 +109,7 @@ public class ShadowPass implements IPassBase {
         GL30.glBindVertexArray(0);
         glEnableVertexAttribArray(0);
         log.info("[Shadow Pass] Initialized Shadow Render Pass");
+
     }
 
     private void GatherSceneGeometry(Scene scene, int sceneId) {
@@ -136,6 +140,20 @@ public class ShadowPass implements IPassBase {
                     }
                     if (shouldSkipTile)
                         continue;
+
+                    SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
+                    if (sceneTilePaint != null)
+                    {
+                        TileContext tileContext = new TileContext(scene, tile);
+                        vertexCount += PushTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
+                    }
+
+                    SceneTileModel sceneTileModel = tile.getSceneTileModel();
+                    if (sceneTileModel != null)
+                    {
+                        TileContext tileContext = new TileContext(scene, tile);
+                        vertexCount += PushComplexTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
+                    }
 
                     Tile bridge = tile.getBridge();
                     if (bridge != null)
@@ -184,20 +202,6 @@ public class ShadowPass implements IPassBase {
                     // Some objects we only want to populate if its above the player, like trees,
                     // because otherwise we'd need to re-populate the buffers when the tree is cut down or re-grows.
                     if (z > plugin.client.getLocalPlayer().getWorldLocation().getPlane()) {
-                        SceneTilePaint sceneTilePaint = tile.getSceneTilePaint();
-                        if (sceneTilePaint != null)
-                        {
-                            TileContext tileContext = new TileContext(scene, tile);
-                            vertexCount += PushTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
-                        }
-
-                        SceneTileModel sceneTileModel = tile.getSceneTileModel();
-                        if (sceneTileModel != null)
-                        {
-                            TileContext tileContext = new TileContext(scene, tile);
-                            vertexCount += PushComplexTile(tileContext, workingShadowVertexBuffer, workingShadowUvBuffer);
-                        }
-
                         GroundObject groundObject = tile.getGroundObject();
                         if (groundObject != null)
                         {
@@ -583,7 +587,7 @@ public class ShadowPass implements IPassBase {
             return 0;
         }
 
-        if (offsetModel.getSceneId() != context.sceneId)
+        if ((model.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF))
              return 0;
 
         final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);

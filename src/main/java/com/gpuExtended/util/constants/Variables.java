@@ -8,14 +8,30 @@ public class Variables {
     public enum OBJECT_TYPE {
         TYPE_UNKNOWN,
         TYPE_TERRAIN,
-        TYPE_DYNAMICMODEL,
-        TYPE_STATICMODEL,
-        TYPE_GAMEOBJECT,
+        TYPE_PLAYER,
+        TYPE_NPC,
+        TYPE_ANIMATED_MODEL,
+        TYPE_STATIC_MODEL,
+        TYPE_GAME_OBJECT,
         TYPE_DECORATION,
         TYPE_GROUND_OBJECT,
         TYPE_GRAPHICS_OBJECT,
         TYPE_WALL
     }
+
+    public static final int TYPE_PLAYER = 0;
+    public static final int TYPE_NPC = 1;
+    public static final int TYPE_OBJECT = 2;
+    public static final int TYPE_GROUND_ITEM = 3;
+
+    public static final int TYPE_PROJECTILE = 4;
+    public static final int TYPE_GRAPHICS_OBJECT = 5;
+    public static final int TYPE_UNKNOWN = 0xF;
+
+    public static final int TYPE_WALL_OBJECT = 1 << 4 | TYPE_OBJECT;
+    public static final int TYPE_GROUND_OBJECT = 2 << 4 | TYPE_OBJECT;
+    public static final int TYPE_DECORATIVE_OBJECT = 3 << 4 | TYPE_OBJECT;
+    public static final int TYPE_GAME_OBJECT = 4 << 4 | TYPE_OBJECT;
 
     public static final int BIT_ZHEIGHT = 24;
     public static final int BIT_HILLSKEW = 26;

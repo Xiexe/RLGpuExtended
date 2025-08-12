@@ -18,6 +18,7 @@ import com.gpuExtended.util.contexts.ComputeBufferContext;
 import com.gpuExtended.util.contexts.VertexBufferContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.GameStateChanged;
 
 import javax.inject.Inject;
@@ -434,6 +435,11 @@ public class MainPassLegacy implements IPassBase {
         if(objectId == 53882) return;
         if(objectId == 42260) return;
 
+        if (renderable instanceof GameObject)
+        {
+            log.info("Rendering GameObject: {} at ({}, {}, {}) with hash: {}", ((GameObject) renderable), x, y, z, hash);
+        }
+
         if (renderable instanceof Model)
         {
             model = (Model) renderable;
@@ -453,7 +459,8 @@ public class MainPassLegacy implements IPassBase {
             offsetModel = model;
         }
 
-        if (offsetModel.getSceneId() == plugin.sceneId)
+        // See SceneUploader.PushStaticModel to understand what this is doing.
+        if ((offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF))
         {
             PushStaticModelToComputeBuffer(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
         }
@@ -466,6 +473,25 @@ public class MainPassLegacy implements IPassBase {
     private void PushStaticModelToComputeBuffer(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash) {
         plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
         assert model == renderable;
+
+        int objectType = offsetModel.getSceneId() & 0xF;
+
+        if (objectType == OBJECT_TYPE.TYPE_GROUND_OBJECT.ordinal()) {
+            LocalPoint playerPos = plugin.client.getLocalPlayer().getLocalLocation();
+            int tileDistanceX = Math.abs(playerPos.getX() - x);
+            int tileDistanceY = Math.abs(playerPos.getY() - z);
+            // Calculate the squared distance to avoid expensive sqrt()
+            long squaredDistance = (long) tileDistanceX * tileDistanceX + (long) tileDistanceY * tileDistanceY;
+
+            // Define the max distance in tiles and square it for comparison
+            final int MAX_DISTANCE_IN_TILES = 32;
+            final long MAX_SQUARED_DISTANCE = (long) MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE * MAX_DISTANCE_IN_TILES * LOCAL_TILE_SIZE;
+
+            if (squaredDistance > MAX_SQUARED_DISTANCE) {
+                return;
+            }
+        }
+
 
         if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
             if (offsetModel.getFaceCount() <= 0) return;
@@ -488,7 +514,7 @@ public class MainPassLegacy implements IPassBase {
             buffer.put(FLAG_SCENE_BUFFER | flags);
             buffer.put(x).put(y).put(z);
             buffer.put(exFlags);
-            buffer.put(GetObjectType(model, false).ordinal());
+            buffer.put(objectType);
             buffer.put(-1);
             buffer.put(GetModelConfig(hash, tileX, tileY, z));
 
@@ -515,6 +541,8 @@ public class MainPassLegacy implements IPassBase {
             int exFlags = GetExFlags(hash, tileX, tileY, z, true);
             boolean hasUv = model.getFaceTextures() != null;
             boolean isNPC = renderable instanceof NPC;
+            boolean isPlayer = renderable instanceof Player;
+            int objectType = isNPC ? OBJECT_TYPE.TYPE_NPC.ordinal() : (isPlayer ? OBJECT_TYPE.TYPE_PLAYER.ordinal() : OBJECT_TYPE.TYPE_ANIMATED_MODEL.ordinal());
 
             int vertexCount = plugin.sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
 
@@ -528,7 +556,7 @@ public class MainPassLegacy implements IPassBase {
             buffer.put(flags);
             buffer.put(x).put(y).put(z);
             buffer.put(exFlags);
-            buffer.put(GetObjectType(model, true).ordinal());
+            buffer.put(objectType);
             buffer.put(-1);
             buffer.put(GetModelConfig(hash, x, y, z));
 
@@ -542,30 +570,37 @@ public class MainPassLegacy implements IPassBase {
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
     }
 
-    private OBJECT_TYPE GetObjectType(Model m, boolean isDynamicModel) {
-        if (m instanceof WallObject)
-            return OBJECT_TYPE.TYPE_WALL;
+    private OBJECT_TYPE GetObjectType(Renderable renderable, boolean isDynamicModel, long hash) {
+//        int type = GetTypeFromHash(hash);
 
-        if (m instanceof DecorativeObject)
-            return OBJECT_TYPE.TYPE_DECORATION;
+        OBJECT_TYPE convertedType = OBJECT_TYPE.TYPE_UNKNOWN;
 
-        if (m instanceof GameObject)
-            return OBJECT_TYPE.TYPE_GAMEOBJECT;
-
-        if (m instanceof GroundObject)
-            return OBJECT_TYPE.TYPE_GROUND_OBJECT;
-
-        if (m instanceof GraphicsObject)
-            return OBJECT_TYPE.TYPE_GRAPHICS_OBJECT;
-
-        if (m instanceof Model) {
-            if (isDynamicModel)
-                return OBJECT_TYPE.TYPE_DYNAMICMODEL;
-            else
-                return OBJECT_TYPE.TYPE_STATICMODEL;
+        if (renderable instanceof GameObject) {
+            log.info("NPC!");
         }
 
-       return OBJECT_TYPE.TYPE_UNKNOWN;
+
+//        if (type == TYPE_WALL_OBJECT)
+//            convertedType = OBJECT_TYPE.TYPE_WALL;
+//
+//        if (type == TYPE_DECORATIVE_OBJECT)
+//            convertedType = OBJECT_TYPE.TYPE_DECORATION;
+//
+//        if (type == TYPE_GAME_OBJECT)
+//            convertedType = OBJECT_TYPE.TYPE_GAMEOBJECT;
+//
+//        if (type == TYPE_GROUND_OBJECT)
+//            convertedType = OBJECT_TYPE.TYPE_GROUND_OBJECT;
+//
+//        if (type == TYPE_GRAPHICS_OBJECT)
+//            convertedType = OBJECT_TYPE.TYPE_GRAPHICS_OBJECT;
+//
+//        log.info("Type {}", convertedType);
+        return convertedType;
+    }
+
+    private int GetTypeFromHash(long hash) {
+        return (int) (hash >> 16 & 7);
     }
 
     private int GetModelPackedFlags(long hash, Model model, Model offsetModel, int orientation) {
