@@ -24,6 +24,13 @@ public class GPUExtendedTest
 					Props.set("resource-path", "src/main/resources");
 				} else {
 					Props.DEVELOPMENT = false;
+					String envPath = System.getenv("GPU_EXTENDED_PATH");
+					if (envPath != null && !envPath.isEmpty()) {
+						Props.set("resource-path", envPath);
+						System.out.println("Resource path set to " + envPath);
+					} else {
+						System.out.println("No developer resource path found");
+					}
 				}
 			}
 		}
