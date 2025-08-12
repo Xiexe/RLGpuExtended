@@ -474,14 +474,14 @@ public interface GpuExtendedConfig extends Config
 		)
 		@ConfigItem(
 				keyName = "shadowDistance",
-				name = "Shadow Distance",
-				description = "How far to draw shadows. Distance is from the camera, in tiles. Higher values cost more to render.",
+				name = "Dynamic Shadow Distance",
+				description = "How far to draw dynamic shadows around the player. Does not affect scene shadows.",
 				position = 100,
 				section = lightSettings
 		)
 		default int shadowDistance()
 		{
-			return 75;
+			return 50;
 		}
 
 		@Range(
