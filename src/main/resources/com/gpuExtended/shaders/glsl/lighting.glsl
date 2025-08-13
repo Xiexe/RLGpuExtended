@@ -1,5 +1,6 @@
 const float bias = 0.0008;
 const float lightSize = 0.01;
+const int blockerSamples = 12;
 const int shadowSamples = 4;
 
 float LightAttenuation(float dist, float radius) {
@@ -10,7 +11,7 @@ float PCSSEstimatePenumbraSize(sampler2D shadowTex, vec4 projCoords, float curre
     float blockerDepthSum = 0.0;
     int blockerCount = 0;
 
-    for (int i = 0; i < shadowSamples; i++) {
+    for (int i = 0; i < blockerSamples; i++) {
         vec2 offset = poissonDisk[i] * searchRadius;
         float depth = texture(shadowTex, projCoords.xy + offset).r;
 
@@ -30,7 +31,7 @@ float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float
     float shadow = 0.0;
 
     // Stable per-pixel noise in shadow UV space
-    vec4 n = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0));
+    vec4 n = texture(blueNoiseTexture, (gl_FragCoord.xy) / textureSize(blueNoiseTexture, 0));
 
     // Per-pixel rotation of Poisson disk
     vec4 u = normalize(n * 2.0 - 1.0 + 1e-5);  // map to [-1,1], avoid zero vector
@@ -64,7 +65,7 @@ float PCFShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shad
     float currentDepth = projCoords.z - shadowBias;
 
     // Stable per-pixel noise in shadow UV space
-    vec4 n = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0));
+    vec4 n = texture(blueNoiseTexture, (gl_FragCoord.xy) / textureSize(blueNoiseTexture, 0));
 
     // Per-pixel rotation of Poisson disk
     vec4 u = normalize(n * 2.0 - 1.0 + 1e-5);  // map to [-1,1], avoid zero vector
