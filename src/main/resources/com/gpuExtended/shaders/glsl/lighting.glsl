@@ -1,6 +1,6 @@
 const float bias = 0.0008;
 const float lightSize = 0.01;
-const int shadowSamples = 12;
+const int shadowSamples = 4;
 
 float LightAttenuation(float dist, float radius) {
     return pow(clamp(1.0 - (dist * dist) / (radius * radius), 0.0, 1.0), 5);
@@ -33,12 +33,12 @@ float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float
     vec4 n = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0));
 
     // Per-pixel rotation of Poisson disk
-    float angle = n.r * 6.28318530718;
-    float s = sin(angle), c = cos(angle);
-    mat2 rot = mat2(c, -s, s, c);
+    vec4 u = normalize(n * 2.0 - 1.0 + 1e-5);  // map to [-1,1], avoid zero vector
+    mat2 rot = mat2(u.x, -u.y,
+                    u.y,  u.x);
 
     // Small UV-space jitter proportional to spread (resolution-invariant)
-    vec2 centerJitter = n.gb * penumbraSize;
+    vec2 centerJitter = (n.gb - 0.5) * penumbraSize * 0.25;
 
     for (int i = 0; i < shadowSamples; i++) {
         vec2 offset = rot * poissonDisk[i] * penumbraSize + centerJitter;
@@ -67,12 +67,12 @@ float PCFShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shad
     vec4 n = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0));
 
     // Per-pixel rotation of Poisson disk
-    float angle = n.r * 6.28318530718;
-    float s = sin(angle), c = cos(angle);
-    mat2 rot = mat2(c, -s, s, c);
+    vec4 u = normalize(n * 2.0 - 1.0 + 1e-5);  // map to [-1,1], avoid zero vector
+    mat2 rot = mat2(u.x, -u.y,
+                    u.y,  u.x);
 
     // Small UV-space jitter proportional to spread (resolution-invariant)
-    vec2 centerJitter = n.gb * spread;
+    vec2 centerJitter = (n.gb - 0.5) * spread * 0.25;
 
     for (int i = 0; i < shadowSamples; ++i) {
         vec2 offset = rot * poissonDisk[i] * spread + centerJitter;
