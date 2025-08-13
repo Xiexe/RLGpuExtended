@@ -321,7 +321,9 @@ public class ShadowPass implements IPassBase {
     @Override
     public void OnDrawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY) {}
     @Override
-    public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {}
+    public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {
+        // TODO:: Gather all dynamic models (NPCS, Players, Projectiles, animated objects, and specific "static" objects, like trees)
+    }
     @Override
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {}
 

@@ -80,8 +80,8 @@ void main() {
     vec2 resolution = vec2(float(screenWidth), float(screenHeight));
     float ndl = max(dot(s.normal.xyz, mainLight.pos.xyz), 0);
 
-    float staticShadowSpread = mix(0.0004, 1.5, shadowMode == SHADOW_MODE_PCSS);
-    float dynamicShadowSpread = mix(0.0004, 1.5, shadowMode == SHADOW_MODE_PCSS) * (MAX_SHADOW_DISTANCE/shadowDistance);
+    float staticShadowSpread = mix(0.0004, 3.0, shadowMode == SHADOW_MODE_PCSS);
+    float dynamicShadowSpread = mix(0.0004, 3.0, shadowMode == SHADOW_MODE_PCSS) * (MAX_SHADOW_DISTANCE/shadowDistance);
 
     float staticShadowMap = GetShadowMap(shadowMap, mainLight.projectionMatrix, fPosition, ndl, staticShadowSpread, false);
     float dynamicShadowMap = GetShadowMap(dynamicShadowMap, mainLight.projectionMatrixClose, fPosition, ndl, dynamicShadowSpread, true);
