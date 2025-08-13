@@ -688,5 +688,29 @@ public interface GpuExtendedConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+			keyName = "recordProfile",
+			name = "Record Profile",
+			description = "",
+			position = 5,
+			section = debugging
+	)
+	default boolean recordProfile()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "recordOneFrame",
+			name = "Record One Frame Profile",
+			description = "",
+			position = 6,
+			section = debugging
+	)
+	default boolean recordOneFrame()
+	{
+		return false;
+	}
 	// </editor-fold>
 }

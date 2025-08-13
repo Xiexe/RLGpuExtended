@@ -24,6 +24,7 @@ import com.gpuExtended.util.deserializers.AreaDeserializer;
 import com.gpuExtended.util.deserializers.ColorDeserializer;
 import com.gpuExtended.util.deserializers.LightDeserializer;
 import com.gpuExtended.util.deserializers.VectorDeserializer;
+import com.gpuExtended.util.spall.Spall;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -147,6 +148,8 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 
 	@Inject
 	public CompositePass compositePass;
+	@Inject
+	public ConfigManager configManager;
 
 	public enum ComputeMode
 	{
@@ -502,6 +505,15 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 							shadowPass.getFrameBuffer().resize(res, res);
 							shadowPass.getDynamicFrameBuffer().resize(res, res);
 						}
+					}
+				});
+			}
+			else if (configChanged.getKey().equals("recordProfile")) {
+				clientThread.invokeLater(()->{
+					if (config.recordProfile()) {
+						Spall.StartProfile();
+					} else {
+						Spall.SaveProfile();
 					}
 				});
 			}

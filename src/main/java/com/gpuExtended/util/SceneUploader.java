@@ -18,6 +18,7 @@ import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.*;
 import com.gpuExtended.scene.EnvironmentManager;
+import com.gpuExtended.util.spall.ProfileFrame;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -321,8 +322,10 @@ public class SceneUploader
 
 	public int PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, isNPC);
-		return vertexCount;
+		try (ProfileFrame p = new ProfileFrame("PushDynamicModel")) {
+			int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, isNPC);
+			return vertexCount;
+		}
 	}
 
 	// Map Tiles

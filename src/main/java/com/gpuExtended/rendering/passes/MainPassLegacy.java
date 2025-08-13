@@ -1,6 +1,7 @@
 package com.gpuExtended.rendering.passes;
 
 import com.google.inject.Singleton;
+import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.overlays.PerformanceOverlay;
@@ -16,6 +17,8 @@ import com.gpuExtended.util.GpuFloatBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
 import com.gpuExtended.util.contexts.ComputeBufferContext;
 import com.gpuExtended.util.contexts.VertexBufferContext;
+import com.gpuExtended.util.spall.ProfileFrame;
+import com.gpuExtended.util.spall.Spall;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -142,6 +145,7 @@ public class MainPassLegacy implements IPassBase {
     @Override
     public void OnPreRenderFrame() {
 //        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+        Spall.BeginFrame("OnPreRenderFrame");
         final GameState gameState = plugin.client.getGameState();
         if (gameState.getState() < GameState.LOGGED_IN.getState()) {
             frameBuffer.clearFramebuffer();
@@ -150,81 +154,83 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnRenderFrame() {
-        plugin.PushDebug(plugin.shaders.mainPassShader);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glDisable(GL_DEPTH_TEST);
+        try (ProfileFrame p = new ProfileFrame("OnRenderFrame")) {
+            plugin.PushDebug(plugin.shaders.mainPassShader);
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+            glDisable(GL_DEPTH_TEST);
 
-        glBindVertexArray(vertexBufferContext.vertexArrayObjectId);
+            glBindVertexArray(vertexBufferContext.vertexArrayObjectId);
 
-        glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
-        frameBuffer.bind();
+            glViewport(0, 0, frameBuffer.getTexture().getWidth(), frameBuffer.getTexture().getHeight());
+            frameBuffer.bind();
 
-        plugin.skybox.Render(); // Render the skybox first.
+            plugin.skybox.Render(); // Render the skybox first.
 
-        glUseProgram(plugin.shaders.mainPassShader.id());
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        ShaderVariables shaderVars = plugin.uniforms.GetUniforms(plugin.shaders.mainPassShader.id());
+            glUseProgram(plugin.shaders.mainPassShader.id());
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
+            ShaderVariables shaderVars = plugin.uniforms.GetUniforms(plugin.shaders.mainPassShader.id());
 
-        glUniform1i(shaderVars.Textures, 1); // texture sampler array is bound to texture1
-        if (plugin.texAnims != null) {
-            glUniform2fv(shaderVars.TextureAnimations, plugin.texAnims);
+            glUniform1i(shaderVars.Textures, 1); // texture sampler array is bound to texture1
+            if (plugin.texAnims != null) {
+                glUniform2fv(shaderVars.TextureAnimations, plugin.texAnims);
+            }
+
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.getFrameBuffer().getTexture().getId());
+            glUniform1i(shaderVars.ShadowMap, 2);
+
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.getDynamicFrameBuffer().getTexture().getId());
+            glUniform1i(shaderVars.DynamicShadowMap, 3);
+
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileFillColorTexture.getId());
+            glUniform1i(shaderVars.TileMarkerFillColorMap, 4);
+
+            glActiveTexture(GL_TEXTURE5);
+            glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileBorderColorTexture.getId());
+            glUniform1i(shaderVars.TileMarkerBorderColorMap, 5);
+
+            glActiveTexture(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileSettingsTexture.getId());
+            glUniform1i(shaderVars.TileMarkerSettingsMap, 6);
+
+            glActiveTexture(GL_TEXTURE7);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
+            glUniform1i(shaderVars.TileHeightMap, 7);
+
+            glActiveTexture(GL_TEXTURE8);
+            glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
+            glUniform1i(shaderVars.BlueNoiseTexture, 8);
+
+            glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
+            glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
+            glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
+            glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
+            glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
+            glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
+
+            glUniformMatrix4fv(shaderVars.DepthProjectionMatrix, false, plugin.environmentManager.mainLight.projectionMatrixClose);
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, plugin.lightBinsBuffer.glBufferId);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, plugin.lightBinsBuffer.glBufferId);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+            glEnable(GL_CULL_FACE);
+            glEnable(GL_BLEND);
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            glDrawArrays(GL_TRIANGLES, 0, computeBufferContext.totalVertices);
+
+            glDisable(GL_BLEND);
+            glDisable(GL_CULL_FACE);
+            glActiveTexture(GL_TEXTURE0);
+            frameBuffer.unbind();
+            glUseProgram(0);
+            plugin.PopDebug();
         }
-
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.getFrameBuffer().getTexture().getId());
-        glUniform1i(shaderVars.ShadowMap, 2);
-
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, plugin.shadowPass.getDynamicFrameBuffer().getTexture().getId());
-        glUniform1i(shaderVars.DynamicShadowMap, 3);
-
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileFillColorTexture.getId());
-        glUniform1i(shaderVars.TileMarkerFillColorMap, 4);
-
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileBorderColorTexture.getId());
-        glUniform1i(shaderVars.TileMarkerBorderColorMap, 5);
-
-        glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_2D, plugin.tileMarkerManager.tileSettingsTexture.getId());
-        glUniform1i(shaderVars.TileMarkerSettingsMap, 6);
-
-        glActiveTexture(GL_TEXTURE7);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, plugin.tileHeightTex);
-        glUniform1i(shaderVars.TileHeightMap, 7);
-
-        glActiveTexture(GL_TEXTURE8);
-        glBindTexture(GL_TEXTURE_2D, plugin.uniforms.getBlueNoiseTexture().getId());
-        glUniform1i(shaderVars.BlueNoiseTexture, 8);
-
-        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.CameraBlock, CAMERA_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.PlayerBlock, PLAYER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.EnvironmentBlock, ENVIRONMENT_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.TileMarkerBlock, TILEMARKER_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.SystemInfoBlock, SYSTEMINFO_BUFFER_BINDING_ID);
-        glUniformBlockBinding(plugin.shaders.mainPassShader.id(), shaderVars.ConfigBlock, CONFIG_BUFFER_BINDING_ID);
-
-        glUniformMatrix4fv(shaderVars.DepthProjectionMatrix, false, plugin.environmentManager.mainLight.projectionMatrixClose);
-
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, plugin.lightBinsBuffer.glBufferId);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, plugin.lightBinsBuffer.glBufferId);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_BLEND);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-        glDrawArrays(GL_TRIANGLES, 0, computeBufferContext.totalVertices);
-
-        glDisable(GL_BLEND);
-        glDisable(GL_CULL_FACE);
-        glActiveTexture(GL_TEXTURE0);
-        frameBuffer.unbind();
-        glUseProgram(0);
-        plugin.PopDebug();
     }
 
     @Override
@@ -244,6 +250,7 @@ public class MainPassLegacy implements IPassBase {
         computeBufferContext.totalDynamicUvs = 0;
 
 //        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+        Spall.EndFrame(); // OnPreRenderFrame
     }
 
     @Override
@@ -253,35 +260,39 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnSceneLoadStart(Scene scene) {
-        GpuIntBuffer newVertexBuffer = new GpuIntBuffer();
-        GpuFloatBuffer newUvBuffer = new GpuFloatBuffer();
-        GpuFloatBuffer newNormalBuffer = new GpuFloatBuffer();
-        GpuIntBuffer newFlagsBuffer = new GpuIntBuffer();
+        try (ProfileFrame p = new ProfileFrame("OnSceneLoadStart")) {
+            GpuIntBuffer newVertexBuffer = new GpuIntBuffer();
+            GpuFloatBuffer newUvBuffer = new GpuFloatBuffer();
+            GpuFloatBuffer newNormalBuffer = new GpuFloatBuffer();
+            GpuIntBuffer newFlagsBuffer = new GpuIntBuffer();
 
-        plugin.sceneUploader.UploadScene(scene, newVertexBuffer, newUvBuffer, newNormalBuffer, newFlagsBuffer);
+            plugin.sceneUploader.UploadScene(scene, newVertexBuffer, newUvBuffer, newNormalBuffer, newFlagsBuffer);
 
-        newVertexBuffer.flip();
-        newUvBuffer.flip();
-        newNormalBuffer.flip();
-        newFlagsBuffer.flip();
+            newVertexBuffer.flip();
+            newUvBuffer.flip();
+            newNormalBuffer.flip();
+            newFlagsBuffer.flip();
 
-        nextSceneVertexBufferContext.vertexBuffer = newVertexBuffer;
-        nextSceneVertexBufferContext.uvBuffer = newUvBuffer;
-        nextSceneVertexBufferContext.normalBuffer = newNormalBuffer;
-        nextSceneVertexBufferContext.flagsBuffer = newFlagsBuffer;
+            nextSceneVertexBufferContext.vertexBuffer = newVertexBuffer;
+            nextSceneVertexBufferContext.uvBuffer = newUvBuffer;
+            nextSceneVertexBufferContext.normalBuffer = newNormalBuffer;
+            nextSceneVertexBufferContext.flagsBuffer = newFlagsBuffer;
+        }
     }
 
     @Override
     public void OnSceneLoadFinished(Scene scene) {
-        plugin.updateBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
-        plugin.updateBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
-        plugin.updateBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
-        plugin.updateBuffer(computeBufferContext.staticFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.flagsBuffer.getBuffer(), GL_STATIC_COPY);
+        try (ProfileFrame p = new ProfileFrame("OnSceneLoadFinished")) {
+            plugin.updateBuffer(computeBufferContext.staticVertexInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.vertexBuffer.getBuffer(), GL_STATIC_COPY);
+            plugin.updateBuffer(computeBufferContext.staticUvInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.uvBuffer.getBuffer(), GL_STATIC_COPY);
+            plugin.updateBuffer(computeBufferContext.staticNormalInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.normalBuffer.getBuffer(), GL_STATIC_COPY);
+            plugin.updateBuffer(computeBufferContext.staticFlagsInBuffer, GL_ARRAY_BUFFER, nextSceneVertexBufferContext.flagsBuffer.getBuffer(), GL_STATIC_COPY);
 
-        nextSceneVertexBufferContext.vertexBuffer = null;
-        nextSceneVertexBufferContext.uvBuffer = null;
-        nextSceneVertexBufferContext.normalBuffer = null;
-        nextSceneVertexBufferContext.flagsBuffer = null;
+            nextSceneVertexBufferContext.vertexBuffer = null;
+            nextSceneVertexBufferContext.uvBuffer = null;
+            nextSceneVertexBufferContext.normalBuffer = null;
+            nextSceneVertexBufferContext.flagsBuffer = null;
+        }
     }
 
     @Override
@@ -295,6 +306,10 @@ public class MainPassLegacy implements IPassBase {
         // viewport buffer.
         computeBufferContext.totalVertices = 0;
         plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+        if (plugin.config.recordOneFrame() && !Spall.recordingProfile) {
+            Spall.StartProfile();
+        }
+        Spall.BeginFrame("OnDrawScene");
     }
 
     @Override
@@ -343,6 +358,11 @@ public class MainPassLegacy implements IPassBase {
         DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES);
 
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
+        Spall.EndFrame(); // OnDrawScene
+        if (plugin.config.recordOneFrame() && Spall.recordingProfile) {
+            Spall.SaveProfile();
+            plugin.configManager.unsetConfiguration(GpuExtendedConfig.GROUP, "recordOneFrame");
+        }
     }
 
     @Override
@@ -357,124 +377,121 @@ public class MainPassLegacy implements IPassBase {
     @Override
     // Draw call for simple tiles. 6 vertices, 2 triangles.
     public void OnDrawSceneTile(Scene scene, SceneTilePaint paint, int plane, int tileX, int tileY) {
-        if (paint.getBufferLen() > 0)
-        {
-            final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-            final int localY = 0;
-            final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
+        try (ProfileFrame p = new ProfileFrame("OnDrawSceneTile")) {
+            if (paint.getBufferLen() > 0) {
+                final int localX = tileX << Perspective.LOCAL_COORD_BITS;
+                final int localY = 0;
+                final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
 
-            int faceCount = paint.getBufferLen();
-            boolean isBridge = ((faceCount >> 5) & 1) != 0;
-            boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
-            int renderLevel = (faceCount >> 3) & 3;
-            int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
+                int faceCount = paint.getBufferLen();
+                boolean isBridge = ((faceCount >> 5) & 1) != 0;
+                boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
+                int renderLevel = (faceCount >> 3) & 3;
+                int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
 
-            GpuIntBuffer b = computeBufferContext.unsortedModelBuffer;
-            computeBufferContext.numUnsortedModels++;
+                GpuIntBuffer b = computeBufferContext.unsortedModelBuffer;
+                computeBufferContext.numUnsortedModels++;
 
-            b.ensureCapacity(12);
-            IntBuffer buffer = b.getBuffer();
-            buffer.put(paint.getBufferOffset());
-            buffer.put(paint.getUvBufferOffset());
-            buffer.put(2);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(FLAG_SCENE_BUFFER);
-            buffer.put(localX).put(localY).put(localZ);
-            buffer.put(flags);
-            buffer.put(OBJECT_TYPE.TYPE_TERRAIN.ordinal());
-            buffer.put(-1);
-            buffer.put(-1);
+                b.ensureCapacity(12);
+                IntBuffer buffer = b.getBuffer();
+                buffer.put(paint.getBufferOffset());
+                buffer.put(paint.getUvBufferOffset());
+                buffer.put(2);
+                buffer.put(computeBufferContext.totalVertices);
+                buffer.put(FLAG_SCENE_BUFFER);
+                buffer.put(localX).put(localY).put(localZ);
+                buffer.put(flags);
+                buffer.put(OBJECT_TYPE.TYPE_TERRAIN.ordinal());
+                buffer.put(-1);
+                buffer.put(-1);
 
-            computeBufferContext.totalVertices += 2 * 3;
+                computeBufferContext.totalVertices += 2 * 3;
+            }
         }
     }
 
     @Override
     // Draw call for complex tiles, could have many vertices and triangles. (like those with paths on them)
     public void OnDrawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY) {
-        if (model.getBufferLen() > 0)
-        {
-            final int localX = tileX << Perspective.LOCAL_COORD_BITS;
-            final int localY = 0;
-            final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
+        try (ProfileFrame p = new ProfileFrame("OnDrawSceneTileModel")) {
+            if (model.getBufferLen() > 0) {
+                final int localX = tileX << Perspective.LOCAL_COORD_BITS;
+                final int localY = 0;
+                final int localZ = tileY << Perspective.LOCAL_COORD_BITS;
 
-            int faceCount = model.getBufferLen();
-            boolean isBridge = ((faceCount >> 5) & 1) != 0;
-            boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
-            int renderLevel = (faceCount >> 3) & 3;
-            faceCount &= 7;
+                int faceCount = model.getBufferLen();
+                boolean isBridge = ((faceCount >> 5) & 1) != 0;
+                boolean isUnderBridge = ((faceCount >> 6) & 1) != 0;
+                int renderLevel = (faceCount >> 3) & 3;
+                faceCount &= 7;
 
-            int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);;
+                int flags = (renderLevel << BIT_PLANE) | (tileX + SCENE_OFFSET << BIT_XPOS) | (tileY + SCENE_OFFSET << BIT_YPOS) | (isBridge ? (1 << BIT_ISBRIDGE) : 0) | (!isUnderBridge ? (1 << BIT_ISTERRAIN) : 0);
+                ;
 
-            GpuIntBuffer b = computeBufferContext.unsortedModelBuffer;
-            computeBufferContext.numUnsortedModels++;
+                GpuIntBuffer b = computeBufferContext.unsortedModelBuffer;
+                computeBufferContext.numUnsortedModels++;
 
-            b.ensureCapacity(12);
-            IntBuffer buffer = b.getBuffer();
-            buffer.put(model.getBufferOffset());
-            buffer.put(model.getUvBufferOffset());
-            buffer.put(faceCount);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(FLAG_SCENE_BUFFER);
-            buffer.put(localX).put(localY).put(localZ);
-            buffer.put(flags);
-            buffer.put(OBJECT_TYPE.TYPE_TERRAIN.ordinal());
-            buffer.put(-1);
-            buffer.put(-1);
+                b.ensureCapacity(12);
+                IntBuffer buffer = b.getBuffer();
+                buffer.put(model.getBufferOffset());
+                buffer.put(model.getUvBufferOffset());
+                buffer.put(faceCount);
+                buffer.put(computeBufferContext.totalVertices);
+                buffer.put(FLAG_SCENE_BUFFER);
+                buffer.put(localX).put(localY).put(localZ);
+                buffer.put(flags);
+                buffer.put(OBJECT_TYPE.TYPE_TERRAIN.ordinal());
+                buffer.put(-1);
+                buffer.put(-1);
 
-            computeBufferContext.totalVertices += faceCount * 3;
+                computeBufferContext.totalVertices += faceCount * 3;
+            }
         }
     }
 
     @Override
     public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {
-        Model model, offsetModel;
+        try (ProfileFrame p = new ProfileFrame("OnDrawModel")) {
+            Model model, offsetModel;
 
-        // TODO:: make a hashmap to track bad object ids to skip (53882 causes massive overdraw in guthix temple entrance)
-        int objectId = (int)(hash >> 20);
-        if(objectId == 53882) return;
-        if(objectId == 42260) return;
+            // TODO:: make a hashmap to track bad object ids to skip (53882 causes massive overdraw in guthix temple entrance)
+            int objectId = (int) (hash >> 20);
+            if (objectId == 53882) return;
+            if (objectId == 42260) return;
 
-        if (renderable instanceof GameObject)
-        {
-            log.info("Rendering GameObject: {} at ({}, {}, {}) with hash: {}", ((GameObject) renderable), x, y, z, hash);
-        }
+            if (renderable instanceof GameObject) {
+                log.info("Rendering GameObject: {} at ({}, {}, {}) with hash: {}", ((GameObject) renderable), x, y, z, hash);
+            }
 
-        if (renderable instanceof Model)
-        {
-            model = (Model) renderable;
-            offsetModel = model.getUnskewedModel();
-            if (offsetModel == null)
-            {
+            if (renderable instanceof Model) {
+                model = (Model) renderable;
+                offsetModel = model.getUnskewedModel();
+                if (offsetModel == null) {
+                    offsetModel = model;
+                }
+            } else {
+                model = renderable.getModel();
+                if (model == null) {
+                    return;
+                }
                 offsetModel = model;
             }
-        }
-        else
-        {
-            model = renderable.getModel();
-            if (model == null)
-            {
-                return;
-            }
-            offsetModel = model;
-        }
 
-        // See SceneUploader.PushStaticModel to understand what this is doing.
-        if ((offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF))
-        {
-            PushStaticModelToComputeBuffer(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
-        }
-        else
-        {
-            PushDynamicModelToComputeBuffer(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
+            // See SceneUploader.PushStaticModel to understand what this is doing.
+            if ((offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF)) {
+                PushStaticModelToComputeBuffer(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
+            } else {
+                PushDynamicModelToComputeBuffer(projection, model, offsetModel, renderable, orientation, x, y, z, hash);
+            }
         }
     }
 
     private void PushStaticModelToComputeBuffer(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash) {
-        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
-        assert model == renderable;
+        try (ProfileFrame p = new ProfileFrame("PushStaticModelToComputeBuffer")) {
+            plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
+            assert model == renderable;
 
-        int objectType = offsetModel.getSceneId() & 0xF;
+            int objectType = offsetModel.getSceneId() & 0xF;
 
 //        if (objectType == OBJECT_TYPE.TYPE_GROUND_OBJECT.ordinal()) {
 //            LocalPoint playerPos = plugin.client.getLocalPlayer().getLocalLocation();
@@ -492,44 +509,45 @@ public class MainPassLegacy implements IPassBase {
 //            }
 //        }
 
-        if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
-            if (offsetModel.getFaceCount() <= 0) return;
-            int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-            int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+            if (CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+                if (offsetModel.getFaceCount() <= 0) return;
+                int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+                int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
-            int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
-            int uvOffset = offsetModel.getUvBufferOffset();
-            int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-            int exFlags = GetExFlags(hash, tileX, tileY, z, false);
+                int faceCount = Math.min(MAX_TRIANGLE, offsetModel.getFaceCount());
+                int uvOffset = offsetModel.getUvBufferOffset();
+                int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
+                int exFlags = GetExFlags(hash, tileX, tileY, z, false);
 
-            GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(faceCount);
+                GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(faceCount);
 
-            b.ensureCapacity(12);
-            IntBuffer buffer = b.getBuffer();
-            buffer.put(offsetModel.getBufferOffset());
-            buffer.put(uvOffset);
-            buffer.put(faceCount);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(FLAG_SCENE_BUFFER | flags);
-            buffer.put(x).put(y).put(z);
-            buffer.put(exFlags);
-            buffer.put(objectType);
-            buffer.put(-1);
-            buffer.put(GetModelConfig(hash, tileX, tileY, z));
+                b.ensureCapacity(12);
+                IntBuffer buffer = b.getBuffer();
+                buffer.put(offsetModel.getBufferOffset());
+                buffer.put(uvOffset);
+                buffer.put(faceCount);
+                buffer.put(computeBufferContext.totalVertices);
+                buffer.put(FLAG_SCENE_BUFFER | flags);
+                buffer.put(x).put(y).put(z);
+                buffer.put(exFlags);
+                buffer.put(objectType);
+                buffer.put(-1);
+                buffer.put(GetModelConfig(hash, tileX, tileY, z));
 
-            computeBufferContext.totalVertices += faceCount * 3;
+                computeBufferContext.totalVertices += faceCount * 3;
+            }
+
+            plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
         }
-
-        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_STATIC_GEOMETRY);
     }
 
     private void PushDynamicModelToComputeBuffer(Projection projection, Model model, Model offsetModel, Renderable renderable, int orientation, int x, int y, int z, long hash) {
-        plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
-        // Apply height to renderable from the model
-        if (model != renderable)
-        {
-            renderable.setModelHeight(model.getModelHeight());
-        }
+        try (ProfileFrame p = new ProfileFrame("PushDynamicModelToComputeBuffer")) {
+            plugin.performanceOverlay.StartTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
+            // Apply height to renderable from the model
+            if (model != renderable) {
+                renderable.setModelHeight(model.getModelHeight());
+            }
 
 //        LocalPoint playerPos = plugin.client.getLocalPlayer().getLocalLocation();
 //        int tileDistanceX = Math.abs(playerPos.getX() - x);
@@ -545,42 +563,43 @@ public class MainPassLegacy implements IPassBase {
 //            return;
 //        }
 
-        int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
-        int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+            int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
+            int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
-        if(CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
-            if (model.getFaceCount() <= 0) return;
-            int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
-            int exFlags = GetExFlags(hash, tileX, tileY, z, true);
-            boolean hasUv = model.getFaceTextures() != null;
-            boolean isNPC = renderable instanceof NPC;
-            boolean isPlayer = renderable instanceof Player;
-            int objectType = isNPC ? OBJECT_TYPE.TYPE_NPC.ordinal() : (isPlayer ? OBJECT_TYPE.TYPE_PLAYER.ordinal() : OBJECT_TYPE.TYPE_ANIMATED_MODEL.ordinal());
+            if (CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+                if (model.getFaceCount() <= 0) return;
+                int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
+                int exFlags = GetExFlags(hash, tileX, tileY, z, true);
+                boolean hasUv = model.getFaceTextures() != null;
+                boolean isNPC = renderable instanceof NPC;
+                boolean isPlayer = renderable instanceof Player;
+                int objectType = isNPC ? OBJECT_TYPE.TYPE_NPC.ordinal() : (isPlayer ? OBJECT_TYPE.TYPE_PLAYER.ordinal() : OBJECT_TYPE.TYPE_ANIMATED_MODEL.ordinal());
 
-            int vertexCount = plugin.sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
+                int vertexCount = plugin.sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
 
-            GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(vertexCount / 3);
-            b.ensureCapacity(12);
-            IntBuffer buffer = b.getBuffer();
-            buffer.put(computeBufferContext.totalDynamicVertices);
-            buffer.put(hasUv ? computeBufferContext.totalDynamicUvs : -1);
-            buffer.put(vertexCount / 3);
-            buffer.put(computeBufferContext.totalVertices);
-            buffer.put(flags);
-            buffer.put(x).put(y).put(z);
-            buffer.put(exFlags);
-            buffer.put(objectType);
-            buffer.put(-1);
-            buffer.put(GetModelConfig(hash, x, y, z));
+                GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(vertexCount / 3);
+                b.ensureCapacity(12);
+                IntBuffer buffer = b.getBuffer();
+                buffer.put(computeBufferContext.totalDynamicVertices);
+                buffer.put(hasUv ? computeBufferContext.totalDynamicUvs : -1);
+                buffer.put(vertexCount / 3);
+                buffer.put(computeBufferContext.totalVertices);
+                buffer.put(flags);
+                buffer.put(x).put(y).put(z);
+                buffer.put(exFlags);
+                buffer.put(objectType);
+                buffer.put(-1);
+                buffer.put(GetModelConfig(hash, x, y, z));
 
-            computeBufferContext.totalDynamicVertices += vertexCount;
-            computeBufferContext.totalVertices += vertexCount;
-            if (hasUv) {
-                computeBufferContext.totalDynamicUvs += vertexCount;
+                computeBufferContext.totalDynamicVertices += vertexCount;
+                computeBufferContext.totalVertices += vertexCount;
+                if (hasUv) {
+                    computeBufferContext.totalDynamicUvs += vertexCount;
+                }
             }
-        }
 
-        plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
+            plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.PUSH_DYNAMIC_GEOMETRY);
+        }
     }
 
     private OBJECT_TYPE GetObjectType(Renderable renderable, boolean isDynamicModel, long hash) {
