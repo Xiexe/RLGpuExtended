@@ -29,8 +29,19 @@ float PCSSEstimatePenumbraSize(sampler2D shadowTex, vec4 projCoords, float curre
 float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float penumbraSize) {
     float shadow = 0.0;
 
+    // Stable per-pixel noise in shadow UV space
+    vec4 n = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0));
+
+    // Per-pixel rotation of Poisson disk
+    float angle = n.r * 6.28318530718;
+    float s = sin(angle), c = cos(angle);
+    mat2 rot = mat2(c, -s, s, c);
+
+    // Small UV-space jitter proportional to spread (resolution-invariant)
+    vec2 centerJitter = n.gb * penumbraSize;
+
     for (int i = 0; i < shadowSamples; i++) {
-        vec2 offset = poissonDisk[i] * penumbraSize;
+        vec2 offset = rot * poissonDisk[i] * penumbraSize + centerJitter;
         float depth = texture(shadowTex, projCoords.xy + offset).r;
 
         shadow += currentDepth > depth ? 1.0 : 0.0;
@@ -42,7 +53,7 @@ float PCSSFilter(sampler2D shadowTex, vec4 projCoords, float currentDepth, float
 float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shadowBias, float spread) {
     vec2 shadowRes = textureSize(shadowTex, 0);
     float currentDepth = projCoords.z - shadowBias;
-    float penumbraSize = PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * spread;
+    float penumbraSize = 0.0004 + PCSSEstimatePenumbraSize(shadowTex, projCoords, currentDepth, lightSize) * spread;
     float shadow = PCSSFilter(shadowTex, projCoords, currentDepth, penumbraSize);
 
     return shadow * (1.0 - fadeOut);
@@ -51,16 +62,25 @@ float PCSSShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float sha
 float PCFShadows(sampler2D shadowTex, vec4 projCoords, float fadeOut, float shadowBias, float spread) {
     float shadow = 0.0;
     float currentDepth = projCoords.z - shadowBias;
-    vec2 texelSize = 1.0 / textureSize(shadowTex, 0);
 
-    for(int i = 0; i < shadowSamples; i++) {
-        vec2 offset = poissonDisk[i] * spread;
+    // Stable per-pixel noise in shadow UV space
+    vec4 n = texture(blueNoiseTexture, gl_FragCoord.xy / textureSize(blueNoiseTexture, 0));
+
+    // Per-pixel rotation of Poisson disk
+    float angle = n.r * 6.28318530718;
+    float s = sin(angle), c = cos(angle);
+    mat2 rot = mat2(c, -s, s, c);
+
+    // Small UV-space jitter proportional to spread (resolution-invariant)
+    vec2 centerJitter = n.gb * spread;
+
+    for (int i = 0; i < shadowSamples; ++i) {
+        vec2 offset = rot * poissonDisk[i] * spread + centerJitter;
         float pcfDepth = texture(shadowTex, projCoords.xy + offset).r;
-        shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
+        shadow += (currentDepth > pcfDepth) ? 1.0 : 0.0;
     }
 
-    shadow /= shadowSamples;
-
+    shadow /= float(shadowSamples);
     return shadow * (1.0 - fadeOut);
 }
 
@@ -68,6 +88,11 @@ float GetShadowMap(sampler2D shadowTex, mat4 projection, vec3 fragPos, float ndl
     vec4 projCoords = projection * vec4(fragPos, 1);
     projCoords = projCoords / projCoords.w;
     projCoords = projCoords * 0.5 + 0.5;
+
+    if (projCoords.x <= 0.0 || projCoords.x >= 1.0 ||
+    projCoords.y <= 0.0 || projCoords.y >= 1.0) {
+        return 1.0;
+    }
 
     vec2 uv = projCoords.xy * 2.0 - 1.0; // range [-1, 1]
 //    float dist = max(abs(uv.x), abs(uv.y)); // square distance metric
