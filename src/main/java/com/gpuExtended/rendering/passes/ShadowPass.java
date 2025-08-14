@@ -53,6 +53,9 @@ public class ShadowPass implements IPassBase {
     @Inject
     public GpuExtendedPlugin plugin;
 
+    private boolean sceneGeometryDirty = false;
+    private boolean loadingNewSceneGeometry = false;
+
     // TODO:: Figure out a way to do this without 2 framebuffer maybe.
     @Getter
     private FrameBuffer frameBuffer;
@@ -79,6 +82,7 @@ public class ShadowPass implements IPassBase {
     private int numDynamicVertices = 0;
 
     private boolean loadingScene = false;
+    private Scene cachedScene = null;
 
     public List<Integer> objectsToConsiderDynamicShadows = new ArrayList<>();
 
@@ -153,46 +157,6 @@ public class ShadowPass implements IPassBase {
 
         dynamicShadowVertexBuffer = new GpuFloatBuffer();
         dynamicShadowUvBuffer = new GpuFloatBuffer();
-    }
-
-    private void BuildStaticShadowBlacklist(Scene scene) {
-        int vertexCount = 0;
-        Tile[][][] tiles = scene.getExtendedTiles();
-
-        for (int z = 0; z < Constants.MAX_Z; z++) {
-            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
-                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
-                    Tile tile = tiles[z][x][y];
-                    if (tile == null) {
-                        continue;
-                    }
-
-                    boolean shouldSkipTile = false;
-                    if (plugin.environmentManager.currentArea != null) {
-                        Area currentArea = plugin.environmentManager.currentArea;
-                        Bounds[] areaBounds = currentArea.getBounds();
-                        if (areaBounds != null && currentArea.isHideOtherAreas()) {
-                            WorldPoint tileLocation = tile.getWorldLocation();
-                            for (Bounds currentSubBounds : areaBounds) {
-                                if (!currentSubBounds.contains(tileLocation, 2)) {
-                                    shouldSkipTile = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (shouldSkipTile)
-                        continue;
-
-                    GameObject[] gameObjects = tile.getGameObjects();
-                    for (GameObject gameObject : gameObjects) {
-                        if (gameObject == null) continue;
-
-                        OnUpdateObjectBlacklist(gameObject.getId());
-                    }
-                }
-            }
-        }
     }
 
     private void GatherSceneGeometry(Scene scene, int sceneId) {
@@ -328,17 +292,17 @@ public class ShadowPass implements IPassBase {
     }
 
     @Override
-    public void OnPreLoadScene(Scene scene) {
-        Stopwatch sw = Stopwatch.createStarted();
-        objectsToConsiderDynamicShadows.clear();
-        BuildStaticShadowBlacklist(scene);
-        sw.stop();
-        log.info("[Shadow Pass] Built Static Shadow Blacklist: numObjects={} time={}ms", objectsToConsiderDynamicShadows.size(), sw.elapsed(TimeUnit.MILLISECONDS));
-    }
+    public void OnPreLoadScene(Scene scene) {}
 
     @Override
     public void OnSceneLoadStart(Scene scene) {
         Stopwatch sw = Stopwatch.createStarted();
+        BuildSceneVertexBufferAsync(scene);
+        sw.stop();
+        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} time={}ms", plugin.sceneUploader.sceneId, numStaticModels, sw.elapsed(TimeUnit.MILLISECONDS));
+    }
+
+    private void BuildSceneVertexBufferAsync(Scene scene) {
         workingShadowVertexBuffer = new GpuFloatBuffer(); // Reset the buffer for the new scene.
         workingShadowUvBuffer = new GpuFloatBuffer();
         numStaticModels = 0;
@@ -347,14 +311,9 @@ public class ShadowPass implements IPassBase {
 
         workingShadowVertexBuffer.flip(); // get the buffer ready for reading.
         workingShadowUvBuffer.flip(); // get the uv buffer ready for reading.
-
-        sw.stop();
-        log.debug("[Shadow Pass] Scene Loaded: sceneId={} numModels={} time={}ms", plugin.sceneUploader.sceneId, numStaticModels, sw.elapsed(TimeUnit.MILLISECONDS));
     }
 
-    /** Called from {@link com.gpuExtended.GpuExtendedPlugin#swapScene(Scene)}*/
-    @Override
-    public void OnSceneLoadFinished(Scene scene) {
+    private void UpdateSceneVertexBuffer() {
         numStaticVertices = newNumStaticSceneVertices;
         currentShadowVertexBuffer = workingShadowVertexBuffer; // Copy the working buffer, so we can use it to render. Cannot use the working buffer directly, as it's populated on another thread.
         currentShadowUvBuffer = workingShadowUvBuffer;
@@ -363,14 +322,22 @@ public class ShadowPass implements IPassBase {
         glBufferData(GL_ARRAY_BUFFER, currentShadowVertexBuffer.getBuffer(), GL_STATIC_DRAW);
 
         // Done. Dispose of the old buffers
-        currentShadowVertexBuffer = null;
-        workingShadowVertexBuffer = null;
-        currentShadowUvBuffer = null;
-        workingShadowUvBuffer = null;
+        currentShadowVertexBuffer.clear();
+        currentShadowUvBuffer.clear();
 
-        // Update shadows immediately after scene load to prevent flicker
+        workingShadowVertexBuffer.clear();
+        workingShadowUvBuffer.clear();
+    }
+
+    /** Called from {@link com.gpuExtended.GpuExtendedPlugin#swapScene(Scene)}*/
+    @Override
+    public void OnSceneLoadFinished(Scene scene) {
+        UpdateSceneVertexBuffer();
         OnRenderStaticShadowMap();
         OnRenderDynamicShadowMap();
+
+        cachedScene = scene; // Cache the scene for later use.
+        sceneGeometryDirty = false; // Reset the dirty flag after the scene is loaded and buffers are updated.
     }
 
     @Override
@@ -385,8 +352,35 @@ public class ShadowPass implements IPassBase {
 
         glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexBufferObjectId);
         glBufferData(GL_ARRAY_BUFFER, dynamicShadowVertexBuffer.getBuffer(), GL_DYNAMIC_DRAW);
-
         OnRenderDynamicShadowMap();
+
+        RebuildSceneIfDirty();
+    }
+
+    private void RebuildSceneIfDirty() {
+        if (cachedScene == null) return;
+        if (!sceneGeometryDirty || loadingScene || loadingNewSceneGeometry) return;
+        if (plugin.client.getGameState() != GameState.LOGGED_IN) return;
+
+        log.info("[Shadow Pass] Starting background rebuild of scene : sceneId={}", plugin.sceneUploader.sceneId);
+
+        this.sceneGeometryDirty = false;
+        this.loadingNewSceneGeometry = true;
+        Thread t = new Thread(() -> {
+            BuildSceneVertexBufferAsync(cachedScene);
+            log.info("[Shadow Pass] Building scene geometry: sceneId={} numModels={} numVertices={}",
+                    plugin.sceneUploader.sceneId, numStaticModels, newNumStaticSceneVertices);
+
+            plugin.clientThread.invokeLater( () -> {
+                log.info("[Shadow Pass] Scene geometry updated: sceneId={} numModels={} numVertices={}",
+                        plugin.sceneUploader.sceneId, numStaticModels, newNumStaticSceneVertices);
+                this.loadingNewSceneGeometry = false;
+
+                this.UpdateSceneVertexBuffer();
+                this.OnRenderStaticShadowMap();
+            });
+        });
+        t.start();
     }
 
     @Override
@@ -865,26 +859,66 @@ public class ShadowPass implements IPassBase {
         }
     }
 
-    private void OnUpdateObjectBlacklist(int id) {
-        ObjectComposition comp = plugin.client.getObjectDefinition(id);
-        if (comp == null) return;
+    public void OnGameObjectSpawned(GameObjectSpawned event) {
+        GameObject gameObject = event.getGameObject();
+        if (gameObject == null) return;
 
-        ObjectComposition active = comp.getImpostorIds() != null ? comp.getImpostor() : comp;
-        String[] actions = (active != null ? active.getActions() : comp.getActions());
-        if (actions == null) return;
+        Renderable renderable = gameObject.getRenderable();
+        if (renderable == null) return;
 
-        boolean hasNonExamine = false;
-        for (String a : actions) {
-            if (a != null && !"Examine".equalsIgnoreCase(a)) {
-                hasNonExamine = true; break;
+        Model model;
+        Model offsetModel;
+        if (renderable instanceof Model)
+        {
+            model = (Model) renderable;
+            offsetModel = model.getUnskewedModel();
+            if (offsetModel == null)
+            {
+                offsetModel = model;
             }
         }
+        else
+        {
+            model = renderable.getModel();
+            if (model == null) return;
 
-        if (hasNonExamine) {
-            if (!objectsToConsiderDynamicShadows.contains(id)) {
-                objectsToConsiderDynamicShadows.add(id);
+            offsetModel = model;
+        }
+
+        boolean isStatic = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
+        if (isStatic)
+            sceneGeometryDirty = true; // Mark the scene as dirty, so we can rebuild the vertex buffer on next frame.
+    }
+
+    public void OnGameObjectDespawned(GameObjectDespawned event) {
+        GameObject gameObject = event.getGameObject();
+        if (gameObject == null) return;
+
+        Renderable renderable = gameObject.getRenderable();
+        if (renderable == null) return;
+
+        Model model;
+        Model offsetModel;
+        if (renderable instanceof Model)
+        {
+            model = (Model) renderable;
+            offsetModel = model.getUnskewedModel();
+            if (offsetModel == null)
+            {
+                offsetModel = model;
             }
         }
+        else
+        {
+            model = renderable.getModel();
+            if (model == null) return;
+
+            offsetModel = model;
+        }
+
+        boolean isStatic = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
+        if (isStatic)
+            sceneGeometryDirty = true; // Mark the scene as dirty, so we can rebuild the vertex buffer on next frame.
     }
 
     public void Dispose() {

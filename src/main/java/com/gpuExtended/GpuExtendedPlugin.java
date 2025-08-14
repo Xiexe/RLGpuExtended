@@ -515,12 +515,14 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
 		environmentManager.OnGameObjectSpawned(event);
+		shadowPass.OnGameObjectSpawned(event);
 	}
 
 	@Subscribe
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
 		environmentManager.OnGameObjectDespawned(event);
+		shadowPass.OnGameObjectDespawned(event);
 	}
 
 	@Subscribe
@@ -961,8 +963,6 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void loadScene(Scene scene)
 	{
-		clientThread.invoke(() -> shadowPass.OnPreLoadScene(scene));
-
 		loadingScene = true;
 
 		mainPassLegacy.OnSceneLoadStart(scene);
