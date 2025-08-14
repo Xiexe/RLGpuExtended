@@ -1056,6 +1056,7 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	public void draw(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash)
 	{
 		mainPassLegacy.OnDrawModel(projection, scene, renderable, orientation, x, y, z, hash);
+		shadowPass.OnDrawModel(projection, scene, renderable, orientation, x, y, z, hash);
 	}
 
 	@Override

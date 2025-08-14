@@ -319,7 +319,7 @@ public class SceneUploader
 		}
 	}
 
-	public int PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
+	public int PushDynamicModel(Model model, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, isNPC);
 		return vertexCount;

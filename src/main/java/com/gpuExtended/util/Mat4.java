@@ -29,6 +29,9 @@ import com.gpuExtended.rendering.Vector3;
 import com.gpuExtended.rendering.camera.Frustum;
 import com.gpuExtended.rendering.camera.Plane;
 
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
+
 public class Mat4
 {
 	private Mat4()
@@ -151,6 +154,17 @@ public class Mat4
 				s, 0, c, 0,
 				0, 0, 0, 1,
 			};
+	}
+
+	public static float[] orientation(float rad) {
+		float s = (float)sin(rad);
+		float c = (float)cos(rad);
+		return new float[]{
+				c, 0, s, 0,
+				0, 1, 0, 0,
+				-s, 0, c, 0,
+				0, 0, 0, 1
+		};
 	}
 
 	public static float[] projection(float w, float h, float n)

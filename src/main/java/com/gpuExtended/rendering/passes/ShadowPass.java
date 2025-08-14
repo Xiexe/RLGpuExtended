@@ -8,8 +8,10 @@ import com.gpuExtended.regions.Area;
 import com.gpuExtended.regions.Bounds;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
+import com.gpuExtended.rendering.Vector4;
 import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.util.GpuFloatBuffer;
+import com.gpuExtended.util.Mat4;
 import com.gpuExtended.util.contexts.RenderableContext;
 import com.gpuExtended.util.contexts.TileContext;
 import lombok.Getter;
@@ -17,18 +19,17 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.gpuExtended.util.SceneUploader.*;
 import static com.gpuExtended.util.constants.Variables.*;
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
+import static net.runelite.api.Perspective.UNIT;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL11C.GL_NEAREST;
 import static org.lwjgl.opengl.GL12C.GL_CLAMP_TO_EDGE;
@@ -40,7 +41,6 @@ import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30C.*;
 import static org.lwjgl.opengl.GL31C.glUniformBlockBinding;
 import static org.lwjgl.opengl.GL41C.glClearDepthf;
-import static org.lwjgl.opengl.GL43C.*;
 
 @Slf4j
 @Singleton
@@ -61,10 +61,17 @@ public class ShadowPass implements IPassBase {
     private GpuFloatBuffer workingShadowUvBuffer;
     private GpuFloatBuffer currentShadowUvBuffer;
 
-    private int textureArrayId = -1;
+    private int dynamicVertexArrayObjectId;
+    private int dynamicVertexBufferObjectId;
+    private GpuFloatBuffer dynamicShadowVertexBuffer;
+    private GpuFloatBuffer dynamicShadowUvBuffer;
+
     private int numStaticModels = 0;
     private int numStaticVertices = 0;
     private int newNumStaticSceneVertices = 0;
+
+    private int numDynamicModels = 0;
+    private int numDynamicVertices = 0;
 
     private boolean loadingScene = false;
 
@@ -89,6 +96,12 @@ public class ShadowPass implements IPassBase {
         frameBuffer = new FrameBuffer(fboSettings, textureSettings);
         dynamicFrameBuffer = new FrameBuffer(fboSettings, textureSettings);
 
+        InitStaticShadowBuffer();
+        InitDynamicShadowBuffer();
+        log.info("[Shadow Pass] Initialized Shadow Render Pass");
+    }
+
+    private void InitStaticShadowBuffer() {
         staticVertexArrayObjectId = GL30.glGenVertexArrays();
         staticVertexBufferObjectId = GL30.glGenBuffers();
 
@@ -108,8 +121,31 @@ public class ShadowPass implements IPassBase {
 
         GL30.glBindVertexArray(0);
         glEnableVertexAttribArray(0);
-        log.info("[Shadow Pass] Initialized Shadow Render Pass");
+    }
 
+    private void InitDynamicShadowBuffer() {
+        dynamicVertexArrayObjectId = GL30.glGenVertexArrays();
+        dynamicVertexBufferObjectId = GL30.glGenBuffers();
+
+        GL30.glBindVertexArray(dynamicVertexArrayObjectId);
+
+        glEnableVertexAttribArray(VPOS_BINDING_ID);
+        glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexBufferObjectId);
+        glVertexAttribPointer(VPOS_BINDING_ID, 3, GL_FLOAT, false, 16, 0);
+
+        glEnableVertexAttribArray(VHSL_BINDING_ID);
+        glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexBufferObjectId);
+        glVertexAttribIPointer(VHSL_BINDING_ID, 1, GL_INT, 16, 12);
+
+        glEnableVertexAttribArray(VUV_BINDING_ID);
+        glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexBufferObjectId);
+        glVertexAttribPointer(VUV_BINDING_ID, 4, GL_FLOAT, false, 0, 0);
+
+        GL30.glBindVertexArray(0);
+        glEnableVertexAttribArray(0);
+
+        dynamicShadowVertexBuffer = new GpuFloatBuffer();
+        dynamicShadowUvBuffer = new GpuFloatBuffer();
     }
 
     private void GatherSceneGeometry(Scene scene, int sceneId) {
@@ -183,7 +219,8 @@ public class ShadowPass implements IPassBase {
                                 wallObject.getY(),
                                 wallObject.getZ(),
                                 wallObject.getOrientationA(),
-                                wallObject.getHash()
+                                wallObject.getHash(),
+                                true
                         );
                         RenderableContext r2ctx = new RenderableContext(
                                 wallObject.getRenderable2(),
@@ -192,61 +229,64 @@ public class ShadowPass implements IPassBase {
                                 wallObject.getY(),
                                 wallObject.getZ(),
                                 wallObject.getOrientationB(),
-                                wallObject.getHash()
+                                wallObject.getHash(),
+                                true
                         );
 
-                        vertexCount += PushRenderable(r1ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
-                        vertexCount += PushRenderable(r2ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
+                        vertexCount += PushStaticRenderable(r1ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
+                        vertexCount += PushStaticRenderable(r2ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
                     }
 
-                    // Some objects we only want to populate if its above the player, like trees,
-                    // because otherwise we'd need to re-populate the buffers when the tree is cut down or re-grows.
-                    if (z > plugin.client.getLocalPlayer().getWorldLocation().getPlane()) {
-                        GroundObject groundObject = tile.getGroundObject();
-                        if (groundObject != null)
-                        {
-                            RenderableContext ctx = new RenderableContext(
-                                    groundObject.getRenderable(),
-                                    sceneId,
-                                    groundObject.getX(),
-                                    groundObject.getY(),
-                                    groundObject.getZ(),
-                                    0,
-                                    groundObject.getHash()
-                            );
-                            vertexCount += PushRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
-                        }
-
-                        DecorativeObject decorativeObject = tile.getDecorativeObject();
-                        if (decorativeObject != null)
-                        {
-                            RenderableContext ctx = new RenderableContext(
-                                    decorativeObject.getRenderable(),
-                                    sceneId,
-                                    decorativeObject.getX(),
-                                    decorativeObject.getY(),
-                                    decorativeObject.getZ(),
-                                    0,
-                                    decorativeObject.getHash()
-                            );
-                            vertexCount += PushRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
-                        }
-
-                        GameObject[] gameObjects = tile.getGameObjects();
-                        for (GameObject gameObject : gameObjects) {
-                            if (gameObject == null) continue;
-                            RenderableContext ctx = new RenderableContext(
-                                    gameObject.getRenderable(),
-                                    sceneId,
-                                    gameObject.getX(),
-                                    gameObject.getY(),
-                                    gameObject.getZ(),
-                                    gameObject.getModelOrientation(),
-                                    gameObject.getHash()
-                            );
-                            vertexCount += PushRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
-                        }
+                    DecorativeObject decorativeObject = tile.getDecorativeObject();
+                    if (decorativeObject != null)
+                    {
+                        RenderableContext ctx = new RenderableContext(
+                                decorativeObject.getRenderable(),
+                                sceneId,
+                                decorativeObject.getX(),
+                                decorativeObject.getY(),
+                                decorativeObject.getZ(),
+                                0,
+                                decorativeObject.getHash(),
+                                true
+                        );
+                        vertexCount += PushStaticRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
                     }
+
+                    GameObject[] gameObjects = tile.getGameObjects();
+                    for (GameObject gameObject : gameObjects) {
+                        if (gameObject == null) continue;
+                        RenderableContext ctx = new RenderableContext(
+                                gameObject.getRenderable(),
+                                sceneId,
+                                gameObject.getX(),
+                                gameObject.getY(),
+                                gameObject.getZ(),
+                                gameObject.getModelOrientation(),
+                                gameObject.getHash(),
+                                true
+                        );
+//                            log.info("Pos GameObject renderable: XYZ ({}, {}, {}) {}, {}", ctx.x, ctx.y, ctx.z);
+
+                        vertexCount += PushStaticRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
+                    }
+
+                    // Dont render ground objects like grass, its too noisy.
+//                        GroundObject groundObject = tile.getGroundObject();
+//                        if (groundObject != null)
+//                        {
+//                            RenderableContext ctx = new RenderableContext(
+//                                    groundObject.getRenderable(),
+//                                    sceneId,
+//                                    groundObject.getX(),
+//                                    groundObject.getY(),
+//                                    groundObject.getZ(),
+//                                    0,
+//                                    groundObject.getHash(),
+//                                    true
+//                            );
+//                            vertexCount += PushStaticRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
+//                        }
                 }
             }
         }
@@ -302,11 +342,24 @@ public class ShadowPass implements IPassBase {
 
     @Override
     public void OnRenderFrame() {
+        dynamicShadowVertexBuffer.flip();
+        dynamicShadowUvBuffer.flip();
+
+        glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexBufferObjectId);
+        glBufferData(GL_ARRAY_BUFFER, dynamicShadowVertexBuffer.getBuffer(), GL_DYNAMIC_DRAW);
+
         OnRenderDynamicShadowMap();
     }
 
     @Override
     public void OnPostRenderFrame() {
+//        log.info("[Shadow Pass] Draw Scene Complete - Static Models: {}, Static Vertices: {}, Dynamic Models: {}, Dynamic Vertices: {}", numStaticModels, numStaticVertices, numDynamicModels, numDynamicVertices);
+
+        numDynamicModels = 0;
+        numDynamicVertices = 0;
+        dynamicShadowVertexBuffer = new GpuFloatBuffer();
+        dynamicShadowUvBuffer = new GpuFloatBuffer();
+
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_SHADOW_PASS);
     }
 
@@ -323,6 +376,47 @@ public class ShadowPass implements IPassBase {
     @Override
     public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {
         // TODO:: Gather all dynamic models (NPCS, Players, Projectiles, animated objects, and specific "static" objects, like trees)
+
+        Model model, offsetModel;
+
+        // TODO:: make a hashmap to track bad object ids to skip (53882 causes massive overdraw in guthix temple entrance)
+        int objectId = (int)(hash >> 20);
+
+        if (renderable instanceof Model)
+        {
+            model = (Model) renderable;
+            offsetModel = model.getUnskewedModel();
+            if (offsetModel == null)
+            {
+                offsetModel = model;
+            }
+        }
+        else
+        {
+            model = renderable.getModel();
+            if (model == null)
+            {
+                return;
+            }
+            offsetModel = model;
+        }
+
+        // See SceneUploader.PushStaticModel to understand what this is doing.
+        boolean isStaticModel = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
+        if (!isStaticModel) {
+            RenderableContext ctx = new RenderableContext(
+                renderable,
+                offsetModel.getSceneId(),
+                x,
+                z,
+                y,
+                orientation,
+                hash,
+                false
+            );
+//            log.info("Pos dynamic renderable: XYZ ({}, {}, {}) {}, {}", x, y, z, orientation, hash);
+            numDynamicVertices += PushDynamicRenderable(ctx, dynamicShadowVertexBuffer, dynamicShadowUvBuffer);
+        }
     }
     @Override
     public void OnGameStateChanged(GameStateChanged gameStateChanged) {}
@@ -422,8 +516,8 @@ public class ShadowPass implements IPassBase {
 
         glUniformMatrix4fv(shaderVars.DepthProjectionMatrix, false, plugin.environmentManager.mainLight.projectionMatrixClose);
 
-        GL30.glBindVertexArray(plugin.mainPassLegacy.vertexBufferContext.vertexArrayObjectId);
-        glDrawArrays(GL_TRIANGLES, 0, plugin.mainPassLegacy.computeBufferContext.totalVertices);
+        GL30.glBindVertexArray(dynamicVertexArrayObjectId);
+        glDrawArrays(GL_TRIANGLES, 0, numDynamicVertices);
 
         glCullFace(GL_BACK);
         glDisable(GL_CULL_FACE);
@@ -571,9 +665,17 @@ public class ShadowPass implements IPassBase {
         return vertexCount;
     }
 
-    private int PushRenderable(RenderableContext context, GpuFloatBuffer vertexBuffer, GpuFloatBuffer uvBuffer) {
-        if (context.renderable == null) return 0;
+    private int PushStaticRenderable(RenderableContext context, GpuFloatBuffer vertexBuffer, GpuFloatBuffer uvBuffer) {
+        numStaticModels++;
+        return PushRenderable(context, vertexBuffer, uvBuffer);
+    }
 
+    private int PushDynamicRenderable(RenderableContext context, GpuFloatBuffer vertexBuffer, GpuFloatBuffer uvBuffer) {
+        numDynamicModels++;
+        return PushRenderable(context, vertexBuffer, uvBuffer);
+    }
+
+    private Model GetRenderableModel(RenderableContext context, boolean isStatic) {
         Model model;
         Model offsetModel;
         if (context.renderable instanceof Model)
@@ -585,12 +687,31 @@ public class ShadowPass implements IPassBase {
                 offsetModel = model;
             }
         }
-        else {
-            return 0;
+        else
+        {
+            // Dynamics must be on the main thread, and the extra check here isn't thread safe.
+            if (isStatic) {
+                return null;
+            } else {
+                model = context.renderable.getModel();
+                if (model == null)
+                {
+                    return null;
+                }
+                offsetModel = model;
+            }
         }
 
-        if ((model.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF))
-             return 0;
+        return offsetModel;
+    }
+
+    private int PushRenderable(RenderableContext context, GpuFloatBuffer vertexBuffer, GpuFloatBuffer uvBuffer) {
+        if (context.renderable == null) return 0;
+
+        Model model = GetRenderableModel(context, context.isStatic);
+        if (model == null) {
+            return 0; // No model to render
+        }
 
         final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
         vertexBuffer.ensureCapacity(triCount * 12); // 3 vertices * 4 floats per vertex (x, y, z, w)
@@ -604,8 +725,6 @@ public class ShadowPass implements IPassBase {
         float[] vy = model.getVerticesY();
         float[] vz = model.getVerticesZ();
 
-        final int[] color1s = model.getFaceColors1();
-        final int[] color2s = model.getFaceColors2();
         final int[] color3s = model.getFaceColors3();
 
         final short[] faceTextures = model.getFaceTextures();
@@ -615,11 +734,6 @@ public class ShadowPass implements IPassBase {
         final int[] texIndices3 = model.getTexIndices3();
 
         final byte[] transparencies = model.getFaceTransparencies();
-
-        final byte overrideAmount = model.getOverrideAmount();
-        final byte overrideHue = model.getOverrideHue();
-        final byte overrideSat = model.getOverrideSaturation();
-        final byte overrideLum = model.getOverrideLuminance();
 
         int vertexCount = 0;
         for (int tri = 0; tri < triCount; tri++) {
@@ -669,15 +783,49 @@ public class ShadowPass implements IPassBase {
                 }
             }
 
-            vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, alpha);
-            vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, alpha);
-            vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, alpha);
+//            log.info("Pushing dynamic model.");
+            Vector4 vertexA = new Vector4(vx[i0], vy[i0], vz[i0], 1);
+            Vector4 vertexB = new Vector4(vx[i1], vy[i1], vz[i1], 1);
+            Vector4 vertexC = new Vector4(vx[i2], vy[i2], vz[i2], 1);
+            if (context.orientation != 0)
+            {
+                vertexA = rotate_vertex(vertexA, context.orientation);
+                vertexB = rotate_vertex(vertexB, context.orientation);
+                vertexC = rotate_vertex(vertexC, context.orientation);
+            }
+
+            vertexBuffer.put(vertexA.x + context.x, vertexA.y + context.z, vertexA.z + context.y, alpha);
+            vertexBuffer.put(vertexB.x + context.x, vertexB.y + context.z, vertexB.z + context.y, alpha);
+            vertexBuffer.put(vertexC.x + context.x, vertexC.y + context.z, vertexC.z + context.y, alpha);
+
+//            vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, alpha);
+//            vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, alpha);
+//            vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, alpha);
+
+//            vertexBuffer.put(vx[i0], vy[i0], vz[i0], alpha);
+//            vertexBuffer.put(vx[i1], vy[i1], vz[i1], alpha);
+//            vertexBuffer.put(vx[i2], vy[i2], vz[i2], alpha);
 
             vertexCount += 3;
         }
 
-        numStaticModels++;
         return vertexCount;
+    }
+
+    // Temporarily on CPU
+    Vector4 rotate_vertex(Vector4 vertex, int orientation) {
+        float radians = orientation * (float)UNIT;
+
+        float cos = (float) Math.cos(radians);
+        float sin = (float) Math.sin(radians);
+
+        float x = vertex.x;
+        float z = vertex.z;
+
+        float rotatedX = x * cos + z * sin;
+        float rotatedZ = z * cos - x * sin;
+
+        return new Vector4(rotatedX, vertex.y, rotatedZ, vertex.w);
     }
 
     private void PadBufferTriangle(GpuFloatBuffer buffer, int numPaddedVertices) {
@@ -698,9 +846,10 @@ public class ShadowPass implements IPassBase {
         workingShadowUvBuffer = null;
         currentShadowUvBuffer = null;
 
-        textureArrayId = -1;
         numStaticModels = 0;
         numStaticVertices = 0;
         newNumStaticSceneVertices = 0;
+        numDynamicModels = 0;
+        numDynamicVertices = 0;
     }
 }

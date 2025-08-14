@@ -557,7 +557,7 @@ public class MainPassLegacy implements IPassBase {
             boolean isPlayer = renderable instanceof Player;
             int objectType = isNPC ? OBJECT_TYPE.TYPE_NPC.ordinal() : (isPlayer ? OBJECT_TYPE.TYPE_PLAYER.ordinal() : OBJECT_TYPE.TYPE_ANIMATED_MODEL.ordinal());
 
-            int vertexCount = plugin.sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
+            int vertexCount = plugin.sceneUploader.PushDynamicModel(model, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
 
             GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(vertexCount / 3);
             b.ensureCapacity(12);
