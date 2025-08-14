@@ -11,9 +11,9 @@
   },
   {
     "Name": "DEFAULT",
-    "SkyColor":     [0.8, 0.98, 0.94, 1],
-    "AmbientColor": [1.00, 1.00, 1.00, 1.00],
-    "LightColor":   [0.5, 0.5, 0.5, 1.00],
+    "SkyColor":     [0.2, 0.5, 1.00, 1],
+    "AmbientColor": [0.5, 0.5, 1.0, 1.00],
+    "LightColor":   [1, 1, 1, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
     "FogDepth": 10,
