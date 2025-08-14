@@ -71,7 +71,7 @@
     "LightColor":   [0.2, 0.2, 0.2, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
-    "FogDepth": 60,
+    "FogDepth": 30,
     "Type": 0
   },
   {
@@ -81,7 +81,7 @@
     "LightColor":   [0, 0, 0, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
-    "FogDepth": 70,
+    "FogDepth": 50,
     "Type": 0
   },
   {
@@ -91,7 +91,7 @@
     "LightColor":   [0.5, 0.1, 0.5, 1.00],
     "LightPitch": 45,
     "LightYaw": 200,
-    "FogDepth": 80,
+    "FogDepth": 50,
     "Type": 0,
     "UseDynamicTimeOfDay": true
   },
