@@ -961,7 +961,10 @@ public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void loadScene(Scene scene)
 	{
+		clientThread.invoke(() -> shadowPass.OnPreLoadScene(scene));
+
 		loadingScene = true;
+
 		mainPassLegacy.OnSceneLoadStart(scene);
 		shadowPass.OnSceneLoadStart(scene);
 

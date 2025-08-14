@@ -18,12 +18,15 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static com.gpuExtended.util.SceneUploader.*;
@@ -152,6 +155,46 @@ public class ShadowPass implements IPassBase {
         dynamicShadowUvBuffer = new GpuFloatBuffer();
     }
 
+    private void BuildStaticShadowBlacklist(Scene scene) {
+        int vertexCount = 0;
+        Tile[][][] tiles = scene.getExtendedTiles();
+
+        for (int z = 0; z < Constants.MAX_Z; z++) {
+            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; x++) {
+                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; y++) {
+                    Tile tile = tiles[z][x][y];
+                    if (tile == null) {
+                        continue;
+                    }
+
+                    boolean shouldSkipTile = false;
+                    if (plugin.environmentManager.currentArea != null) {
+                        Area currentArea = plugin.environmentManager.currentArea;
+                        Bounds[] areaBounds = currentArea.getBounds();
+                        if (areaBounds != null && currentArea.isHideOtherAreas()) {
+                            WorldPoint tileLocation = tile.getWorldLocation();
+                            for (Bounds currentSubBounds : areaBounds) {
+                                if (!currentSubBounds.contains(tileLocation, 2)) {
+                                    shouldSkipTile = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (shouldSkipTile)
+                        continue;
+
+                    GameObject[] gameObjects = tile.getGameObjects();
+                    for (GameObject gameObject : gameObjects) {
+                        if (gameObject == null) continue;
+
+                        OnUpdateObjectBlacklist(gameObject.getId());
+                    }
+                }
+            }
+        }
+    }
+
     private void GatherSceneGeometry(Scene scene, int sceneId) {
         int vertexCount = 0;
         Tile[][][] tiles = scene.getExtendedTiles();
@@ -260,31 +303,7 @@ public class ShadowPass implements IPassBase {
                     GameObject[] gameObjects = tile.getGameObjects();
                     for (GameObject gameObject : gameObjects) {
                         if (gameObject == null) continue;
-                        int id = gameObject.getId();
-
-                        // Check for any interact options other than "Examine"
-                        ObjectComposition comp = plugin.client.getObjectDefinition(id);
-                        String[] actions = comp.getActions();
-                        boolean isInteractable = false;
-
-                        // If the object is not interactable, consider it static.
-                        if (actions != null) {
-                            for (String action : actions) {
-                                if (action != null && !action.equals("Examine")) {
-                                    isInteractable = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        // If it is interactable, consider it dynamic.
-                        // This should cover most cases of things like trees, pick-able plants, etc.
-                        if (isInteractable) {
-                            if (!objectsToConsiderDynamicShadows.contains(id)) {
-                                objectsToConsiderDynamicShadows.add(gameObject.getId());
-                            }
-                            continue;
-                        }
+                        if (objectsToConsiderDynamicShadows.contains(gameObject.getId())) continue;
 
                         RenderableContext ctx = new RenderableContext(
                                 gameObject.getRenderable(),
@@ -309,12 +328,17 @@ public class ShadowPass implements IPassBase {
     }
 
     @Override
-    public void OnPreLoadScene(Scene scene) {}
+    public void OnPreLoadScene(Scene scene) {
+        Stopwatch sw = Stopwatch.createStarted();
+        objectsToConsiderDynamicShadows.clear();
+        BuildStaticShadowBlacklist(scene);
+        sw.stop();
+        log.info("[Shadow Pass] Built Static Shadow Blacklist: numObjects={} time={}ms", objectsToConsiderDynamicShadows.size(), sw.elapsed(TimeUnit.MILLISECONDS));
+    }
 
     @Override
     public void OnSceneLoadStart(Scene scene) {
         Stopwatch sw = Stopwatch.createStarted();
-
         workingShadowVertexBuffer = new GpuFloatBuffer(); // Reset the buffer for the new scene.
         workingShadowUvBuffer = new GpuFloatBuffer();
         numStaticModels = 0;
@@ -802,8 +826,6 @@ public class ShadowPass implements IPassBase {
                 }
             }
 
-//            log.info("Pushing dynamic model.");
-
             float vertexAx = vx[i0];
             float vertexAy = vy[i0];
             float vertexAz = vz[i0];
@@ -840,6 +862,28 @@ public class ShadowPass implements IPassBase {
     private void PadBufferTriangle(GpuFloatBuffer buffer, int numPaddedVertices) {
         for (int i = 0; i < numPaddedVertices; i++) {
             buffer.put(0, 0, 0, 0); // x, y, z, w
+        }
+    }
+
+    private void OnUpdateObjectBlacklist(int id) {
+        ObjectComposition comp = plugin.client.getObjectDefinition(id);
+        if (comp == null) return;
+
+        ObjectComposition active = comp.getImpostorIds() != null ? comp.getImpostor() : comp;
+        String[] actions = (active != null ? active.getActions() : comp.getActions());
+        if (actions == null) return;
+
+        boolean hasNonExamine = false;
+        for (String a : actions) {
+            if (a != null && !"Examine".equalsIgnoreCase(a)) {
+                hasNonExamine = true; break;
+            }
+        }
+
+        if (hasNonExamine) {
+            if (!objectsToConsiderDynamicShadows.contains(id)) {
+                objectsToConsiderDynamicShadows.add(id);
+            }
         }
     }
 
