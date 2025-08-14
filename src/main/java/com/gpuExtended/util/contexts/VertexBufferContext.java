@@ -24,7 +24,7 @@ public class VertexBufferContext {
         this.flagsBuffer = new GpuIntBuffer();
     }
 
-    public void PrepareBufferArray() {
+    public void GenArrayAndBuffer() {
         this.vertexArrayObjectId = glGenVertexArrays();
         this.vertexBufferObjectId = glGenBuffers();
     }

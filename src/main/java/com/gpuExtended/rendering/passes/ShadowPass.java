@@ -22,6 +22,8 @@ import net.runelite.api.events.GameStateChanged;
 import org.lwjgl.opengl.GL30;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.gpuExtended.util.SceneUploader.*;
@@ -74,6 +76,8 @@ public class ShadowPass implements IPassBase {
     private int numDynamicVertices = 0;
 
     private boolean loadingScene = false;
+
+    public List<Integer> objectsToConsiderDynamicShadows = new ArrayList<>();
 
     @Override
     public void Init() {
@@ -256,6 +260,32 @@ public class ShadowPass implements IPassBase {
                     GameObject[] gameObjects = tile.getGameObjects();
                     for (GameObject gameObject : gameObjects) {
                         if (gameObject == null) continue;
+                        int id = gameObject.getId();
+
+                        // Check for any interact options other than "Examine"
+                        ObjectComposition comp = plugin.client.getObjectDefinition(id);
+                        String[] actions = comp.getActions();
+                        boolean isInteractable = false;
+
+                        // If the object is not interactable, consider it static.
+                        if (actions != null) {
+                            for (String action : actions) {
+                                if (action != null && !action.equals("Examine")) {
+                                    isInteractable = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // If it is interactable, consider it dynamic.
+                        // This should cover most cases of things like trees, pick-able plants, etc.
+                        if (isInteractable) {
+                            if (!objectsToConsiderDynamicShadows.contains(id)) {
+                                objectsToConsiderDynamicShadows.add(gameObject.getId());
+                            }
+                            continue;
+                        }
+
                         RenderableContext ctx = new RenderableContext(
                                 gameObject.getRenderable(),
                                 sceneId,
@@ -266,27 +296,11 @@ public class ShadowPass implements IPassBase {
                                 gameObject.getHash(),
                                 true
                         );
-//                            log.info("Pos GameObject renderable: XYZ ({}, {}, {}) {}, {}", ctx.x, ctx.y, ctx.z);
 
                         vertexCount += PushStaticRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
                     }
 
                     // Dont render ground objects like grass, its too noisy.
-//                        GroundObject groundObject = tile.getGroundObject();
-//                        if (groundObject != null)
-//                        {
-//                            RenderableContext ctx = new RenderableContext(
-//                                    groundObject.getRenderable(),
-//                                    sceneId,
-//                                    groundObject.getX(),
-//                                    groundObject.getY(),
-//                                    groundObject.getZ(),
-//                                    0,
-//                                    groundObject.getHash(),
-//                                    true
-//                            );
-//                            vertexCount += PushStaticRenderable(ctx, workingShadowVertexBuffer, workingShadowUvBuffer);
-//                        }
                 }
             }
         }
@@ -403,7 +417,8 @@ public class ShadowPass implements IPassBase {
 
         // See SceneUploader.PushStaticModel to understand what this is doing.
         boolean isStaticModel = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
-        if (!isStaticModel) {
+        boolean isForcedDynamic = objectsToConsiderDynamicShadows.contains(objectId);
+        if (!isStaticModel || isForcedDynamic) {
             RenderableContext ctx = new RenderableContext(
                 renderable,
                 offsetModel.getSceneId(),
@@ -735,6 +750,10 @@ public class ShadowPass implements IPassBase {
 
         final byte[] transparencies = model.getFaceTransparencies();
 
+        float rotationInRadians = context.orientation * (float)UNIT;
+        float cos = (float) Math.cos(rotationInRadians);
+        float sin = (float) Math.sin(rotationInRadians);
+
         int vertexCount = 0;
         for (int tri = 0; tri < triCount; tri++) {
             int i0 = indices1[tri];
@@ -784,48 +803,38 @@ public class ShadowPass implements IPassBase {
             }
 
 //            log.info("Pushing dynamic model.");
-            Vector4 vertexA = new Vector4(vx[i0], vy[i0], vz[i0], 1);
-            Vector4 vertexB = new Vector4(vx[i1], vy[i1], vz[i1], 1);
-            Vector4 vertexC = new Vector4(vx[i2], vy[i2], vz[i2], 1);
+
+            float vertexAx = vx[i0];
+            float vertexAy = vy[i0];
+            float vertexAz = vz[i0];
+
+            float vertexBx = vx[i1];
+            float vertexBy = vy[i1];
+            float vertexBz = vz[i1];
+
+            float vertexCx = vx[i2];
+            float vertexCy = vy[i2];
+            float vertexCz = vz[i2];
             if (context.orientation != 0)
             {
-                vertexA = rotate_vertex(vertexA, context.orientation);
-                vertexB = rotate_vertex(vertexB, context.orientation);
-                vertexC = rotate_vertex(vertexC, context.orientation);
+                vertexAx = vx[i0] * cos + vz[i0] * sin;
+                vertexAz = vz[i0] * cos - vx[i0] * sin;
+
+                vertexBx = vx[i1] * cos + vz[i1] * sin;
+                vertexBz = vz[i1] * cos - vx[i1] * sin;
+
+                vertexCx = vx[i2] * cos + vz[i2] * sin;
+                vertexCz = vz[i2] * cos - vx[i2] * sin;
             }
 
-            vertexBuffer.put(vertexA.x + context.x, vertexA.y + context.z, vertexA.z + context.y, alpha);
-            vertexBuffer.put(vertexB.x + context.x, vertexB.y + context.z, vertexB.z + context.y, alpha);
-            vertexBuffer.put(vertexC.x + context.x, vertexC.y + context.z, vertexC.z + context.y, alpha);
-
-//            vertexBuffer.put(vx[i0] + context.x, vy[i0] + context.z, vz[i0] + context.y, alpha);
-//            vertexBuffer.put(vx[i1] + context.x, vy[i1] + context.z, vz[i1] + context.y, alpha);
-//            vertexBuffer.put(vx[i2] + context.x, vy[i2] + context.z, vz[i2] + context.y, alpha);
-
-//            vertexBuffer.put(vx[i0], vy[i0], vz[i0], alpha);
-//            vertexBuffer.put(vx[i1], vy[i1], vz[i1], alpha);
-//            vertexBuffer.put(vx[i2], vy[i2], vz[i2], alpha);
+            vertexBuffer.put(vertexAx + context.x, vertexAy + context.z, vertexAz + context.y, alpha);
+            vertexBuffer.put(vertexBx + context.x, vertexBy + context.z, vertexBz + context.y, alpha);
+            vertexBuffer.put(vertexCx + context.x, vertexCy + context.z, vertexCz + context.y, alpha);
 
             vertexCount += 3;
         }
 
         return vertexCount;
-    }
-
-    // Temporarily on CPU
-    Vector4 rotate_vertex(Vector4 vertex, int orientation) {
-        float radians = orientation * (float)UNIT;
-
-        float cos = (float) Math.cos(radians);
-        float sin = (float) Math.sin(radians);
-
-        float x = vertex.x;
-        float z = vertex.z;
-
-        float rotatedX = x * cos + z * sin;
-        float rotatedZ = z * cos - x * sin;
-
-        return new Vector4(rotatedX, vertex.y, rotatedZ, vertex.w);
     }
 
     private void PadBufferTriangle(GpuFloatBuffer buffer, int numPaddedVertices) {

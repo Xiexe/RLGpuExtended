@@ -18,7 +18,6 @@ import com.gpuExtended.util.contexts.ComputeBufferContext;
 import com.gpuExtended.util.contexts.VertexBufferContext;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.GameStateChanged;
 
 import javax.inject.Inject;
@@ -66,7 +65,7 @@ public class MainPassLegacy implements IPassBase {
         nextSceneVertexBufferContext = new VertexBufferContext();
         computeBufferContext = new ComputeBufferContext();
 
-        vertexBufferContext.PrepareBufferArray();
+        vertexBufferContext.GenArrayAndBuffer();
         log.info("[Main Pass Legacy] Initialized Main Render Pass");
     }
 
@@ -135,6 +134,7 @@ public class MainPassLegacy implements IPassBase {
     @Override
     public void Dispose() {
         vertexBufferContext.Dispose();
+        nextSceneVertexBufferContext.Dispose();
         computeBufferContext.Dispose();
         frameBuffer.dispose();
     }

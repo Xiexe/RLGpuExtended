@@ -121,6 +121,6 @@ public class RenderTargetsOverlay extends Overlay {
         });
 
 //        log.info("Rendering Shadowmap Debug Overlay.");
-        return new Dimension(1024, 1024);
+        return new Dimension(600, 600);
     }
 }
