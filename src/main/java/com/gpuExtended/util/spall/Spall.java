@@ -1,5 +1,7 @@
 package com.gpuExtended.util.spall;
 
+import com.gpuExtended.util.ProfileTime;
+
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -31,7 +33,7 @@ public class Spall {
         if (recordingProfile) {
             SpallThreadData data = spallThreadData.get();
             if (data != null) {
-                data.PutEndEvent(System.nanoTime());
+                data.PutEndEvent(ProfileTime.GetTime());
             }
         }
     }

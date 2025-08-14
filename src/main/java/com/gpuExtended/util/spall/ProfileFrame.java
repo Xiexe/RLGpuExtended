@@ -1,5 +1,7 @@
 package com.gpuExtended.util.spall;
 
+import com.gpuExtended.util.ProfileTime;
+
 public class ProfileFrame implements AutoCloseable {
     public ProfileFrame(String name) {
         if (Spall.recordingProfile) {
@@ -13,7 +15,7 @@ public class ProfileFrame implements AutoCloseable {
     @Override
     public void close() {
         if (Spall.recordingProfile) {
-            long endTime = System.nanoTime();
+            long endTime = ProfileTime.GetTime();
             if (Spall.spallThreadData.get() != null) {
                 Spall.spallThreadData.get().PutEndEvent(endTime);
             }

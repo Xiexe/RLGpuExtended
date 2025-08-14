@@ -1,5 +1,7 @@
 package com.gpuExtended.util.spall;
 
+import com.gpuExtended.util.ProfileTime;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -18,7 +20,7 @@ public class SpallThreadData {
         buffer = ByteBuffer.allocateDirect(65536).order(ByteOrder.LITTLE_ENDIAN);
         buffer.putLong(0x0BADF00D); // magic header
         buffer.putLong(1); // version=1
-        buffer.putDouble(1.0/1000); // timestamp unit
+        buffer.putDouble(ProfileTime.GetTimestampUnit()); // timestamp unit
         buffer.putLong(0);
     }
 
@@ -33,7 +35,7 @@ public class SpallThreadData {
         buffer.put((byte)0); // category
         buffer.putInt(0); // pid
         buffer.putInt(0); // tid
-        buffer.putDouble(System.nanoTime());
+        buffer.putDouble(ProfileTime.GetTime());
         buffer.put((byte)nameBuffer.limit()); // name length
         buffer.put((byte)0); // args length
         buffer.put(nameBuffer);
