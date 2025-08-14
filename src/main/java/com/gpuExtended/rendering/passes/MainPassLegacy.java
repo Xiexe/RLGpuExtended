@@ -314,49 +314,51 @@ public class MainPassLegacy implements IPassBase {
 
     @Override
     public void OnPostDrawScene() {
-        VertexBufferContext vCtx = vertexBufferContext;
-        ComputeBufferContext cCtx = computeBufferContext;
+        try (ProfileFrame p = new ProfileFrame("UpdateBuffersAndSort")) {
+            VertexBufferContext vCtx = vertexBufferContext;
+            ComputeBufferContext cCtx = computeBufferContext;
 
-        vCtx.FlipBuffers();
-        cCtx.unsortedModelBuffer.flip();
-        cCtx.FlipSortedModelBuffers();
+            vCtx.FlipBuffers();
+            cCtx.unsortedModelBuffer.flip();
+            cCtx.FlipSortedModelBuffers();
 
-        IntBuffer vertexBuffer = vCtx.vertexBuffer.getBuffer();
-        FloatBuffer uvBuffer = vCtx.uvBuffer.getBuffer();
-        FloatBuffer normalBuffer = vCtx.normalBuffer.getBuffer();
-        IntBuffer flagsBuffer = vCtx.flagsBuffer.getBuffer();
+            IntBuffer vertexBuffer = vCtx.vertexBuffer.getBuffer();
+            FloatBuffer uvBuffer = vCtx.uvBuffer.getBuffer();
+            FloatBuffer normalBuffer = vCtx.normalBuffer.getBuffer();
+            IntBuffer flagsBuffer = vCtx.flagsBuffer.getBuffer();
 
-        IntBuffer modelBufferUnordered = cCtx.unsortedModelBuffer.getBuffer();
+            IntBuffer modelBufferUnordered = cCtx.unsortedModelBuffer.getBuffer();
 
-        // compute sorting buffers
-        plugin.updateBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
-        cCtx.UpdateSortedModelBuffers(plugin);
+            // compute sorting buffers
+            plugin.updateBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
+            cCtx.UpdateSortedModelBuffers(plugin);
 
-        // dynamic model buffers
-        plugin.updateBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
-        plugin.updateBuffer(cCtx.dynamicUvInBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW);
-        plugin.updateBuffer(cCtx.dynamicNormalInBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW);
-        plugin.updateBuffer(cCtx.dynamicFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW);
+            // dynamic model buffers
+            plugin.updateBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
+            plugin.updateBuffer(cCtx.dynamicUvInBuffer, GL_ARRAY_BUFFER, uvBuffer, GL_DYNAMIC_DRAW);
+            plugin.updateBuffer(cCtx.dynamicNormalInBuffer, GL_ARRAY_BUFFER, normalBuffer, GL_DYNAMIC_DRAW);
+            plugin.updateBuffer(cCtx.dynamicFlagsBuffer, GL_ARRAY_BUFFER, flagsBuffer, GL_DYNAMIC_DRAW);
 
-        // Output buffers
-        final int size = cCtx.totalVertices * Vector4.BYTES; // each buffer contains a Vector4 for each vertex
-        plugin.updateBuffer(cCtx.vertexOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
-        plugin.updateBuffer(cCtx.uvOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
-        plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
-        plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+            // Output buffers
+            final int size = cCtx.totalVertices * Vector4.BYTES; // each buffer contains a Vector4 for each vertex
+            plugin.updateBuffer(cCtx.vertexOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+            plugin.updateBuffer(cCtx.uvOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+            plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
+            plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
 
-        DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader);
+            DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader);
 
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[0], cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[1], cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[2], cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[3], cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[4], cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[5], cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[6], cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096);
-        DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[0], cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[1], cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[2], cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[3], cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[4], cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[5], cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[6], cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096);
+            DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES);
 
+        }
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
         Spall.EndFrame(); // OnDrawScene
         if (plugin.config.recordOneFrame() && Spall.recordingProfile) {
@@ -509,7 +511,11 @@ public class MainPassLegacy implements IPassBase {
 //            }
 //        }
 
-            if (CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+            Spall.BeginFrame("Static.CalculateModelBoundsAndClickbox");
+            boolean visible = CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
+            Spall.EndFrame();
+
+            if (visible) {
                 if (offsetModel.getFaceCount() <= 0) return;
                 int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
                 int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
@@ -566,7 +572,11 @@ public class MainPassLegacy implements IPassBase {
             int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
             int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
-            if (CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
+            Spall.BeginFrame("Dynamic.CalculateModelBoundsAndClickbox");
+            boolean visible = CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
+            Spall.EndFrame();
+
+            if (visible) {
                 if (model.getFaceCount() <= 0) return;
                 int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
                 int exFlags = GetExFlags(hash, tileX, tileY, z, true);
