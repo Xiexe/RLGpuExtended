@@ -54,7 +54,7 @@ public class ShadowPass implements IPassBase {
     public GpuExtendedPlugin plugin;
 
     private boolean sceneGeometryDirty = false;
-    private boolean loadingNewSceneGeometry = false;
+    private boolean backgroundSceneLoadBusy = false;
 
     // TODO:: Figure out a way to do this without 2 framebuffer maybe.
     @Getter
@@ -83,8 +83,6 @@ public class ShadowPass implements IPassBase {
 
     private boolean loadingScene = false;
     private Scene cachedScene = null;
-
-    public List<Integer> objectsToConsiderDynamicShadows = new ArrayList<>();
 
     @Override
     public void Init() {
@@ -267,7 +265,6 @@ public class ShadowPass implements IPassBase {
                     GameObject[] gameObjects = tile.getGameObjects();
                     for (GameObject gameObject : gameObjects) {
                         if (gameObject == null) continue;
-                        if (objectsToConsiderDynamicShadows.contains(gameObject.getId())) continue;
 
                         RenderableContext ctx = new RenderableContext(
                                 gameObject.getRenderable(),
@@ -359,13 +356,17 @@ public class ShadowPass implements IPassBase {
 
     private void RebuildSceneIfDirty() {
         if (cachedScene == null) return;
-        if (!sceneGeometryDirty || loadingScene || loadingNewSceneGeometry) return;
-        if (plugin.client.getGameState() != GameState.LOGGED_IN) return;
+        if (!sceneGeometryDirty) return;
+
+        if (loadingScene || backgroundSceneLoadBusy || plugin.client.getGameState() != GameState.LOGGED_IN) {
+            sceneGeometryDirty = false;
+            return;
+        }
 
         log.info("[Shadow Pass] Starting background rebuild of scene : sceneId={}", plugin.sceneUploader.sceneId);
 
         this.sceneGeometryDirty = false;
-        this.loadingNewSceneGeometry = true;
+        this.backgroundSceneLoadBusy = true;
         Thread t = new Thread(() -> {
             BuildSceneVertexBufferAsync(cachedScene);
             log.info("[Shadow Pass] Building scene geometry: sceneId={} numModels={} numVertices={}",
@@ -374,7 +375,7 @@ public class ShadowPass implements IPassBase {
             plugin.clientThread.invokeLater( () -> {
                 log.info("[Shadow Pass] Scene geometry updated: sceneId={} numModels={} numVertices={}",
                         plugin.sceneUploader.sceneId, numStaticModels, newNumStaticSceneVertices);
-                this.loadingNewSceneGeometry = false;
+                this.backgroundSceneLoadBusy = false;
 
                 this.UpdateSceneVertexBuffer();
                 this.OnRenderStaticShadowMap();
@@ -407,12 +408,7 @@ public class ShadowPass implements IPassBase {
     public void OnDrawSceneTileModel(Scene scene, SceneTileModel model, int tileX, int tileY) {}
     @Override
     public void OnDrawModel(Projection projection, Scene scene, Renderable renderable, int orientation, int x, int y, int z, long hash) {
-        // TODO:: Gather all dynamic models (NPCS, Players, Projectiles, animated objects, and specific "static" objects, like trees)
-
         Model model, offsetModel;
-
-        // TODO:: make a hashmap to track bad object ids to skip (53882 causes massive overdraw in guthix temple entrance)
-        int objectId = (int)(hash >> 20);
 
         if (renderable instanceof Model)
         {
@@ -435,8 +431,7 @@ public class ShadowPass implements IPassBase {
 
         // See SceneUploader.PushStaticModel to understand what this is doing.
         boolean isStaticModel = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
-        boolean isForcedDynamic = objectsToConsiderDynamicShadows.contains(objectId);
-        if (!isStaticModel || isForcedDynamic) {
+        if (!isStaticModel) {
             RenderableContext ctx = new RenderableContext(
                 renderable,
                 offsetModel.getSceneId(),
@@ -886,8 +881,10 @@ public class ShadowPass implements IPassBase {
         }
 
         boolean isStatic = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
-        if (isStatic)
+        if (isStatic) {
+            log.info("GameObject {} triggered background rebuild of scene because it spawned.", gameObject.getId());
             sceneGeometryDirty = true; // Mark the scene as dirty, so we can rebuild the vertex buffer on next frame.
+        }
     }
 
     public void OnGameObjectDespawned(GameObjectDespawned event) {
@@ -917,8 +914,10 @@ public class ShadowPass implements IPassBase {
         }
 
         boolean isStatic = (offsetModel.getSceneId() & ~0xF) == (plugin.sceneId & ~0xF);
-        if (isStatic)
+        if (isStatic) {
+            log.info("GameObject {} triggered background rebuild of scene because it despawned.", gameObject.getId());
             sceneGeometryDirty = true; // Mark the scene as dirty, so we can rebuild the vertex buffer on next frame.
+        }
     }
 
     public void Dispose() {
