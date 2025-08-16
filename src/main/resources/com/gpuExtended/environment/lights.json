@@ -18,7 +18,7 @@
     "type": "point",
     "color": [1.00, 0.35, 0.025],
     "offset": [0, 0, 1.5],
-    "intensity": 2,
+    "intensity": 3,
     "radius": 5,
     "animation": "flicker",
     "decorations": [
