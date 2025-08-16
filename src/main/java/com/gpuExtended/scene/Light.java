@@ -169,29 +169,22 @@ public class Light
     private static Vector4 GetLightPositionWithOffset(Vector3 position, Vector3 offset, int orientation)
     {
         int effectiveOrientation = orientation;
+        Vector3 finalOffset = new Vector3(offset.x, offset.y, offset.z);
 
         // This block remaps the orientation for specific diagonal objects to match their
         // actual visual rotation in the game world, as described by your findings.
         // For example, an object with orientation 1280 is visually rotated by 45 degrees (which is 256).
-        boolean isDiagonal = false;
-        switch (orientation)
+        // A diagonal orientation is any that is not a cardinal direction (0, 512, 1024, 1536).
+        // This can be checked by seeing if it has a remainder when divided by 512.
+        if (orientation % 512 != 0)
         {
-            case 256:
-                effectiveOrientation = 1280;
-                isDiagonal = true;
-                break; // 225 degrees
-            case 768:
-                effectiveOrientation = 1792;
-                isDiagonal = true;
-                break; // 315 degrees
-            case 1280:
-                effectiveOrientation = 256;
-                isDiagonal = true;
-                break; // 45 degrees
-            case 1792:
-                effectiveOrientation = 768;
-                isDiagonal = true;
-                break; // 135 degrees
+            // Remap the orientation to its true visual angle by adding 180 degrees (1024 units).
+            // The modulo operator handles the wrap-around for 1280 and 1792.
+            effectiveOrientation = (orientation + 1024) % 2048;
+
+            // Add the extra 0.5 forward offset for diagonal lights.
+            // Since local 'x' is our forward axis, we add to it.
+            finalOffset.x += 0.5f;
         }
 
         // A full rotation is 2048 units. This constant converts the effective orientation
@@ -200,9 +193,9 @@ public class Light
         float radians = effectiveOrientation * (float)UNIT;
 
         // Scale the local offsets
-        float localX = (offset.x + (isDiagonal ? 0.5f : 0.0f)) * LOCAL_TILE_SIZE; // Represents the local forward/backward axis
-        float localY = offset.y * LOCAL_TILE_SIZE; // Represents the local right/left axis
-        float localZ = offset.z * LOCAL_TILE_SIZE;
+        float localX = finalOffset.x * LOCAL_TILE_SIZE; // Represents the local forward/backward axis
+        float localY = finalOffset.y * LOCAL_TILE_SIZE; // Represents the local right/left axis
+        float localZ = finalOffset.z * LOCAL_TILE_SIZE;
 
         float cosYaw = (float)Math.cos(radians);
         float sinYaw = (float)Math.sin(radians);
