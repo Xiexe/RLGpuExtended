@@ -2,6 +2,7 @@ package com.gpuExtended.overlays;
 
 import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.shader.ShaderException;
+import com.gpuExtended.util.Utils;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -134,6 +135,14 @@ public class TileInspectorOverlay extends Overlay
         lines.put(" ", "");
         lines.put("Overlay: ", String.valueOf(overlayId));
         lines.put("Underlay: ", String.valueOf(underlayId));
+
+        DecorativeObject decorObjects = tile.getDecorativeObject();
+        if (decorObjects != null)
+        {
+            int decorId = decorObjects.getId();
+            int orientation = Utils.getModelOrientation(decorObjects.getConfig());
+            lines.put("Decorative: ", String.format("id: {%d}, ori: {%d}", decorId, orientation));
+        }
 
         FontMetrics metricsRegular = g.getFontMetrics(rsFontSmall);
         FontMetrics metricsBold = g.getFontMetrics(rsBoldFont);

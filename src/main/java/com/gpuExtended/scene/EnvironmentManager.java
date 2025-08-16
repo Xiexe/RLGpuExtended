@@ -23,7 +23,7 @@ import java.util.List;
 
 import static com.gpuExtended.scene.Environment.lerpColor;
 import static com.gpuExtended.util.ResourcePath.path;
-import static com.gpuExtended.util.Utils.GenerateTileHash;
+import static com.gpuExtended.util.Utils.*;
 
 @Singleton
 @Slf4j
@@ -135,7 +135,7 @@ public class EnvironmentManager
         });
 
         LIGHTS_PATH.watch("\\.(json)$", path -> {
-            LoadLights();
+            LoadLightDefinitions();
             LoadSceneLights(client.getScene());
         });
 
@@ -331,7 +331,7 @@ public class EnvironmentManager
         }
     }
 
-    private void LoadLights()
+    private void LoadLightDefinitions()
     {
         try {
             loadingLights = true;
@@ -490,7 +490,7 @@ public class EnvironmentManager
                             ArrayList<Light> lightsForWallObject = wallLights.get(wallObject.getId());
                             if (lightsForWallObject != null)
                             {
-                                int orientation = wallObject.getOrientationA();
+                                int orientation = getModelOrientation(wallObject.getConfig());
                                 LocalPoint location = wallObject.getLocalLocation();
                                 float tileHeight = Perspective.getTileHeight(client, location, z);
                                 Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
@@ -508,7 +508,7 @@ public class EnvironmentManager
                             ArrayList<Light> lightsForDecoration = decorationLights.get(decorativeObject.getId());
                             if (lightsForDecoration != null)
                             {
-                                int orientation = decorativeObject.getConfig() >> 6 & 3;
+                                int orientation = getModelOrientation(decorativeObject.getConfig());
                                 LocalPoint location = decorativeObject.getLocalLocation();
                                 float tileHeight = Perspective.getTileHeight(client, location, z);
                                 Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, orientation);
@@ -528,7 +528,7 @@ public class EnvironmentManager
                                 ArrayList<Light> lightsForGameobject = gameObjectLights.get(gameObject.getId());
                                 if (lightsForGameobject != null)
                                 {
-                                    int orientation = gameObject.getConfig() >> 6 & 3;
+                                    int orientation = getModelOrientation(gameObject.getConfig());//gameObject.getConfig() >> 6 & 3;
                                     LocalPoint location = gameObject.getLocalLocation();
                                     float tileHeight = Perspective.getTileHeight(client, location, z);
                                     Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);

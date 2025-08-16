@@ -1425,6 +1425,81 @@
     ]
   },
   {
+    "name": "POH_TELEPORT_FOCUS",
+    "type": "point",
+    "color": [1, 0.25, 1],
+    "offset": [0, 0, 1],
+    "intensity": 0.25,
+    "radius": 3,
+    "animation": "flicker",
+    "gameObjects" : [
+      13640
+    ]
+  },
+  {
+    "name": "POH_PORTAL_WHITE",
+    "type": "point",
+    "color": [1, 1, 1],
+    "offset": [0, -0.2, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects" : [
+      29346,
+      37598
+    ]
+  },
+  {
+    "name": "POH_PORTAL_TEAL",
+    "type": "point",
+    "color": [0, 1, 1],
+    "offset": [0, -0.2, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects" : [
+      29350
+    ]
+  },
+  {
+    "name": "POH_PORTAL_YELLOW",
+    "type": "point",
+    "color": [1, 1, 0],
+    "offset": [0, -0.2, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects" : [
+      50714
+    ]
+  },
+  {
+    "name": "POH_PORTAL_PURPLE",
+    "type": "point",
+    "color": [0.2, 0, 1],
+    "offset": [0, -0.2, 1],
+    "intensity": 2,
+    "radius": 4,
+    "animation": "flicker",
+    "gameObjects" : [
+      29347,
+      41417,
+      4525
+    ]
+  },
+  {
+    "name": "POH_PORTAL_NEXUS",
+    "type": "point",
+    "color": [0.1, 0.6, 1],
+    "offset": [0, 0, 1.5],
+    "intensity": 1,
+    "radius": 5,
+    "animation": "pulse",
+    "gameObjects" : [
+      33408
+    ]
+  },
+  {
     "name": "PROJECTILE_RED",
     "type": "point",
     "color": [1.00, 0.00, 0.00],
