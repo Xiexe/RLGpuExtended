@@ -16,7 +16,7 @@
       {
         "start": [1790, 5632, -1],
         "end": [2048, 5769, -1],
-        "environment": "DEFAULT"
+        "environment": "PLAYER_OWNED_HOUSE"
       }
     ]
   },

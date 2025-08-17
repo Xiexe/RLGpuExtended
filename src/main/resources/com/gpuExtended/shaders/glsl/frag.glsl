@@ -31,7 +31,7 @@ out vec4 FragColor;
 
 void ApplyFog(inout vec3 image, vec3 fragPos, float distanceToCamera)
 {
-    float fogHeight = 4;
+    float fogHeight = 2;
     float distanceFogHeightFalloff = smoothstep(10.0, 0.0, (1-fragPos.y) / (TILE_SIZE * fogHeight));
 
     float normalizedFogDistance = (fogDepth / drawDistance);

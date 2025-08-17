@@ -55,6 +55,16 @@
     "LightColor":   [0, 0, 0, 1.00]
   },
   {
+    "Name": "PLAYER_OWNED_HOUSE",
+    "SkyColor":     [0.0, 0.0, 0.0, 1],
+    "AmbientColor": [0.5, 0.5, 1.0, 1.00],
+    "LightColor":   [1, 1, 1, 1.00],
+    "LightPitch": 45,
+    "LightYaw": 130,
+    "FogDepth": 50,
+    "UseDynamicTimeOfDay": false
+  },
+  {
     "Name": "DARK_UNDERGROUND",
     "SkyColor":     [0.00, 0.00, 0.00, 1.00],
     "AmbientColor": [0.3, 0.3, 0.3, 1.00],
