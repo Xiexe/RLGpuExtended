@@ -73,7 +73,10 @@ import static org.lwjgl.opengl.GLDebugMessageCallback.getMessage;
 
 @Slf4j
 @PluginDescriptor(
-	name = "_GPU Extended"
+	name = "GPU Extended",
+	description = "Extended GPU rendering plugin, which tries to stay true to the original art.",
+	tags = {"gpu", "shaders", "performance", "fog", "shadows", "lighting", "post processing", "draw distance"},
+	conflicts = {"GPU", "GPU (experimental)", "117 HD"}
 )
 public class GpuExtendedPlugin extends Plugin implements DrawCallbacks
 {

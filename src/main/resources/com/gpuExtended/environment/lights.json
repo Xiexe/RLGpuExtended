@@ -1651,9 +1651,9 @@
     "type": "point",
     "animation": "flicker",
     "color": [0.2, 1.0, 0.2],
-    "offset": [0, 0, -3],
+    "offset": [0, 0, -150],
     "intensity": 3,
-    "radius": 7,
+    "radius": 4,
     "npcs": [
       2,
       3,
