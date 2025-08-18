@@ -20,10 +20,13 @@ import javax.inject.Singleton;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.gpuExtended.scene.Environment.lerpColor;
 import static com.gpuExtended.util.ResourcePath.path;
 import static com.gpuExtended.util.Utils.*;
+import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
+import static net.runelite.api.Perspective.UNIT;
 
 @Singleton
 @Slf4j
@@ -102,12 +105,15 @@ public class EnvironmentManager
     public HashMap<Integer, ArrayList<Light>> wallLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> projectileLights = new HashMap<>();
     public HashMap<Integer, ArrayList<Light>> npcLights = new HashMap<>();
+    public HashMap<Integer, ArrayList<Light>> animLights = new HashMap<>();
 
     public HashSet<Projectile> sceneProjectiles = new HashSet<>();
     public HashMap<Projectile, Light> projectileLightHashMap = new HashMap<>();
 
     public HashMap<GameObject, Light> gameObjectLightHashMap = new HashMap<>();
     public HashMap<NPC, Light> npcLightHashMap = new HashMap<>();
+
+    public HashMap<Actor, List<Light>> actorAnimLights = new HashMap<>();
 
 //    private Light testLight = new Light();
 
@@ -155,6 +161,7 @@ public class EnvironmentManager
 
         UpdateMainLightSettings();
         UpdateNpcLights();
+        UpdateAnimLights();
     }
 
     private void UpdateNpcLights() {
@@ -177,6 +184,7 @@ public class EnvironmentManager
             float tileHeight = Perspective.getTileHeight(client, localPoint, npc.getWorldLocation().getPlane());
             Vector4 oldPosition = light.position;
 
+            // TODO:: Smoothly transition the Z position of the light to avoid popping in some scenarios
 //            float newZ = 0;
 //            if (oldPosition.z != 0) {
 //                float targetZ = tileHeight - (npc.getModelHeight() / 2f) + light.offset.z;
@@ -195,6 +203,106 @@ public class EnvironmentManager
             );
             light.position = newPosition;
         }
+    }
+
+    private void UpdateAnimLights() {
+        for (Map.Entry<Actor, List<Light>> entry : actorAnimLights.entrySet()) {
+            Actor actor = entry.getKey();
+
+            for (Light light : entry.getValue()) {
+                if (actor == null || light == null) {
+                    continue;
+                }
+
+                if (actor.getWorldLocation() == null || actor.getWorldLocation().getPlane() != client.getPlane()) {
+                    continue;
+                }
+
+                LocalPoint localPoint = actor.getLocalLocation();
+                if (localPoint == null) {
+                    continue;
+                }
+
+                float tileHeight = Perspective.getTileHeight(client, localPoint, actor.getWorldLocation().getPlane());
+                int oreintation = actor.getOrientation();
+                float radians = oreintation * (float)UNIT;
+
+                // Scale the local offsets
+                float localX = light.offset.x * LOCAL_TILE_SIZE; // Represents the local forward/backward axis
+                float localY = light.offset.y * LOCAL_TILE_SIZE; // Represents the local right/left axis
+                float localZ = light.offset.z * LOCAL_TILE_SIZE;
+
+                float cosYaw = (float)Math.cos(radians);
+                float sinYaw = (float)Math.sin(radians);
+
+                // This formula, derived from your original hardcoded switch statement,
+                // correctly applies a reflection on the X-axis and then a clockwise rotation.
+                float worldOffsetX = -localX * cosYaw + localY * sinYaw;
+                float worldOffsetY =  localX * sinYaw + localY * cosYaw;
+
+                Vector4 newPosition = new Vector4(
+                    localPoint.getX() + worldOffsetX,
+                    localPoint.getY() + worldOffsetY,
+                    tileHeight - localZ, // Z offset is independent of XY rotation
+                    0f
+                );
+
+                if (actor.getSpotAnims().get(0) != null) {
+                    int actorFrameId = actor.getSpotAnims().get(0).getFrame();
+//                    log.info("Actor Frame: {}, {}", actor.getName(), actorFrameId);
+                    if (light.animations != null && !light.animations.isEmpty()) {
+                        KeyframedLightAnimation animation = light.animations.get(0);
+                        LightKeyframe previousKeyframe = null;
+                        LightKeyframe nextKeyframe = null;
+
+                        for (LightKeyframe keyframe : animation.frames) {
+                            if (keyframe.frameNumber <= actorFrameId) {
+                                previousKeyframe = keyframe;
+                            } else {
+                                nextKeyframe = keyframe;
+                                break;
+                            }
+                        }
+
+                        if (previousKeyframe == null && nextKeyframe != null) {
+                            light.color = nextKeyframe.color;
+                            light.intensity = nextKeyframe.intensity;
+                            light.radius = nextKeyframe.radius;
+                        } else if (previousKeyframe != null && nextKeyframe == null) {
+                            light.color = previousKeyframe.color;
+                            light.intensity = previousKeyframe.intensity;
+                            light.radius = previousKeyframe.radius;
+                        } else if (previousKeyframe != null && nextKeyframe != null) {
+                            if (previousKeyframe.frameNumber == actorFrameId) {
+                                light.color = previousKeyframe.color;
+                                light.intensity = previousKeyframe.intensity;
+                                light.radius = previousKeyframe.radius;
+                            } else {
+                                int frameRange = nextKeyframe.frameNumber - previousKeyframe.frameNumber;
+                                if (frameRange <= 0) return;
+
+                                int frameProgress = actorFrameId - previousKeyframe.frameNumber;
+                                float t = (float) frameProgress / frameRange;
+
+                                // Use 't' to interpolate between the previous and next keyframes
+                                light.color = lerpColor(previousKeyframe.color, nextKeyframe.color, t);
+                                light.intensity = lerp(previousKeyframe.intensity, nextKeyframe.intensity, t);
+                                light.radius = lerp(previousKeyframe.radius, nextKeyframe.radius, t);
+                            }
+                        }
+                    }
+                }
+
+                light.position = newPosition;
+            }
+        }
+    }
+
+    // Helper function for linear interpolation of floats
+    private float lerp(float start, float end, float t) {
+        // Clamp t to be between 0 and 1
+        t = Math.max(0, Math.min(1, t));
+        return start + t * (end - start);
     }
 
     public void OnTick() {
@@ -344,6 +452,7 @@ public class EnvironmentManager
             projectileLights.clear();
             wallLights.clear();
             npcLights.clear();
+            animLights.clear();
 
             int uniqueLightAssignements = 0;
             for(int i = 0; i < lightsDefinitions.length; i++) {
@@ -424,6 +533,18 @@ public class EnvironmentManager
                         uniqueLightAssignements++;
                     }
                 }
+
+                List<KeyframedLightAnimation> spotAnims = light.animations;
+                if (spotAnims != null && !spotAnims.isEmpty()) {
+                    KeyframedLightAnimation baseAnimation = spotAnims.get(0);
+                    int animationId = baseAnimation.id;
+                    List<Light> lightsForAnimation = animLights.computeIfAbsent(animationId, k -> new ArrayList<>());
+
+                    if (!lightsForAnimation.contains(light)) {
+                        lightsForAnimation.add(light);
+                        uniqueLightAssignements++;
+                    }
+                }
             }
 
             log.info("Loaded {} lights across {} objects", lightsDefinitions.length, uniqueLightAssignements);
@@ -433,8 +554,7 @@ public class EnvironmentManager
         }
     }
 
-    public void LoadSceneLights(Scene scene)
-    {
+    public void LoadSceneLights(Scene scene) {
         sceneLights.clear();
         sceneLightVisibility.clear();
         sceneProjectiles.clear();
@@ -442,116 +562,109 @@ public class EnvironmentManager
         projectileLightHashMap.clear();
         gameObjectLightHashMap.clear();
         npcLightHashMap.clear();
+        actorAnimLights.clear();
 
         GameState gameState = client.getGameState();
-        if(gameState == GameState.LOGGED_IN || plugin.loadingScene) {
-//            sceneLights.add(testLight);
+        if (gameState != GameState.LOGGED_IN && !plugin.loadingScene) {
+            return;
+        }
 
-            // Load lights for static objects that are a part of the tile
-            for (int z = 0; z < Constants.MAX_Z; ++z) {
-                for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
-                    for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
-                        Tile tile = scene.getExtendedTiles()[z][x][y];
-                        if (tile == null) {
-                            continue;
-                        }
+        int[][][] tileHeights = scene.getTileHeights();
+        // Load lights for static objects that are a part of the tile
+        for (int z = 0; z < Constants.MAX_Z; ++z) {
+            for (int x = 0; x < Constants.EXTENDED_SCENE_SIZE; ++x) {
+                for (int y = 0; y < Constants.EXTENDED_SCENE_SIZE; ++y) {
+                    Tile tile = scene.getExtendedTiles()[z][x][y];
+                    if (tile == null || tile.getPlane() != client.getPlane()) {
+                        continue;
+                    }
 
-                        // Skip tiles that are not on the same plane as the player
-                        // TODO:: Maybe we dont need to skip this with light binning.
-                        if (tile.getPlane() != client.getPlane()) {
-                            continue;
-                        }
+                    float tileHeight = tileHeights[z][x][y];
 
+                    // Process lights for the tile itself
+                    addLightsForTile(tile, tileHeight);
 
-                        WorldPoint tileWorldLocation = tile.getWorldLocation();
-                        int[] worldLocation = new int[]{
-                                tileWorldLocation.getX(),
-                                tileWorldLocation.getY(),
-                                tileWorldLocation.getPlane()
-                        };
+                    // Process lights for the wall object
+                    WallObject wallObject = tile.getWallObject();
+                    if (wallObject != null) {
+                        addLightsForObject(wallObject.getId(), wallObject.getLocalLocation(), wallObject.getConfig(), z, tileHeight, wallLights);
+                    }
 
-                        int hash = GenerateTileHash(worldLocation);
-                        if (tileLights.containsKey(hash))
-                        {
-                            ArrayList<Light> lightsForTile = tileLights.get(hash);
-                            LocalPoint location = tile.getLocalLocation();
-                            float tileHeight = Perspective.getTileHeight(client, location, z);
+                    // Process lights for the decorative object
+                    DecorativeObject decorativeObject = tile.getDecorativeObject();
+                    if (decorativeObject != null) {
+                        addLightsForObject(decorativeObject.getId(), decorativeObject.getLocalLocation(), decorativeObject.getConfig(), z, tileHeight, decorationLights);
+                    }
 
-                            Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
-                            for (int i = 0; i < lightsForTile.size(); i++) {
-                                Light light = Light.CreateLightFromTemplate(lightsForTile.get(i), position, tile.getPlane(), 0, plugin.awtContext);
-                                sceneLights.add(light);
-                            }
-                        }
-
-                        WallObject wallObject = tile.getWallObject();
-                        if(wallObject != null)
-                        {
-                            ArrayList<Light> lightsForWallObject = wallLights.get(wallObject.getId());
-                            if (lightsForWallObject != null)
-                            {
-                                int orientation = getModelOrientation(wallObject.getConfig());
-                                LocalPoint location = wallObject.getLocalLocation();
-                                float tileHeight = Perspective.getTileHeight(client, location, z);
-                                Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
-
-                                for (int i = 0; i < lightsForWallObject.size(); i++) {
-                                    Light light = Light.CreateLightFromTemplate(lightsForWallObject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
-                                    sceneLights.add(light);
-                                }
-                            }
-                        }
-
-                        DecorativeObject decorativeObject = tile.getDecorativeObject();
-                        if (decorativeObject != null)
-                        {
-                            ArrayList<Light> lightsForDecoration = decorationLights.get(decorativeObject.getId());
-                            if (lightsForDecoration != null)
-                            {
-                                int orientation = getModelOrientation(decorativeObject.getConfig());
-                                LocalPoint location = decorativeObject.getLocalLocation();
-                                float tileHeight = Perspective.getTileHeight(client, location, z);
-                                Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, orientation);
-
-                                for (int i = 0; i < lightsForDecoration.size(); i++) {
-
-                                    Light light = Light.CreateLightFromTemplate(lightsForDecoration.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
-                                    sceneLights.add(light);
-                                }
-                            }
-                        }
-
-                        for (GameObject gameObject : tile.getGameObjects())
-                        {
-                            if (gameObject != null)
-                            {
-                                ArrayList<Light> lightsForGameobject = gameObjectLights.get(gameObject.getId());
-                                if (lightsForGameobject != null)
-                                {
-                                    int orientation = getModelOrientation(gameObject.getConfig());//gameObject.getConfig() >> 6 & 3;
-                                    LocalPoint location = gameObject.getLocalLocation();
-                                    float tileHeight = Perspective.getTileHeight(client, location, z);
-                                    Vector4 position = new Vector4(location.getX(), location.getY(), z + tileHeight, 0);
-
-                                    for (int i = 0; i < lightsForGameobject.size(); i++) {
-                                        Light light = Light.CreateLightFromTemplate(lightsForGameobject.get(i), position, tile.getPlane(), orientation, plugin.awtContext);
-                                        sceneLights.add(light);
-                                    }
-                                }
-                            }
+                    // Process lights for game objects
+                    for (GameObject gameObject : tile.getGameObjects()) {
+                        if (gameObject != null) {
+                            addLightsForObject(gameObject.getId(), gameObject.getLocalLocation(), gameObject.getConfig(), z, tileHeight, gameObjectLights);
                         }
                     }
                 }
             }
+        }
 
-            // Load lights for npcs that are already loaded (won't fire spawn event by itself, do it manually)
-            for (NPC npc : client.getNpcs()) {
-                if (npc == null) continue;
+        // Load lights for NPCs that are already visible since the onSpawned event will not fire for them.
+        for (NPC npc : client.getNpcs()) {
+            if (npc != null) {
                 AddNpcLight(npc);
             }
+        }
 
-            log.info("Loaded {} lights across scene total.", sceneLights.size());
-            loadingLights = false;
+        log.info("[Environment Manager] Loaded {} lights across scene.", sceneLights.size());
+        loadingLights = false;
+    }
+
+    /**
+     * Creates and adds lights for a given world object based on its properties.
+     *
+     * @param objectId The ID of the object.
+     * @param location The local location of the object.
+     * @param config The configuration/state of the object.
+     * @param plane The plane the object is on.
+     * @param tileHeight The height of the tile the object is on.
+     * @param lightMap The map of lights corresponding to the object type.
+     */
+    private void addLightsForObject(int objectId, LocalPoint location, int config, int plane, float tileHeight, Map<Integer, ArrayList<Light>> lightMap) {
+        ArrayList<Light> lightsForObject = lightMap.get(objectId);
+        if (lightsForObject == null || lightsForObject.isEmpty()) {
+            return;
+        }
+
+        int orientation = getModelOrientation(config);
+        Vector4 position = new Vector4(location.getX(), location.getY(), plane + tileHeight, 0);
+
+        for (Light lightTemplate : lightsForObject) {
+            Light light = Light.CreateLightFromTemplate(lightTemplate, position, plane, orientation, plugin.awtContext);
+            sceneLights.add(light);
+        }
+    }
+    /**
+     * Adds lights for a specific tile.
+     *
+     * @param tile The tile to add lights for.
+     * @param tileHeight The height of the tile.
+     */
+    private void addLightsForTile(Tile tile, float tileHeight) {
+        WorldPoint tileWorldLocation = tile.getWorldLocation();
+        int[] worldLocation = {
+                tileWorldLocation.getX(),
+                tileWorldLocation.getY(),
+                tileWorldLocation.getPlane()
+        };
+
+        int hash = GenerateTileHash(worldLocation);
+        if (tileLights.containsKey(hash)) {
+            ArrayList<Light> lightsForTile = tileLights.get(hash);
+            LocalPoint location = tile.getLocalLocation();
+            Vector4 position = new Vector4(location.getX(), location.getY(), tile.getPlane() + tileHeight, 0);
+
+            for (Light lightTemplate : lightsForTile) {
+                Light light = Light.CreateLightFromTemplate(lightTemplate, position, tile.getPlane(), 0, plugin.awtContext);
+                sceneLights.add(light);
+            }
         }
     }
 
@@ -672,32 +785,6 @@ public class EnvironmentManager
                 }
                 currentEnvironment.isTransitioning = true;
             }
-
-            if (currentBounds != null && currentArea != null) {
-                if (currentBounds != lastBounds || currentArea != lastArea) {
-                    log.info("Player entered area: {}, {}", currentArea.getName(), currentBounds.getName());
-
-                    if (lastBounds != null) {
-                        if (!lastBounds.isHideOtherAreas() && !currentBounds.isHideOtherAreas()) {
-                            return;
-                        }
-                    } else {
-                        if (!currentBounds.isHideOtherAreas()) {
-                            return;
-                        }
-                    }
-
-                    if (client.getGameState() == GameState.LOGGED_IN) {
-                        clientThread.invoke(() -> {
-                            Scene scene = client.getScene();
-
-                            client.setGameState(GameState.LOADING);
-                            plugin.loadScene(scene);
-                            plugin.swapScene(scene);
-                        });
-                    }
-                }
-            }
         }
     }
 
@@ -806,7 +893,6 @@ public class EnvironmentManager
         }
     }
 
-    // TODO:: Add lights for SpotAnims
     public void OnProjectileMoved(ProjectileMoved event) {
         Projectile projectile = event.getProjectile();
 
@@ -924,14 +1010,58 @@ public class EnvironmentManager
 
     public void OnAnimationChanged(AnimationChanged event) {
         Actor actor = event.getActor();
+
+        // --- 1. ALWAYS CLEAN UP PREVIOUS LIGHTS ---
+        // First, remove any existing animation lights this actor might have.
+        // .remove() gets the value and removes the key in one step.
+        List<Light> existingLights = actorAnimLights.remove(actor);
+        if (existingLights != null) {
+            // Remove all previously tracked lights from the main scene.
+            for (Light light : existingLights) {
+                sceneLights.remove(light);
+            }
+//            log.info("Removed {} old animation lights for actor: {}", existingLights.size(), actor.getName());
+        }
+
+        // --- 2. HANDLE THE NEW ANIMATION ---
         int animationId = actor.getAnimation();
 
-        // Find a light with animations for this animation Id
+        // If the animation is ending (-1), we're done. Cleanup is complete.
+        if (animationId == -1) {
+            return;
+        }
 
-        // Create the light if it doesn't exist
+        // Check if any lights are defined for this new animation ID
+        ArrayList<Light> lightTemplates = animLights.get(animationId);
+        if (lightTemplates == null || lightTemplates.isEmpty()) {
+            return; // No lights to create for this animation.
+        }
 
+//        log.info("Creating {} lights for animation ID: {}, Actor: {}", lightTemplates.size(), animationId, actor.getName());
 
-        // On Update, update the light sources according to the animation keyframes.
+        // Prepare a new list to hold the lights we are about to create.
+        List<Light> newLights = new ArrayList<>();
+
+        LocalPoint location = actor.getLocalLocation();
+        float tileHeight = Perspective.getTileHeight(client, location, actor.getWorldLocation().getPlane());
+        Vector4 position = new Vector4(location.getX(), location.getY(), tileHeight, 0);
+
+        for (Light lightTemplate : lightTemplates) {
+            Light newLight = Light.CreateLightFromTemplate(lightTemplate, position, actor.getWorldLocation().getPlane(), actor.getOrientation(), plugin.awtContext);
+            if (lightTemplate.animations != null && !lightTemplate.animations.isEmpty()) {
+                newLight.animations = lightTemplate.animations; // Copy animations if they exist
+            }
+
+            // Add the new light to the main scene...
+            sceneLights.add(newLight);
+            // ...and also to our list for tracking.
+            newLights.add(newLight);
+        }
+
+        // Finally, put the new list of lights into the map for this actor.
+        if (!newLights.isEmpty()) {
+            actorAnimLights.put(actor, newLights);
+        }
     }
 
     public Light GetLightAtIndex(int index)

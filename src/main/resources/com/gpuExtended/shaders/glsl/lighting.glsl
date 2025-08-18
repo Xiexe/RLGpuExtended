@@ -126,15 +126,16 @@ void AnimateLight(inout Light light, inout float bandWidth)
     switch(light.animation)
     {
         case LIGHT_ANIM_FLICKER:
-        float flicker = sin((time / 75) - hash) * 0.01 + 1;
-        float flicker2 = sin((time / 45) - hash * 2) * 0.01 + 1;
+        float flicker = sin((time / 75) - hash) * 0.025 + 1;
+        float flicker2 = sin((time / 45) - hash * 2) * 0.025 + 1;
         light.intensity *= flicker * flicker2;
         light.radius *= (flicker * flicker2);
         break;
 
         case LIGHT_ANIM_PULSE:
-        float pulse = sin((time / 500) - hash) * 0.5 + 1.5;
-        light.intensity *= pulse;
+        float pulse = sin((time / 300) - hash) * 0.5 + 1.5;
+        light.intensity *= (pulse * 0.5);
+        light.radius *= (pulse * 0.5);
         break;
     }
 }

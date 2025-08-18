@@ -189,10 +189,14 @@
       4265,
       4267,
       10660,
+      13881,
       26185,
       43475,
       44021,
       49927
+    ],
+    "walls": [
+      715
     ]
   },
   {
@@ -296,8 +300,8 @@
     "name": "STRONGHOLD_OF_SECURITY_YELLOW_WALL_LIGHT",
     "type": "point",
     "color": [1.00, 1.00, 0.1],
-    "offset": [0.1, 0, 2],
-    "intensity": 1,
+    "offset": [-0.2, 0, 2],
+    "intensity": 2,
     "radius": 6,
     "animation": "flicker",
     "gameObjects": [
@@ -308,7 +312,7 @@
     "name": "STRONGHOLD_OF_SECURITY_GREEN_WALL_LIGHT",
     "type": "point",
     "color": [0.1, 1.00, 0.1],
-    "offset": [0.1, 0, 0.25],
+    "offset": [0.15, 0, 0.4],
     "intensity": 3,
     "radius": 6,
     "animation": "flicker",
@@ -1708,7 +1712,7 @@
     "name": "PLAYER_ANIM_ALCHEMY",
     "type": "point",
     "color": [1, 1, 0],
-    "offset": [0, 0, 0],
+    "offset": [0.05, -0.4, 1.15],
     "intensity": 1,
     "radius": 5,
     "animations" : [
@@ -1717,18 +1721,53 @@
         "frames": [
           {
             "frame": 0,
-            "color": [1, 1, 0],
-            "intensity": 1
-          },
-          {
-            "frame": 3,
-            "color": [1, 0.5, 0],
-            "intensity": 2
+            "intensity": 2,
+            "radius": 3
           },
           {
             "frame": 6,
-            "color": [1, 1, 0],
-            "intensity": 1
+            "intensity": 1,
+            "radius": 1
+          },
+          {
+            "frame": 12,
+            "intensity": 2,
+            "radius": 3
+          },
+          {
+            "frame": 18,
+            "intensity": 0,
+            "radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "PLAYER_ANIM_TELEPORT",
+    "type": "point",
+    "color": [1, 0, 1],
+    "offset": [0.0, 0.0, 0.9],
+    "intensity": 0,
+    "radius": 0,
+    "animations" : [
+      {
+        "id": 714,
+        "frames": [
+          {
+            "frame": 3,
+            "intensity": 0,
+            "radius": 0
+          },
+          {
+            "frame": 6,
+            "intensity": 3,
+            "radius": 4
+          },
+          {
+            "frame": 11,
+            "intensity": 0,
+            "radius": 1
           }
         ]
       }

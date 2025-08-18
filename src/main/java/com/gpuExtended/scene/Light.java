@@ -12,6 +12,7 @@ import net.runelite.rlawt.AWTContext;
 
 import javax.annotation.Nullable;
 import java.awt.*;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -99,7 +100,7 @@ public class Light
     public float intensity = 1;
     public float radius = 2;
     public int plane = 0;
-    public ArrayList<KeyframedLightAnimation> animations = null;
+    public List<KeyframedLightAnimation> animations = null;
     public int[][] tiles = new int[0][0];
     public int[] decorations = new int[0];
     public int[] gameObjects = new int[0];
@@ -131,7 +132,16 @@ public class Light
     @Nullable
     public float hash = -1;
 
-    public Light (String name, LightType type, LightAnimation animation, Color color, Vector3 offset, float intensity, float radius, int[][] tiles, int[] decorations, int[] gameObjects, int[] walls, int[] projectiles, int[] npcs)
+    public Light (String name, LightType type, LightAnimation animation, Color color, Vector3 offset,
+                  float intensity, float radius,
+                  int[][] tiles,
+                  int[] decorations,
+                  int[] gameObjects,
+                  int[] walls,
+                  int[] projectiles,
+                  int[] npcs,
+                  List<KeyframedLightAnimation> animations
+    )
     {
         this.name = name;
         this.type = type;
@@ -146,6 +156,7 @@ public class Light
         this.walls = walls;
         this.projectiles = projectiles;
         this.npcs = npcs;
+        this.animations = animations;
     }
 
     public static Light GetDebugLight() {
@@ -162,7 +173,8 @@ public class Light
                 new int[]{},
                 new int[]{},
                 new int[]{},
-                new int[]{}
+                new int[]{},
+                new ArrayList<>()
         );
     }
 
