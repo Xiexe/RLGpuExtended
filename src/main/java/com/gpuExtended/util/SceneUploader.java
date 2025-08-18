@@ -4,6 +4,7 @@ package com.gpuExtended.util;
 import com.google.common.base.Stopwatch;
 
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
@@ -312,7 +313,27 @@ public class SceneUploader
 		uniqueModels++;
 
 		Point tilePoint = tile.getSceneLocation();
-		int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, false);
+
+		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
+
+		// TODO: make this not sad
+
+		vertexBuffer.ensureCapacity(triCount * 12);
+		normalBuffer.ensureCapacity(triCount * 12);
+		uvBuffer.ensureCapacity(triCount * 12);
+		flagsBuffer.ensureCapacity(triCount * 12);
+
+		IntBuffer vertexBufferView = vertexBuffer.getBuffer().slice().limit(triCount * 12);
+		FloatBuffer uvBufferView = uvBuffer.getBuffer().slice().limit(triCount * 12);
+		FloatBuffer normalBufferView = normalBuffer.getBuffer().slice().limit(triCount * 12);
+		IntBuffer flagsBufferView = flagsBuffer.getBuffer().slice().limit(triCount * 12);
+
+		vertexBuffer.getBuffer().position(vertexBuffer.getBuffer().position() + triCount * 12);
+		uvBuffer.getBuffer().position(uvBuffer.getBuffer().position() + triCount * 12);
+		normalBuffer.getBuffer().position(normalBuffer.getBuffer().position() + triCount * 12);
+		flagsBuffer.getBuffer().position(flagsBuffer.getBuffer().position() + triCount * 12);
+
+		int vertexCount = PushGeometryToBuffers(model, vertexBufferView, uvBufferView, normalBufferView, flagsBufferView, false);
 		offset += vertexCount;
 		if (model.getFaceTextures() != null)
 		{
@@ -323,10 +344,233 @@ public class SceneUploader
 	public int PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		try (ProfileFrame p = new ProfileFrame("PushDynamicModel")) {
-			int vertexCount = PushGeometryToBuffers(model, vertexBuffer, uvBuffer, normalBuffer, flagsBuffer, isNPC);
+			final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
+
+			vertexBuffer.ensureCapacity(triCount * 12);
+			normalBuffer.ensureCapacity(triCount * 12);
+			uvBuffer.ensureCapacity(triCount * 12);
+			flagsBuffer.ensureCapacity(triCount * 12);
+
+			// TODO: make this not sad
+			IntBuffer vertexBufferView = vertexBuffer.getBuffer().slice().limit(triCount * 12);
+			FloatBuffer uvBufferView = uvBuffer.getBuffer().slice().limit(triCount * 12);
+			FloatBuffer normalBufferView = normalBuffer.getBuffer().slice().limit(triCount * 12);
+			IntBuffer flagsBufferView = flagsBuffer.getBuffer().slice().limit(triCount * 12);
+
+			vertexBuffer.getBuffer().position(vertexBuffer.getBuffer().position() + triCount * 12);
+			uvBuffer.getBuffer().position(uvBuffer.getBuffer().position() + triCount * 12);
+			normalBuffer.getBuffer().position(normalBuffer.getBuffer().position() + triCount * 12);
+			flagsBuffer.getBuffer().position(flagsBuffer.getBuffer().position() + triCount * 12);
+			int vertexCount = PushGeometryToBuffers(model, vertexBufferView, uvBufferView, normalBufferView, flagsBufferView, isNPC);
 			return vertexCount;
 		}
 	}
+
+	private static void putFloat3Int(IntBuffer buffer, float x, float y, float z, int w)
+	{
+		buffer.put(Float.floatToIntBits(x))
+				.put(Float.floatToIntBits(y))
+				.put(Float.floatToIntBits(z))
+				.put(w);
+	}
+
+	private static int PushGeometryToBuffers(Model model,
+											 IntBuffer vertexBuffer,
+											 FloatBuffer uvBuffer,
+											 FloatBuffer normalBuffer,
+											 IntBuffer flagsBuffer,
+											 boolean isNPC)
+	{
+		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
+		assert vertexBuffer.limit() == (triCount * 12);
+		assert normalBuffer.limit() == (triCount * 12);
+		assert uvBuffer.limit() == (triCount * 12);
+		assert flagsBuffer.limit() == (triCount * 12);
+		//vertexBuffer.ensureCapacity(triCount * 12);
+		//normalBuffer.ensureCapacity(triCount * 12);
+		//uvBuffer.ensureCapacity(triCount * 12);
+		//flagsBuffer.ensureCapacity(triCount * 12);
+
+		final float[] vertexX = model.getVerticesX();
+		final float[] vertexY = model.getVerticesY();
+		final float[] vertexZ = model.getVerticesZ();
+
+		final int[] normalX = model.getVertexNormalsX();
+		final int[] normalY = model.getVertexNormalsY();
+		final int[] normalZ = model.getVertexNormalsZ();
+
+		final int[] indices1 = model.getFaceIndices1();
+		final int[] indices2 = model.getFaceIndices2();
+		final int[] indices3 = model.getFaceIndices3();
+
+		final int[] color1s = model.getFaceColors1();
+		final int[] color2s = model.getFaceColors2();
+		final int[] color3s = model.getFaceColors3();
+
+		final short[] faceTextures = model.getFaceTextures();
+		final byte[] textureFaces = model.getTextureFaces();
+		final int[] texIndices1 = model.getTexIndices1();
+		final int[] texIndices2 = model.getTexIndices2();
+		final int[] texIndices3 = model.getTexIndices3();
+
+		final byte[] transparencies = model.getFaceTransparencies();
+		final byte[] facePriorities = model.getFaceRenderPriorities();
+		final byte[] faceDepthBias = model.getFaceBias();
+
+		final byte overrideAmount = model.getOverrideAmount();
+		final byte overrideHue = model.getOverrideHue();
+		final byte overrideSat = model.getOverrideSaturation();
+		final byte overrideLum = model.getOverrideLuminance();
+
+		int vertexCount = 0;
+		for (int tri = 0; tri < triCount; tri++)
+		{
+			int color1 = color1s[tri];
+			int color2 = color2s[tri];
+			int color3 = color3s[tri];
+
+			if (color3 == -1) // Model only has one color.
+			{
+				color2 = color3 = color1;
+			}
+			else if (color3 == -2) // Model should be skipped. Pad buffer.
+			{
+				putFloat3Int(vertexBuffer, 0,0,0,0);
+				putFloat3Int(vertexBuffer, 0,0,0,0);
+				putFloat3Int(vertexBuffer, 0,0,0,0);
+
+				normalBuffer.put(0).put(0).put(0).put(0);
+				normalBuffer.put(0).put(0).put(0).put(0);
+				normalBuffer.put(0).put(0).put(0).put(0);
+
+				putFloat3Int(flagsBuffer, 0,0,0,0);
+				putFloat3Int(flagsBuffer, 0,0,0,0);
+				putFloat3Int(flagsBuffer, 0,0,0,0);
+
+				if (faceTextures != null)
+				{
+					uvBuffer.put(0).put(0).put(0).put(0);
+					uvBuffer.put(0).put(0).put(0).put(0);
+					uvBuffer.put(0).put(0).put(0).put(0);
+				}
+
+				vertexCount += 3;
+				continue;
+			}
+
+			if(isNPC) {
+				if(IsBakedGroundShading(model, tri))
+				{
+					color1 = color2 = color3 = 0x12345678;
+					putFloat3Int(vertexBuffer, 0,0,0,0);
+					putFloat3Int(vertexBuffer, 0,0,0,0);
+					putFloat3Int(vertexBuffer, 0,0,0,0);
+
+					normalBuffer.put(0).put(0).put(0).put(0);
+					normalBuffer.put(0).put(0).put(0).put(0);
+					normalBuffer.put(0).put(0).put(0).put(0);
+
+					putFloat3Int(flagsBuffer, 0,0,0,0);
+					putFloat3Int(flagsBuffer, 0,0,0,0);
+					putFloat3Int(flagsBuffer, 0,0,0,0);
+
+					if (faceTextures != null)
+					{
+						uvBuffer.put(0).put(0).put(0).put(0);
+						uvBuffer.put(0).put(0).put(0).put(0);
+						uvBuffer.put(0).put(0).put(0).put(0);
+					}
+					vertexCount += 3;
+					continue;
+				}
+			}
+
+			// HSL override is not applied to textured faces
+			if (faceTextures == null || faceTextures[tri] == -1)
+			{
+				if (overrideAmount > 0)
+				{
+					color1 = interpolateHSL(color1, overrideHue, overrideSat, overrideLum, overrideAmount);
+					color2 = interpolateHSL(color2, overrideHue, overrideSat, overrideLum, overrideAmount);
+					color3 = interpolateHSL(color3, overrideHue, overrideSat, overrideLum, overrideAmount);
+				}
+			}
+
+			int i0 = indices1[tri];
+			int i1 = indices2[tri];
+			int i2 = indices3[tri];
+
+			int packedAlphaPriorityFlags = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
+
+//			if (faceDepthBias == null) {
+			// TODO: Make this a float buffer and use intToFloatBits or something
+
+			putFloat3Int(vertexBuffer, vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
+			putFloat3Int(vertexBuffer, vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
+			putFloat3Int(vertexBuffer, vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
+
+//			} else {
+//				int depthBias = faceDepthBias[tri] * 10;
+//				vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0] + depthBias, packedAlphaPriorityFlags | color1);
+//				vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1] + depthBias, packedAlphaPriorityFlags | color2);
+//				vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2] + depthBias, packedAlphaPriorityFlags | color3);
+//			}
+
+			putFloat3Int(flagsBuffer, 0,0,0,0);
+			putFloat3Int(flagsBuffer, 0,0,0,0);
+			putFloat3Int(flagsBuffer, 0,0,0,0);
+
+			if (faceTextures != null)
+			{
+				if (faceTextures[tri] != -1)
+				{
+					int texA, texB, texC;
+
+					if (textureFaces != null && textureFaces[tri] != -1)
+					{
+						int tface = textureFaces[tri] & 0xff;
+						texA = texIndices1[tface];
+						texB = texIndices2[tface];
+						texC = texIndices3[tface];
+					}
+					else
+					{
+						texA = i0;
+						texB = i1;
+						texC = i2;
+					}
+
+					int texture = faceTextures[tri] + 1;
+					uvBuffer.put(texture).put(vertexX[texA]).put(vertexY[texA]).put(vertexZ[texA]);
+					uvBuffer.put(texture).put(vertexX[texB]).put(vertexY[texB]).put(vertexZ[texB]);
+					uvBuffer.put(texture).put(vertexX[texC]).put(vertexY[texC]).put(vertexZ[texC]);
+				}
+				else
+				{
+					uvBuffer.put(0).put(0).put(0).put(0);
+					uvBuffer.put(0).put(0).put(0).put(0);
+					uvBuffer.put(0).put(0).put(0).put(0);
+				}
+			}
+
+			if(normalX != null) {
+				normalBuffer.put(normalX[i0]).put(normalY[i0]).put(normalZ[i0]).put(0);
+				normalBuffer.put(normalX[i1]).put(normalY[i1]).put(normalZ[i1]).put(0);
+				normalBuffer.put(normalX[i2]).put(normalY[i2]).put(normalZ[i2]).put(0);
+			}
+			else
+			{
+				normalBuffer.put(0).put(0).put(0).put(0);
+				normalBuffer.put(0).put(0).put(0).put(0);
+				normalBuffer.put(0).put(0).put(0).put(0);
+			}
+
+			vertexCount += 3;
+		}
+
+		return vertexCount;
+	}
+
 
 	// Map Tiles
 	public int PushTerrainTile(Scene scene, SceneTilePaint tile, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer, int tileZ, int tileX, int tileY, int offsetX, int offsetY)
@@ -570,197 +814,7 @@ public class SceneUploader
 		return isOnBridge;
 	}
 
-	private int PushGeometryToBuffers(Model model,
-									  GpuIntBuffer vertexBuffer,
-									  GpuFloatBuffer uvBuffer,
-									  GpuFloatBuffer normalBuffer,
-									  GpuIntBuffer flagsBuffer,
-									  boolean isNPC)
-	{
-		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
-		vertexBuffer.ensureCapacity(triCount * 12);
-		normalBuffer.ensureCapacity(triCount * 12);
-		uvBuffer.ensureCapacity(triCount * 12);
-		flagsBuffer.ensureCapacity(triCount * 12);
-
-		final float[] vertexX = model.getVerticesX();
-		final float[] vertexY = model.getVerticesY();
-		final float[] vertexZ = model.getVerticesZ();
-
-		final int[] normalX = model.getVertexNormalsX();
-		final int[] normalY = model.getVertexNormalsY();
-		final int[] normalZ = model.getVertexNormalsZ();
-
-		final int[] indices1 = model.getFaceIndices1();
-		final int[] indices2 = model.getFaceIndices2();
-		final int[] indices3 = model.getFaceIndices3();
-
-		final int[] color1s = model.getFaceColors1();
-		final int[] color2s = model.getFaceColors2();
-		final int[] color3s = model.getFaceColors3();
-
-		final short[] faceTextures = model.getFaceTextures();
-		final byte[] textureFaces = model.getTextureFaces();
-		final int[] texIndices1 = model.getTexIndices1();
-		final int[] texIndices2 = model.getTexIndices2();
-		final int[] texIndices3 = model.getTexIndices3();
-
-		final byte[] transparencies = model.getFaceTransparencies();
-		final byte[] facePriorities = model.getFaceRenderPriorities();
-		final byte[] faceDepthBias = model.getFaceBias();
-
-		final byte overrideAmount = model.getOverrideAmount();
-		final byte overrideHue = model.getOverrideHue();
-		final byte overrideSat = model.getOverrideSaturation();
-		final byte overrideLum = model.getOverrideLuminance();
-
-		int vertexCount = 0;
-		for (int tri = 0; tri < triCount; tri++)
-		{
-			int color1 = color1s[tri];
-			int color2 = color2s[tri];
-			int color3 = color3s[tri];
-
-			if (color3 == -1) // Model only has one color.
-			{
-				color2 = color3 = color1;
-			}
-			else if (color3 == -2) // Model should be skipped. Pad buffer.
-			{
-				vertexBuffer.put(0, 0, 0, 0);
-				vertexBuffer.put(0, 0, 0, 0);
-				vertexBuffer.put(0, 0, 0, 0);
-
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-
-				flagsBuffer.put(0, 0, 0, 0);
-				flagsBuffer.put(0, 0, 0, 0);
-				flagsBuffer.put(0, 0, 0, 0);
-
-				if (faceTextures != null)
-				{
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-				}
-
-				vertexCount += 3;
-				continue;
-			}
-
-			if(isNPC) {
-				if(IsBakedGroundShading(model, tri))
-				{
-					color1 = color2 = color3 = 0x12345678;
-					vertexBuffer.put(0, 0, 0, 0);
-					vertexBuffer.put(0, 0, 0, 0);
-					vertexBuffer.put(0, 0, 0, 0);
-
-					normalBuffer.put(0, 0, 0, 0);
-					normalBuffer.put(0, 0, 0, 0);
-					normalBuffer.put(0, 0, 0, 0);
-
-					flagsBuffer.put(0, 0, 0, 0);
-					flagsBuffer.put(0, 0, 0, 0);
-					flagsBuffer.put(0, 0, 0, 0);
-
-					if (faceTextures != null)
-					{
-						uvBuffer.put(0, 0, 0, 0);
-						uvBuffer.put(0, 0, 0, 0);
-						uvBuffer.put(0, 0, 0, 0);
-					}
-					vertexCount += 3;
-					continue;
-				}
-			}
-
-			// HSL override is not applied to textured faces
-			if (faceTextures == null || faceTextures[tri] == -1)
-			{
-				if (overrideAmount > 0)
-				{
-					color1 = interpolateHSL(color1, overrideHue, overrideSat, overrideLum, overrideAmount);
-					color2 = interpolateHSL(color2, overrideHue, overrideSat, overrideLum, overrideAmount);
-					color3 = interpolateHSL(color3, overrideHue, overrideSat, overrideLum, overrideAmount);
-				}
-			}
-
-			int i0 = indices1[tri];
-			int i1 = indices2[tri];
-			int i2 = indices3[tri];
-
-			int packedAlphaPriorityFlags = packAlphaPriority(faceTextures, transparencies, facePriorities, tri);
-
-//			if (faceDepthBias == null) {
-				vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0], packedAlphaPriorityFlags | color1);
-				vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1], packedAlphaPriorityFlags | color2);
-				vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2], packedAlphaPriorityFlags | color3);
-//			} else {
-//				int depthBias = faceDepthBias[tri] * 10;
-//				vertexBuffer.put(vertexX[i0], vertexY[i0], vertexZ[i0] + depthBias, packedAlphaPriorityFlags | color1);
-//				vertexBuffer.put(vertexX[i1], vertexY[i1], vertexZ[i1] + depthBias, packedAlphaPriorityFlags | color2);
-//				vertexBuffer.put(vertexX[i2], vertexY[i2], vertexZ[i2] + depthBias, packedAlphaPriorityFlags | color3);
-//			}
-
-			flagsBuffer.put(0, 0, 0, 0);
-			flagsBuffer.put(0, 0, 0, 0);
-			flagsBuffer.put(0, 0, 0, 0);
-
-			if (faceTextures != null)
-			{
-				if (faceTextures[tri] != -1)
-				{
-					int texA, texB, texC;
-
-					if (textureFaces != null && textureFaces[tri] != -1)
-					{
-						int tface = textureFaces[tri] & 0xff;
-						texA = texIndices1[tface];
-						texB = texIndices2[tface];
-						texC = texIndices3[tface];
-					}
-					else
-					{
-						texA = i0;
-						texB = i1;
-						texC = i2;
-					}
-
-					int texture = faceTextures[tri] + 1;
-					uvBuffer.put(texture, vertexX[texA], vertexY[texA], vertexZ[texA]);
-					uvBuffer.put(texture, vertexX[texB], vertexY[texB], vertexZ[texB]);
-					uvBuffer.put(texture, vertexX[texC], vertexY[texC], vertexZ[texC]);
-				}
-				else
-				{
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-					uvBuffer.put(0, 0, 0, 0);
-				}
-			}
-
-			if(normalX != null) {
-				normalBuffer.put(normalX[i0], normalY[i0], normalZ[i0], 0);
-				normalBuffer.put(normalX[i1], normalY[i1], normalZ[i1], 0);
-				normalBuffer.put(normalX[i2], normalY[i2], normalZ[i2], 0);
-			}
-			else
-			{
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-				normalBuffer.put(0, 0, 0, 0);
-			}
-
-			vertexCount += 3;
-		}
-
-		return vertexCount;
-	}
-
-	private boolean IsBakedGroundShading(Model model, int face) {
+	private static boolean IsBakedGroundShading(Model model, int face) {
 		final byte[] faceTransparencies = model.getFaceTransparencies();
 		if (faceTransparencies == null || (faceTransparencies[face] & 0xFF) <= 100)
 			return false;
