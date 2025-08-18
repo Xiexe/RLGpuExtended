@@ -333,15 +333,15 @@ public class SceneUploader
 		normalBuffer.getBuffer().position(normalBuffer.getBuffer().position() + triCount * 12);
 		flagsBuffer.getBuffer().position(flagsBuffer.getBuffer().position() + triCount * 12);
 
-		int vertexCount = PushGeometryToBuffers(model, vertexBufferView, uvBufferView, normalBufferView, flagsBufferView, false);
-		offset += vertexCount;
+		PushGeometryToBuffers(model, vertexBufferView, uvBufferView, normalBufferView, flagsBufferView, false);
+		offset += triCount * 3;
 		if (model.getFaceTextures() != null)
 		{
-			uvoffset += vertexCount;
+			uvoffset += triCount * 3;
 		}
 	}
 
-	public int PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
+	public void PushDynamicModel(Model model, int modelConfig, boolean isNPC, GpuIntBuffer vertexBuffer, GpuFloatBuffer uvBuffer, GpuFloatBuffer normalBuffer, GpuIntBuffer flagsBuffer)
 	{
 		try (ProfileFrame p = new ProfileFrame("PushDynamicModel")) {
 			final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
@@ -361,8 +361,7 @@ public class SceneUploader
 			uvBuffer.getBuffer().position(uvBuffer.getBuffer().position() + triCount * 12);
 			normalBuffer.getBuffer().position(normalBuffer.getBuffer().position() + triCount * 12);
 			flagsBuffer.getBuffer().position(flagsBuffer.getBuffer().position() + triCount * 12);
-			int vertexCount = PushGeometryToBuffers(model, vertexBufferView, uvBufferView, normalBufferView, flagsBufferView, isNPC);
-			return vertexCount;
+			PushGeometryToBuffers(model, vertexBufferView, uvBufferView, normalBufferView, flagsBufferView, isNPC);
 		}
 	}
 
@@ -374,13 +373,16 @@ public class SceneUploader
 				.put(w);
 	}
 
-	private static int PushGeometryToBuffers(Model model,
+	private static void PushGeometryToBuffers(Model model,
 											 IntBuffer vertexBuffer,
 											 FloatBuffer uvBuffer,
 											 FloatBuffer normalBuffer,
 											 IntBuffer flagsBuffer,
 											 boolean isNPC)
 	{
+		// NOTE: This MUST output exactly triCount*3 vertices! For dynamic models we preallocate enough spaced for model.getFaceCount() faces so threads can
+		// freely write to that pre-allocated space
+		// Basically: Don't return early here ever without writing out at least zeros
 		final int triCount = Math.min(model.getFaceCount(), MAX_TRIANGLE);
 		assert vertexBuffer.limit() == (triCount * 12);
 		assert normalBuffer.limit() == (triCount * 12);
@@ -422,7 +424,6 @@ public class SceneUploader
 		final byte overrideSat = model.getOverrideSaturation();
 		final byte overrideLum = model.getOverrideLuminance();
 
-		int vertexCount = 0;
 		for (int tri = 0; tri < triCount; tri++)
 		{
 			int color1 = color1s[tri];
@@ -435,9 +436,10 @@ public class SceneUploader
 			}
 			else if (color3 == -2) // Model should be skipped. Pad buffer.
 			{
-				putFloat3Int(vertexBuffer, 0,0,0,0);
-				putFloat3Int(vertexBuffer, 0,0,0,0);
-				putFloat3Int(vertexBuffer, 0,0,0,0);
+				// NaN vertices will be culled no matter where the camera points
+				putFloat3Int(vertexBuffer, Float.NaN,Float.NaN,Float.NaN,0);
+				putFloat3Int(vertexBuffer, Float.NaN,Float.NaN,Float.NaN,0);
+				putFloat3Int(vertexBuffer, Float.NaN,Float.NaN,Float.NaN,0);
 
 				normalBuffer.put(0).put(0).put(0).put(0);
 				normalBuffer.put(0).put(0).put(0).put(0);
@@ -454,7 +456,6 @@ public class SceneUploader
 					uvBuffer.put(0).put(0).put(0).put(0);
 				}
 
-				vertexCount += 3;
 				continue;
 			}
 
@@ -462,9 +463,10 @@ public class SceneUploader
 				if(IsBakedGroundShading(model, tri))
 				{
 					color1 = color2 = color3 = 0x12345678;
-					putFloat3Int(vertexBuffer, 0,0,0,0);
-					putFloat3Int(vertexBuffer, 0,0,0,0);
-					putFloat3Int(vertexBuffer, 0,0,0,0);
+					// NaN vertices will be culled no matter where the camera points
+					putFloat3Int(vertexBuffer, Float.NaN,Float.NaN,Float.NaN,0);
+					putFloat3Int(vertexBuffer, Float.NaN,Float.NaN,Float.NaN,0);
+					putFloat3Int(vertexBuffer, Float.NaN,Float.NaN,Float.NaN,0);
 
 					normalBuffer.put(0).put(0).put(0).put(0);
 					normalBuffer.put(0).put(0).put(0).put(0);
@@ -480,7 +482,6 @@ public class SceneUploader
 						uvBuffer.put(0).put(0).put(0).put(0);
 						uvBuffer.put(0).put(0).put(0).put(0);
 					}
-					vertexCount += 3;
 					continue;
 				}
 			}
@@ -564,11 +565,7 @@ public class SceneUploader
 				normalBuffer.put(0).put(0).put(0).put(0);
 				normalBuffer.put(0).put(0).put(0).put(0);
 			}
-
-			vertexCount += 3;
 		}
-
-		return vertexCount;
 	}
 
 
