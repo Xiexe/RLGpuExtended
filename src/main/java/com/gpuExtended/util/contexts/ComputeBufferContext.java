@@ -1,8 +1,8 @@
 package com.gpuExtended.util.contexts;
 
-import com.gpuExtended.GpuExtendedPlugin;
 import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
+import com.gpuExtended.util.MappedGLBuffer;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.gpuExtended.util.constants.Variables.MAX_TRIANGLE;
@@ -24,18 +24,21 @@ public class ComputeBufferContext {
     public GLBuffer staticFlagsInBuffer;
 
     // Buffers used for dynamic models
-    public GLBuffer dynamicVertexInBuffer = new GLBuffer("dynamic model vertex buffer");
-    public GLBuffer dynamicUvInBuffer = new GLBuffer("dynamic model uv buffer");
-    public GLBuffer dynamicNormalInBuffer = new GLBuffer("dynamic model normal buffer");
-    public GLBuffer dynamicFlagsBuffer = new GLBuffer("dynamic model flags buffer");
+    public MappedGLBuffer _dynamicVertexInBuffer; // TODO: This needs setup
+    public MappedGLBuffer _dynamicUvInBuffer;
+    public MappedGLBuffer _dynamicNormalInBuffer;
+    public MappedGLBuffer _dynamicFlagsBuffer;
+
+    public GLBuffer dynamicVertexInBuffer;
+    public GLBuffer dynamicUvInBuffer;
+    public GLBuffer dynamicNormalInBuffer;
+    public GLBuffer dynamicFlagsBuffer;
 
     // Buffers used for model sorting
     public GLBuffer tmpUnsortedModelBuffer;
 
     public GpuIntBuffer unsortedModelBuffer;
-
-    public GpuIntBuffer[] sortedModelIntBuffers;
-    public GLBuffer[] sortedModelGlBuffers;
+    public MappedGLBuffer[] sortedModelInfos;
     public int[] numSortedModels;
 
     public int numUnsortedModels;
@@ -66,6 +69,11 @@ public class ComputeBufferContext {
         this.dynamicNormalInBuffer = new GLBuffer("dynamic model normal buffer");
         this.dynamicFlagsBuffer = new GLBuffer("dynamic model flags buffer");
 
+        _dynamicVertexInBuffer = new MappedGLBuffer("dynamic model vertex buffer");
+        _dynamicUvInBuffer = new MappedGLBuffer("dynamic model uv buffer");
+        _dynamicNormalInBuffer = new MappedGLBuffer("dynamic model normal buffer");
+        _dynamicFlagsBuffer = new MappedGLBuffer("dynamic model flags buffer");
+
         // Model Sorting buffers
         this.tmpUnsortedModelBuffer = new GLBuffer("unsorted model buffer");
 
@@ -90,14 +98,14 @@ public class ComputeBufferContext {
     }
 
     public void ResetSortedModelBufferCounts() {
-        for(int i = 0; i < 8; i++) {
+        for(int i = 0; i < numSortedModels.length; i++) {
             this.numSortedModels[i] = 0;
         }
     }
 
-    public void ClearSortedModelBuffer() {
-        for(int i = 0; i < 8; i++) {
-            this.sortedModelIntBuffers[i].clear();
+    public void OrphanSortedModelBuffers() {
+        for(int i = 0; i < numSortedModels.length; i++) {
+            this.sortedModelInfos[i].OrphanAndReset();
         }
     }
 
@@ -113,27 +121,13 @@ public class ComputeBufferContext {
         // 4096
         // MAX_TRIANGLE = 1024*6 = 6144
         // 8 different sizes
-        this.sortedModelIntBuffers = new GpuIntBuffer[8];
-        this.sortedModelGlBuffers = new GLBuffer[8];
+        this.sortedModelInfos = new MappedGLBuffer[8];
         this.numSortedModels = new int[8];
-        for(int i = 0; i < 8; i++) {
+        for(int i = 0; i < numSortedModels.length; i++) {
             int size = 64 << i;
-            this.sortedModelGlBuffers[i] = new GLBuffer("sorted models size=" + size);
-            InitGLBuffer(this.sortedModelGlBuffers[i]);
-            this.sortedModelIntBuffers[i] = new GpuIntBuffer();
+            this.sortedModelInfos[i] = new MappedGLBuffer("sorted models size=" + size);
+            this.sortedModelInfos[i].InitBufferIfNeeded();
             this.numSortedModels[i] = 0;
-        }
-    }
-
-    public void FlipSortedModelBuffers() {
-        for(int i = 0; i < 8; i++) {
-            this.sortedModelIntBuffers[i].flip();
-        }
-    }
-
-    public void UpdateSortedModelBuffers(GpuExtendedPlugin plugin) {
-        for(int i = 0; i < 8; i++) {
-            plugin.updateBuffer(this.sortedModelGlBuffers[i], GL_ARRAY_BUFFER, this.sortedModelIntBuffers[i].getBuffer(), GL_DYNAMIC_DRAW);
         }
     }
 
@@ -143,14 +137,14 @@ public class ComputeBufferContext {
         return (int)Math.ceil(x);
     }
 
-    public GpuIntBuffer GetCorrectModelBufferForTriangleCount(int triangles) {
+    public MappedGLBuffer GetCorrectModelBufferForTriangleCount(int triangles) {
         assert triangles > 0 : "Triangle count was " + triangles;
         assert triangles <= MAX_TRIANGLE : "Triangle count was greater than MAX_TRIANGLE=" + MAX_TRIANGLE + " triangles=" + triangles;
         int log = log2(triangles);
         if (log < 6) log = 6; // minimum 64. 6 == log2(64)
 
         this.numSortedModels[log-6]++;
-        GpuIntBuffer buffer = this.sortedModelIntBuffers[log-6];
+        MappedGLBuffer buffer = this.sortedModelInfos[log-6];
         return buffer;
     }
 
@@ -188,10 +182,16 @@ public class ComputeBufferContext {
         this.numUnsortedModels = 0;
         this.ResetSortedModelBufferCounts();
 
+        for(int i = 0; i < sortedModelInfos.length; i++) {
+            sortedModelInfos[i].Dispose();
+        }
         this.numSortedModels = null;
-        this.sortedModelGlBuffers = null;
-        this.sortedModelIntBuffers = null;
-
+        this.sortedModelInfos = null;
         this.totalVertices = 0;
+
+        _dynamicVertexInBuffer.Dispose();
+        _dynamicUvInBuffer.Dispose();
+        _dynamicNormalInBuffer.Dispose();
+        _dynamicFlagsBuffer.Dispose();
     }
 }

@@ -3,7 +3,6 @@ package com.gpuExtended.rendering.passes;
 import com.google.inject.Singleton;
 import com.gpuExtended.GpuExtendedConfig;
 import com.gpuExtended.GpuExtendedPlugin;
-import com.gpuExtended.opengl.GLBuffer;
 import com.gpuExtended.overlays.PerformanceOverlay;
 import com.gpuExtended.rendering.FrameBuffer;
 import com.gpuExtended.rendering.Texture2D;
@@ -15,17 +14,18 @@ import com.gpuExtended.shader.ShaderVariables;
 import com.gpuExtended.shader.Uniforms;
 import com.gpuExtended.util.GpuFloatBuffer;
 import com.gpuExtended.util.GpuIntBuffer;
+import com.gpuExtended.util.MappedGLBuffer;
 import com.gpuExtended.util.contexts.ComputeBufferContext;
 import com.gpuExtended.util.contexts.VertexBufferContext;
 import com.gpuExtended.util.spall.ProfileFrame;
 import com.gpuExtended.util.spall.Spall;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.GameStateChanged;
 
 import javax.inject.Inject;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -150,6 +150,12 @@ public class MainPassLegacy implements IPassBase {
         if (gameState.getState() < GameState.LOGGED_IN.getState()) {
             frameBuffer.clearFramebuffer();
         }
+
+        computeBufferContext._dynamicVertexInBuffer.OrphanAndReset();
+        computeBufferContext._dynamicNormalInBuffer.OrphanAndReset();
+        computeBufferContext._dynamicUvInBuffer.OrphanAndReset();
+        computeBufferContext._dynamicFlagsBuffer.OrphanAndReset();
+        computeBufferContext.OrphanSortedModelBuffers();
     }
 
     @Override
@@ -241,8 +247,6 @@ public class MainPassLegacy implements IPassBase {
         vertexBufferContext.flagsBuffer.clear();
 
         computeBufferContext.unsortedModelBuffer.clear();
-        computeBufferContext.ClearSortedModelBuffer();
-
 
         computeBufferContext.ResetSortedModelBufferCounts();
         computeBufferContext.numUnsortedModels = 0;
@@ -320,7 +324,6 @@ public class MainPassLegacy implements IPassBase {
 
             vCtx.FlipBuffers();
             cCtx.unsortedModelBuffer.flip();
-            cCtx.FlipSortedModelBuffers();
 
             IntBuffer vertexBuffer = vCtx.vertexBuffer.getBuffer();
             FloatBuffer uvBuffer = vCtx.uvBuffer.getBuffer();
@@ -331,7 +334,6 @@ public class MainPassLegacy implements IPassBase {
 
             // compute sorting buffers
             plugin.updateBuffer(cCtx.tmpUnsortedModelBuffer, GL_ARRAY_BUFFER, modelBufferUnordered, GL_DYNAMIC_DRAW);
-            cCtx.UpdateSortedModelBuffers(plugin);
 
             // dynamic model buffers
             plugin.updateBuffer(cCtx.dynamicVertexInBuffer, GL_ARRAY_BUFFER, vertexBuffer, GL_DYNAMIC_DRAW);
@@ -346,17 +348,18 @@ public class MainPassLegacy implements IPassBase {
             plugin.updateBuffer(cCtx.normalOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
             plugin.updateBuffer(cCtx.flagsOutBuffer, GL_ARRAY_BUFFER, size, GL_STREAM_DRAW);
 
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Make sure our mapped buffer writes are visible before we start the compute shader
 
-            DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader);
+            DispatchSortingCompute(cCtx.tmpUnsortedModelBuffer.glBufferId, cCtx.numUnsortedModels, plugin.shaders.unorderedComputeShader);
 
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[0], cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[1], cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[2], cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[3], cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[4], cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[5], cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[6], cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096);
-            DispatchSortingCompute(cCtx.sortedModelGlBuffers[7], cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES);
+            DispatchSortingCompute(cCtx.sortedModelInfos[0].glBufferId, cCtx.numSortedModels[0], plugin.shaders.orderedComputeShader64);
+            DispatchSortingCompute(cCtx.sortedModelInfos[1].glBufferId, cCtx.numSortedModels[1], plugin.shaders.orderedComputeShader128);
+            DispatchSortingCompute(cCtx.sortedModelInfos[2].glBufferId, cCtx.numSortedModels[2], plugin.shaders.orderedComputeShader256);
+            DispatchSortingCompute(cCtx.sortedModelInfos[3].glBufferId, cCtx.numSortedModels[3], plugin.shaders.orderedComputeShader512);
+            DispatchSortingCompute(cCtx.sortedModelInfos[4].glBufferId, cCtx.numSortedModels[4], plugin.shaders.orderedComputeShader1024);
+            DispatchSortingCompute(cCtx.sortedModelInfos[5].glBufferId, cCtx.numSortedModels[5], plugin.shaders.orderedComputeShader2048);
+            DispatchSortingCompute(cCtx.sortedModelInfos[6].glBufferId, cCtx.numSortedModels[6], plugin.shaders.orderedComputeShader4096);
+            DispatchSortingCompute(cCtx.sortedModelInfos[7].glBufferId, cCtx.numSortedModels[7], plugin.shaders.orderedComputeShaderMAX_TRIANGLES);
 
         }
         plugin.performanceOverlay.EndTimer(PerformanceOverlay.TimerType.DRAW_MAIN_PASS);
@@ -511,11 +514,7 @@ public class MainPassLegacy implements IPassBase {
 //            }
 //        }
 
-            Spall.BeginFrame("Static.CalculateModelBoundsAndClickbox");
-            boolean visible = CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-            Spall.EndFrame();
-
-            if (visible) {
+            if (CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
                 if (offsetModel.getFaceCount() <= 0) return;
                 int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
                 int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
@@ -525,10 +524,9 @@ public class MainPassLegacy implements IPassBase {
                 int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
                 int exFlags = GetExFlags(hash, tileX, tileY, z, false);
 
-                GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(faceCount);
+                MappedGLBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(faceCount);
 
-                b.ensureCapacity(12);
-                IntBuffer buffer = b.getBuffer();
+                IntBuffer buffer = b.ReserveIntsAndGetView(12);
                 buffer.put(offsetModel.getBufferOffset());
                 buffer.put(uvOffset);
                 buffer.put(faceCount);
@@ -572,11 +570,7 @@ public class MainPassLegacy implements IPassBase {
             int tileX = (x / LOCAL_TILE_SIZE) + SCENE_OFFSET;
             int tileY = (z / LOCAL_TILE_SIZE) + SCENE_OFFSET;
 
-            Spall.BeginFrame("Dynamic.CalculateModelBoundsAndClickbox");
-            boolean visible = CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash);
-            Spall.EndFrame();
-
-            if (visible) {
+            if (CalculateModelBoundsAndClickbox(projection, model, orientation, x, y, z, hash)) {
                 if (model.getFaceCount() <= 0) return;
                 int flags = GetModelPackedFlags(hash, model, offsetModel, orientation);
                 int exFlags = GetExFlags(hash, tileX, tileY, z, true);
@@ -587,9 +581,9 @@ public class MainPassLegacy implements IPassBase {
 
                 int vertexCount = plugin.sceneUploader.PushDynamicModel(model, 0, isNPC, vertexBufferContext.vertexBuffer, vertexBufferContext.uvBuffer, vertexBufferContext.normalBuffer, vertexBufferContext.flagsBuffer);
 
-                GpuIntBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(vertexCount / 3);
-                b.ensureCapacity(12);
-                IntBuffer buffer = b.getBuffer();
+                MappedGLBuffer b = computeBufferContext.GetCorrectModelBufferForTriangleCount(vertexCount / 3);
+
+                IntBuffer buffer = b.ReserveIntsAndGetView(12);
                 buffer.put(computeBufferContext.totalDynamicVertices);
                 buffer.put(hasUv ? computeBufferContext.totalDynamicUvs : -1);
                 buffer.put(vertexCount / 3);
@@ -696,7 +690,7 @@ public class MainPassLegacy implements IPassBase {
         return -1;
     }
 
-    private void DispatchSortingCompute(GLBuffer modelBuffer, int numModels, Shader computeShader) {
+    private void DispatchSortingCompute(int modelBufferId, int numModels, Shader computeShader) {
         if (numModels <= 0)  return;
         plugin.PushDebug(computeShader);
         Uniforms uniforms = plugin.uniforms;
@@ -706,7 +700,7 @@ public class MainPassLegacy implements IPassBase {
 
         glUseProgram(computeShader.id());
 
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelBuffer.glBufferId); // modelbuffer_in
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MODEL_BUFFER_IN_BINDING_ID, modelBufferId); // modelbuffer_in
 
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, VERTEX_BUFFER_OUT_BINDING_ID, computeBufferContext.vertexOutBuffer.glBufferId); // vertex out
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TEXTURE_BUFFER_OUT_BINDING_ID, computeBufferContext.uvOutBuffer.glBufferId); // uv out

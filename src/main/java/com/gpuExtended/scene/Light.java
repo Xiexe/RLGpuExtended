@@ -27,7 +27,6 @@ import static org.lwjgl.opengl.GL30C.GL_DEPTH_ATTACHMENT;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 @Slf4j
 public class Light
 {
