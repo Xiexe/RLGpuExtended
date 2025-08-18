@@ -580,9 +580,9 @@
     "name": "GUARDIANS_OF_THE_RIFT_REWARD_GUY",
     "type": "point",
     "color": [1, 1, 0],
-    "offset": [0, 0, 6.9],
+    "offset": [0, 0, 0.5],
     "intensity": 3,
-    "radius": 8,
+    "radius": 2,
     "animation": "pulse",
     "tiles": [
       [3611, 9480, 0]

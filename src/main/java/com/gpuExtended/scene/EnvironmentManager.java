@@ -1010,10 +1010,8 @@ public class EnvironmentManager
 
     public void OnAnimationChanged(AnimationChanged event) {
         Actor actor = event.getActor();
+//        log.info("Animation changed for actor: {}, New Animation ID: {}", actor.getName(), actor.getAnimation());
 
-        // --- 1. ALWAYS CLEAN UP PREVIOUS LIGHTS ---
-        // First, remove any existing animation lights this actor might have.
-        // .remove() gets the value and removes the key in one step.
         List<Light> existingLights = actorAnimLights.remove(actor);
         if (existingLights != null) {
             // Remove all previously tracked lights from the main scene.
@@ -1023,7 +1021,6 @@ public class EnvironmentManager
 //            log.info("Removed {} old animation lights for actor: {}", existingLights.size(), actor.getName());
         }
 
-        // --- 2. HANDLE THE NEW ANIMATION ---
         int animationId = actor.getAnimation();
 
         // If the animation is ending (-1), we're done. Cleanup is complete.
